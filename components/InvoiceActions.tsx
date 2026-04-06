@@ -21,19 +21,18 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
       const sanitizedInvoiceNo = (data.invoiceNumber || 'invoice').replace(/[/\\?%*:|"<>]/g, '-');
 
       // Slight delay to ensure any dynamic content or fonts are fully rendered
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const imgData = await toPng(element, { 
         quality: 1, 
         pixelRatio: 2,
         backgroundColor: '#ffffff',
-        width: 800,
-        height: 1131,
-        style: {
-          transform: 'none',
-          margin: '0',
-        }
+        cacheBust: true,
       });
+
+      if (!imgData || imgData.length < 500) {
+        throw new Error('Capture failed - generated image is too small.');
+      }
       
       const pdf = new jsPDF('p', 'pt', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -41,9 +40,9 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${sanitizedInvoiceNo}.pdf`);
-    } catch (e) {
+    } catch (e: any) {
       console.error('PDF Generation Error:', e);
-      alert('Error generating PDF. Please try again.');
+      alert(`Error generating PDF: ${e.message || 'Please try again'}`);
     } finally {
       setIsGenerating(false);
     }
@@ -76,11 +75,12 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
         </div>
       </div>
 
-       <div className="flex justify-center p-8 bg-slate-100 dark:bg-slate-900/50 rounded-2xl overflow-x-auto shadow-inner">
-         <div className="shadow-2xl bg-white print:m-0 print:shadow-none bg-invoice-paper">
+       <div className="flex justify-center p-8 bg-slate-100 dark:bg-slate-900/50 rounded-2xl overflow-x-auto shadow-inner min-h-[600px]">
+         {/* Added scaling container to match the "New Invoice" rendering environment which works */}
+         <div className="shadow-2xl bg-white print:m-0 print:shadow-none bg-invoice-paper scale-[0.6] sm:scale-[0.7] lg:scale-[0.8] xl:scale-100 transform origin-top mb-[-200px]">
             <InvoiceTemplate ref={invoiceRef} data={data} />
          </div>
       </div>
     </div>
-  )
+  );
 }
