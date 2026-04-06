@@ -17,10 +17,22 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
 
       const element = invoiceRef.current;
       
+      // Sanitizing filename (Windows does not allow / in filenames)
+      const sanitizedInvoiceNo = (data.invoiceNumber || 'invoice').replace(/[/\\?%*:|"<>]/g, '-');
+
+      // Slight delay to ensure any dynamic content or fonts are fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const imgData = await toPng(element, { 
         quality: 1, 
         pixelRatio: 2,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        width: 800,
+        height: 1131,
+        style: {
+          transform: 'none',
+          margin: '0',
+        }
       });
       
       const pdf = new jsPDF('p', 'pt', 'a4');
@@ -28,10 +40,10 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
       const pdfHeight = (1131 * pdfWidth) / 800;
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${data.invoiceNumber || 'invoice'}.pdf`);
+      pdf.save(`${sanitizedInvoiceNo}.pdf`);
     } catch (e) {
-      console.error(e);
-      alert('Error generating PDF');
+      console.error('PDF Generation Error:', e);
+      alert('Error generating PDF. Please try again.');
     } finally {
       setIsGenerating(false);
     }

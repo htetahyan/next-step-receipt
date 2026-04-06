@@ -119,7 +119,9 @@ export default function NewInvoicePage() {
 
       const element = invoiceRef.current;
       
-      // html-to-image is more reliable for grid/flex layouts
+      // Sanitizing filename (Windows does not allow / in filenames)
+      const sanitizedNo = (data.invoiceNumber || 'invoice').replace(/[/\\?%*:|"<>]/g, '-');
+      
       const imgData = await toPng(element, { 
         quality: 1, 
         pixelRatio: 2,
@@ -128,13 +130,10 @@ export default function NewInvoicePage() {
       
       const pdf = new jsPDF('p', 'pt', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      
-      // Calculate height maintaining aspect ratio
-      // Original width is 800px (from template)
       const pdfHeight = (1131 * pdfWidth) / 800;
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${data.invoiceNumber || 'invoice'}.pdf`);
+      pdf.save(`${sanitizedNo}.pdf`);
     } catch (e) {
       console.error(e);
       alert('Error generating PDF');
@@ -149,6 +148,8 @@ export default function NewInvoicePage() {
     try {
       const { toPng } = await import('html-to-image');
       const element = invoiceRef.current;
+      const sanitizedNo = (data.invoiceNumber || 'invoice').replace(/[/\\?%*:|"<>]/g, '-');
+      
       const imgData = await toPng(element, { 
         quality: 1, 
         pixelRatio: 2,
@@ -156,7 +157,7 @@ export default function NewInvoicePage() {
       });
       
       const link = document.createElement('a');
-      link.download = `${data.invoiceNumber || 'invoice'}.png`;
+      link.download = `${sanitizedNo}.png`;
       link.href = imgData;
       link.click();
     } catch (e) {
