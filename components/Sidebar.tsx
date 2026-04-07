@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, Users, FileText, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Plane, Building } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 
 export default function Sidebar() {
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
+    { name: "Flight Booking", href: "/dashboard/flight-booking", icon: Plane },
+    { name: "Hotel Booking", href: "/dashboard/hotel-booking", icon: Building },
     { name: "Customers", href: "/dashboard/customers", icon: Users },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
