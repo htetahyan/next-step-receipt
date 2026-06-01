@@ -298,7 +298,7 @@ export default function NewInvoicePage() {
                   type="checkbox" 
                   id="vatExempt"
                   {...register('isVatExempt')} 
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 dark:bg-slate-800 dark:border-slate-700" 
+                  className="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-700 dark:bg-slate-800 dark:border-slate-700" 
                 />
                 <label htmlFor="vatExempt" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   VAT Exempt
@@ -342,7 +342,7 @@ export default function NewInvoicePage() {
               <button 
                 type="button" 
                 onClick={() => append({ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 })}
-                className="text-sm text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
+                className="text-sm text-emerald-700 font-medium hover:text-emerald-800 flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" /> Add
               </button>
@@ -379,7 +379,7 @@ export default function NewInvoicePage() {
             type="button" 
             onClick={handleSubmit(onSubmit)} 
             disabled={isSaving}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : null}
             {isSaving ? 'Saving...' : 'Save Invoice'}
@@ -407,7 +407,7 @@ export default function NewInvoicePage() {
 
       {/* Live Preview */}
       <div className="flex-1 overflow-auto bg-gray-200/50 rounded-xl border border-[#e2e8f0] dark:border-[#1e293b] dark:bg-slate-900 flex items-start justify-center p-8">
-         <div className="shadow-2xl scale-[0.5] sm:scale-[0.6] xl:scale-75 transform origin-top mb-16">
+         <div className="shadow-md scale-[0.5] sm:scale-[0.6] xl:scale-75 transform origin-top mb-16">
             <InvoiceTemplate 
               ref={invoiceRef} 
               data={{

@@ -77,7 +77,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
           </div>
         </div>
 
-        <div className="min-w-[200px] border-2 border-black flex flex-col font-bold shadow-[4px_4px_0px_0px_rgba(6,78,59,0.1)]">
+        <div className="min-w-[200px] border-2 border-black flex flex-col font-bold shadow-sm">
            <div className="flex border-b-2 border-black bg-emerald-50/50">
              <span className="w-20 px-3 py-2 border-r-2 border-black">NO</span>
              <span className="flex-1 px-3 py-2 text-right font-normal bg-white tracking-widest">{data.invoiceNumber || '-'}</span>

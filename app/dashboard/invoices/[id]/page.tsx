@@ -51,7 +51,7 @@ export default async function InvoiceViewPage({ params }: { params: Promise<{ id
       <div className="flex items-center justify-between mb-4 print:hidden">
         <Link 
           href="/dashboard/invoices"
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 transition-colors uppercase tracking-wider"
+          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-emerald-700 transition-colors uppercase tracking-wider"
         >
           <ChevronLeft className="h-4 w-4" />
           Directory / Invoices

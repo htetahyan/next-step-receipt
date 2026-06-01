@@ -63,7 +63,7 @@ export default async function PortalPage({ params }: { params: Promise<{ custome
                   </td>
                   <td className="px-6 py-4">{invoice.date}</td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-blue-600 hover:text-blue-500 flex items-center justify-end gap-1 w-full text-sm font-medium">
+                    <button className="text-emerald-700 hover:text-emerald-600 flex items-center justify-end gap-1 w-full text-sm font-medium">
                       <Download className="w-4 h-4" /> PDF
                     </button>
                   </td>

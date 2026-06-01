@@ -1,66 +1,60 @@
 'use client'
 
 import Link from "next/link";
-import Image from "next/image";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Plane, Building } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 
 export default function Sidebar() {
+  const pathname = usePathname();
+
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Directory & Services", href: "/dashboard/customers", icon: Users },
+    { name: "UAE Visa Tracker", href: "/dashboard/uae-visa", icon: Shield },
+    { name: "Air Tickets", href: "/dashboard/air-tickets", icon: Plane },
+    { name: "Other Visa", href: "/dashboard/other-visa", icon: Globe },
+    { name: "Hotel Booking", href: "/dashboard/hotel-booking", icon: Ticket },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
-    { name: "Flight Booking", href: "/dashboard/flight-booking", icon: Plane },
-    { name: "Hotel Booking", href: "/dashboard/hotel-booking", icon: Building },
-    { name: "Customers", href: "/dashboard/customers", icon: Users },
+    { name: "Suppliers", href: "/dashboard/suppliers", icon: Briefcase },
+    { name: "Data Migration", href: "/dashboard/migrate", icon: Database },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r border-[#e2e8f0] bg-white dark:border-[#1e293b] dark:bg-[#0f172a] shadow-sm">
-      <div className="flex h-12 items-center border-b border-[#e2e8f0] px-6 dark:border-[#1e293b] justify-center">
-        <Image
-          src="/logo.jpg"
-          alt="Company Logo"
-          width={40}
-          height={15}
-          className="object-contain"
-        />
+    <div className="flex h-screen w-64 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm">
+      <div className="flex h-16 items-center border-b border-[var(--card-border)] px-6 justify-center bg-[var(--sidebar-bg)]">
+        <h1 className="font-serif font-black text-xl tracking-tight text-[#D97757]">NextStep.</h1>
       </div>
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-0.5 px-3 py-4 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.name}
               href={item.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400"
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-[#D97757]/10 text-[#D97757]'
+                  : 'text-[var(--foreground)] hover:bg-[var(--card-border)]'
+              }`}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className={`h-4 w-4 ${isActive ? 'opacity-100' : 'opacity-60'}`} />
               {item.name}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-[#e2e8f0] dark:border-[#1e293b]">
+      <div className="p-3 border-t border-[var(--card-border)]">
         <button
           onClick={() => logout()}
-          className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50"
+          className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-all hover:bg-[var(--card-border)]"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-4 w-4 opacity-60" />
           Sign Out
         </button>
-      </div>
-
-      <div className="border-t border-[#e2e8f0] p-4 dark:border-[#1e293b]">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-900 font-bold dark:bg-emerald-900/50 dark:text-emerald-400">
-            A
-          </div>
-          <div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Admin User</p>
-          </div>
-        </div>
       </div>
     </div>
   );

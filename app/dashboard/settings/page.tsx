@@ -21,7 +21,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-700" />
       </div>
     )
   }
@@ -55,7 +55,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="company_name"
                   defaultValue={initialData?.company_name || "NextStep Travel & Tourism FZC LLC"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -67,7 +67,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="company_address"
                   defaultValue={initialData?.company_address || "Office No 4B, 3rd Floor IBIS Hotel Business Center, Al Rigga, Deira Dubai, United Arab Emirates"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -89,7 +89,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_name"
                   defaultValue={initialData?.bank_name || "Mashreq Bank"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -101,7 +101,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_branch"
                   defaultValue={initialData?.bank_branch || "Deira, Dubai"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_iban"
                   defaultValue={initialData?.bank_iban || "AE300330000019101789314"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -125,7 +125,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_account_no"
                   defaultValue={initialData?.bank_account_no || "019101789314"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -135,7 +135,7 @@ export default function SettingsPage() {
              <button 
                type="submit" 
                disabled={pending}
-               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 disabled:opacity-50"
+               className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-600 disabled:opacity-50"
              >
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Settings

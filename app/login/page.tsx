@@ -15,7 +15,7 @@ export default function LoginPage() {
       
       <div className="w-full max-w-md px-6 z-10">
         <div className="flex flex-col items-center mb-8">
-          <div className="p-4 rounded-3xl bg-white/5 border border-white/10 mb-6 shadow-2xl">
+          <div className="p-4 rounded-3xl bg-white/5 border border-white/10 mb-6 shadow-md">
              <img src="/logo.jpg" alt="Logo" className="w-32 h-auto object-contain" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
@@ -24,7 +24,7 @@ export default function LoginPage() {
           <p className="text-slate-400">Secure Billing & Management Dashboard</p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] transition-all duration-500">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] p-8 shadow-sm transition-all duration-500">
           <div className="flex items-center justify-center p-3 rounded-full bg-emerald-600/10 border border-emerald-600/20 mb-8 border-white/5 overflow-hidden">
             <span className="text-sm font-bold text-emerald-500 flex items-center gap-2 italic">
                <LogIn className="w-4 h-4" /> Secure Admin Access
@@ -70,7 +70,7 @@ export default function LoginPage() {
             <button 
               type="submit" 
               disabled={pending}
-              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-900 hover:from-emerald-500 hover:to-emerald-800 text-white font-bold h-14 rounded-2xl shadow-xl shadow-emerald-900/40 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-900 hover:from-emerald-500 hover:to-emerald-800 text-white font-bold h-14 rounded-2xl shadow-sm shadow-emerald-900/40 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
             >
               {pending ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

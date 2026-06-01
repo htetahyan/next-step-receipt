@@ -67,7 +67,7 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
            <button 
              onClick={handleDownloadPdf}
              disabled={isGenerating}
-             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-500 disabled:opacity-50 transition-all font-medium"
+             className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-700/20 hover:bg-emerald-600 disabled:opacity-50 transition-all font-medium"
            >
               {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               {isGenerating ? 'Generating...' : 'Download PDF'}
@@ -77,7 +77,7 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
 
        <div className="flex justify-center p-8 bg-slate-100 dark:bg-slate-900/50 rounded-2xl overflow-x-auto shadow-inner min-h-[600px]">
          {/* Added scaling container to match the "New Invoice" rendering environment which works */}
-         <div className="shadow-2xl bg-white print:m-0 print:shadow-none bg-invoice-paper scale-[0.6] sm:scale-[0.7] lg:scale-[0.8] xl:scale-100 transform origin-top mb-[-200px]">
+         <div className="shadow-md bg-white print:m-0 print:shadow-none bg-invoice-paper scale-[0.6] sm:scale-[0.7] lg:scale-[0.8] xl:scale-100 transform origin-top mb-[-200px]">
             <InvoiceTemplate ref={invoiceRef} data={data} />
          </div>
       </div>

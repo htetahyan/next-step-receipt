@@ -1,23 +1,74 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Plus, User, Mail, Phone, Calendar, MoreHorizontal, Edit2, Trash2, Loader2, X } from 'lucide-react'
+import React, { useState, useRef, useMemo, useEffect } from 'react'
+import { Plus, User, Mail, Phone, Calendar, MoreHorizontal, Edit2, Trash2, Loader2, X, FileText, ArrowRight, Scan, UploadCloud, CheckCircle2, Search } from 'lucide-react'
 import { updateCustomer, deleteCustomer, addCustomer } from '@/app/actions/customers'
+import { addDocument } from '@/app/actions/documents'
+import { getPresignedUrl } from '@/app/actions/r2'
+import DocumentModal from './DocumentModal'
+import Link from 'next/link'
 
 export default function CustomerList({ initialCustomers }: { initialCustomers: any[] }) {
   const [customers, setCustomers] = useState(initialCustomers)
+  const [search, setSearch] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 15
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [currentCustomer, setCurrentCustomer] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [docCustomer, setDocCustomer] = useState<any>(null)
+  
+  const [isScanning, setIsScanning] = useState(false)
+  const [passportFile, setPassportFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleScanPassport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    setPassportFile(file); // Save file for uploading later
+
+    try {
+      const formData = new FormData();
+      formData.append('passport', file);
+
+      const res = await fetch('/api/parse-passport', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      // Populate form fields
+      const form = document.getElementById('customer-form') as HTMLFormElement;
+      if (form) {
+        if (data.name) (form.elements.namedItem('name') as HTMLInputElement).value = data.name;
+        if (data.passport_no) (form.elements.namedItem('passport_no') as HTMLInputElement).value = data.passport_no;
+        if (data.dob) (form.elements.namedItem('dob') as HTMLInputElement).value = data.dob;
+        if (data.nationality) (form.elements.namedItem('nationality') as HTMLInputElement).value = data.nationality;
+        if (data.expiry_date) (form.elements.namedItem('expiry_date') as HTMLInputElement).value = data.expiry_date;
+      }
+    } catch (err: any) {
+      alert(`Failed to scan passport: ${err.message}`);
+    } finally {
+      setIsScanning(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
 
   const handleEdit = (customer: any) => {
     setCurrentCustomer(customer)
+    setPassportFile(null)
     setIsModalOpen(true)
   }
 
   const handleAdd = () => {
     setCurrentCustomer(null)
+    setPassportFile(null)
     setIsModalOpen(true)
   }
 
@@ -38,115 +89,208 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
     setIsSaving(true)
     const formData = new FormData(e.currentTarget)
     
+    // Bundle extra fields into metadata
+    const metadata = {
+      dob: formData.get('dob'),
+      nationality: formData.get('nationality'),
+      expiry_date: formData.get('expiry_date'),
+      ...(currentCustomer?.metadata || {}) // merge existing if editing
+    }
+    formData.set('metadata', JSON.stringify(metadata))
+
+    let customerId = currentCustomer?.id;
+
     if (currentCustomer) {
-      const res = await updateCustomer(currentCustomer.id, formData)
+      const res = await updateCustomer(customerId, formData)
       if (res.error) {
         alert(res.error)
-      } else {
-        const updated = customers.map(c => 
-          c.id === currentCustomer.id 
-          ? { ...c, name: formData.get('name'), email: formData.get('email'), phone: formData.get('phone') } 
-          : c
-        )
-        setCustomers(updated)
-        setIsModalOpen(false)
+        setIsSaving(false)
+        return
       }
+      const updated = customers.map(c => 
+        c.id === customerId 
+        ? { ...c, name: formData.get('name'), email: formData.get('email'), phone: formData.get('phone'), passportNo: formData.get('passport_no'), metadata } 
+        : c
+      )
+      setCustomers(updated)
     } else {
       const res = await addCustomer(formData)
-      if (res.error) {
-        alert(res.error)
-      } else {
-        setCustomers([res.data, ...customers])
-        setIsModalOpen(false)
+      if (res.error || !res.data) {
+        alert(res.error || "Failed to add customer")
+        setIsSaving(false)
+        return
+      }
+      customerId = res.data.id;
+      setCustomers([res.data, ...customers])
+    }
+
+    // Upload Passport Image via Cloudflare R2
+    if (passportFile && customerId) {
+      try {
+        const presignedRes = await getPresignedUrl(passportFile.name, passportFile.type);
+        if (presignedRes.success && presignedRes.uploadUrl) {
+          const uploadRes = await fetch(presignedRes.uploadUrl, {
+            method: 'PUT',
+            body: passportFile,
+            headers: { 'Content-Type': passportFile.type },
+          });
+
+          if (uploadRes.ok) {
+            await addDocument({
+              customerId: customerId,
+              title: 'Passport Copy',
+              file_url: presignedRes.publicUrl!,
+              file_key: presignedRes.fileKey!,
+              tag: 'Passport'
+            });
+          } else {
+            console.error("Failed to upload to R2", uploadRes.statusText);
+          }
+        }
+      } catch (uploadErr) {
+        console.error("Failed to upload passport image", uploadErr);
       }
     }
+
     setIsSaving(false)
+    setIsModalOpen(false)
   }
 
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search])
+
+  const filtered = useMemo(() => {
+    if (!search) return customers
+    const q = search.toLowerCase()
+    return customers.filter(c => 
+      [c.name, c.email, c.phone, c.passportNo].some(v => v && String(v).toLowerCase().includes(q))
+    )
+  }, [customers, search])
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    return filtered.slice(startIndex, startIndex + itemsPerPage)
+  }, [filtered, currentPage])
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-6xl mx-auto space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Customers Management</h1>
-          <p className="text-slate-500 dark:text-slate-400">Total client base: {customers.length}</p>
+          <h1 className="text-3xl font-serif font-normal tracking-tight">Client Directory</h1>
+          <p className="text-sm opacity-60 mt-2 font-mono">Total records: {filtered.length}</p>
         </div>
         <button 
           onClick={handleAdd}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-500 hover:scale-105 active:scale-95"
+          className="inline-flex items-center gap-2 rounded-md bg-[#D97757] px-4 py-2 text-sm font-medium text-[#F5F4EF] transition-all hover:opacity-90"
         >
           <Plus className="h-4 w-4" />
           Add Customer
         </button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/40 dark:border-slate-800 dark:bg-[#0f172a] dark:shadow-none overflow-hidden">
+      {/* Search Filter Bar */}
+      <div className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl p-4 flex items-center gap-3 shadow-xs">
+        <Search className="h-5 w-5 opacity-40" />
+        <input 
+          type="text"
+          placeholder="Search by client name, email, phone, or passport number..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="bg-transparent border-0 outline-none w-full text-sm font-medium focus:ring-0 placeholder:opacity-50 text-[var(--foreground)]"
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="card-anthropic overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
-            <thead className="border-b border-slate-200 bg-slate-50/50 text-xs uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-900/50">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-xs uppercase opacity-70">
               <tr>
-                <th scope="col" className="px-6 py-5 font-bold">Client Information</th>
-                <th scope="col" className="px-6 py-5 font-bold">Contact Details</th>
-                <th scope="col" className="px-6 py-5 font-bold">Joined</th>
-                <th scope="col" className="px-6 py-5 text-right font-bold">Manage</th>
+                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Client Information</th>
+                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Contact Details</th>
+                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Joined</th>
+                <th scope="col" className="px-6 py-4 text-right font-medium tracking-wider">Manage</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {customers?.map((customer) => (
-                <tr key={customer.id} className="group bg-white hover:bg-slate-50 dark:bg-[#0f172a] dark:hover:bg-slate-900/50 transition-all">
+            <tbody className="divide-y divide-[var(--card-border)]">
+              {paginatedItems?.map((customer) => (
+                <tr key={customer.id} className="hover:bg-[var(--sidebar-bg)] transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 transition-transform group-hover:scale-110">
-                        <User className="h-5 w-5" />
+                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card-border)]">
+                        <User className="h-4 w-4 opacity-70" />
                       </div>
-                      <div className="font-semibold text-slate-900 dark:text-white text-base">{customer.name}</div>
+                      <div className="font-serif text-lg">{customer.name}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                        <Mail className="h-4 w-4 text-blue-400" />
-                        <span className="truncate max-w-[180px]">{customer.email || 'No email provided'}</span>
+                    <div className="space-y-1.5 opacity-80">
+                      <div className="flex items-center gap-2 text-xs font-mono">
+                        <Mail className="h-3.5 w-3.5 opacity-50" />
+                        <span className="truncate max-w-[180px]">{customer.email || '—'}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                        <Phone className="h-4 w-4 text-indigo-400" />
-                        <span>{customer.phone || 'No phone provided'}</span>
+                      <div className="flex items-center gap-2 text-xs font-mono">
+                        <Phone className="h-3.5 w-3.5 opacity-50" />
+                        <span>{customer.phone || '—'}</span>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-slate-500 font-medium">
-                      <Calendar className="h-4 w-4 text-amber-400" />
-                      <span>{new Date(customer.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <div className="flex items-center gap-2 opacity-70 text-xs font-mono">
+                      <Calendar className="h-3.5 w-3.5 opacity-50" />
+                      <span>{new Date(customer.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => setDocCustomer(customer)}
+                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
+                        title="Documents"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
+                      <Link 
+                        href={`/dashboard/customers/${customer.id}`}
+                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
+                        title="Open Customer Hub"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
                        <button 
                         onClick={() => handleEdit(customer)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
                       >
-                        <Edit2 className="h-4.5 w-4.5" />
+                        <Edit2 className="h-4 w-4" />
                       </button>
                       <button 
                         disabled={isDeleting === customer.id}
                         onClick={() => handleDelete(customer.id, customer.name)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:text-red-500"
                       >
-                        {isDeleting === customer.id ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <Trash2 className="h-4.5 w-4.5" />}
+                        {isDeleting === customer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {(!customers || customers.length === 0) && (
+              {(!paginatedItems || paginatedItems.length === 0) && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-20 text-center">
+                  <td colSpan={4} className="px-6 py-24 text-center">
                      <div className="inline-flex flex-col items-center gap-4">
-                        <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-full">
-                           <User className="h-10 w-10 text-slate-300" />
+                        <div className="p-4 bg-[var(--card-border)] rounded-full">
+                           <User className="h-8 w-8 opacity-50" />
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 font-medium">No customers in your directory yet.</p>
-                        <button onClick={handleAdd} className="text-blue-600 font-bold hover:underline">Register your first client</button>
+                        <p className="opacity-60 font-serif">No customers found matching your search.</p>
+                        <button onClick={handleAdd} className="text-[#D97757] font-medium hover:underline">Register your first client</button>
                      </div>
                   </td>
                 </tr>
@@ -154,65 +298,210 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-[var(--card-border)] bg-[var(--sidebar-bg)] px-6 py-4">
+            <div className="flex flex-1 justify-between sm:hidden">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="relative ml-3 inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs opacity-60 font-mono">
+                  Showing <span className="font-semibold text-[var(--foreground)]">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
+                  <span className="font-semibold text-[var(--foreground)]">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> of{' '}
+                  <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
+                  >
+                    Previous
+                  </button>
+                  {(() => {
+                    const pages = [];
+                    const maxVisible = 5;
+                    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                    let end = Math.min(totalPages, start + maxVisible - 1);
+                    if (end - start + 1 < maxVisible) {
+                      start = Math.max(1, end - maxVisible + 1);
+                    }
+                    for (let i = start; i <= end; i++) {
+                      pages.push(i);
+                    }
+                    return pages.map(pageNum => (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`relative inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition-all hover:scale-[1.05] active:scale-[0.95] ${
+                          currentPage === pageNum
+                            ? 'bg-[#D97757] text-[#F5F4EF] border border-[#D97757]'
+                            : 'border border-[var(--card-border)] bg-[var(--background)] hover:bg-[var(--sidebar-bg)]'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ));
+                  })()}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative w-full max-w-md scale-in-center overflow-hidden rounded-[2.5rem] bg-white p-1 dark:bg-[#0f172a] shadow-2xl">
+        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-container max-w-lg scale-in-center overflow-y-auto" onClick={e => e.stopPropagation()}>
              <div className="p-8 space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-4">
                    <div className="space-y-1">
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-                         {currentCustomer ? 'Update Profile' : 'New Directory Entry'}
+                      <h3 className="text-xl font-serif">
+                         {currentCustomer ? 'Update Profile' : 'New Client Profile'}
                       </h3>
-                      <p className="text-sm text-slate-500">{currentCustomer ? 'Modify existing client details' : 'Register a new customer profile'}</p>
                    </div>
-                   <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full dark:hover:bg-slate-800 transition-colors">
-                      <X className="h-6 w-6 text-slate-400" />
+                   <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-[var(--card-border)] rounded-full transition-colors">
+                      <X className="h-5 w-5 opacity-50" />
                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                {!currentCustomer && (
+                  <div className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        {passportFile && !isScanning ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Scan className="w-4 h-4 opacity-70" />} 
+                        {passportFile && !isScanning ? 'Passport Scanned & Attached' : 'AI Auto-fill'}
+                      </h4>
+                      <p className="text-xs opacity-60 mt-1">
+                        {passportFile ? passportFile.name : 'Upload a passport image to extract details.'}
+                      </p>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      ref={fileInputRef} 
+                      onChange={handleScanPassport} 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isScanning}
+                      className="px-3 py-1.5 bg-[var(--background)] border border-[var(--card-border)] text-xs font-medium rounded hover:opacity-80 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                      {isScanning ? 'Scanning...' : (passportFile ? 'Rescan' : 'Upload')}
+                    </button>
+                  </div>
+                )}
+
+                <form id="customer-form" onSubmit={handleSubmit} className="space-y-6">
+                   
                    <div className="space-y-4">
-                      <div className="space-y-2">
-                         <label className="text-sm font-bold text-slate-700 dark:text-slate-300 px-1">Full Name</label>
-                         <input 
-                           name="name" 
-                           defaultValue={currentCustomer?.name} 
-                           required 
-                           autoFocus
-                           placeholder="Type customer name"
-                           className="w-full rounded-2xl border-0 bg-slate-50 px-4 py-3 text-slate-900 ring-1 ring-inset ring-slate-200 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:text-white dark:ring-slate-800 transition-all font-medium"
-                         />
+                      <h4 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-2 border-b border-[var(--card-border)]">Basic Contact</h4>
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Full Name</label>
+                           <input 
+                             name="name" 
+                             defaultValue={currentCustomer?.name} 
+                             required 
+                             autoFocus
+                             className="input-anthropic w-full px-4 py-3 text-sm"
+                           />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                             <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Email</label>
+                             <input 
+                               type="email" 
+                               name="email" 
+                               defaultValue={currentCustomer?.email} 
+                               className="input-anthropic w-full px-4 py-3 text-sm"
+                             />
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Phone</label>
+                             <input 
+                               name="phone" 
+                               defaultValue={currentCustomer?.phone} 
+                               className="input-anthropic w-full px-4 py-3 text-sm"
+                             />
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                         <label className="text-sm font-bold text-slate-700 dark:text-slate-300 px-1">Email Address</label>
-                         <input 
-                           type="email" 
-                           name="email" 
-                           defaultValue={currentCustomer?.email} 
-                           placeholder="Ex: name@example.com"
-                           className="w-full rounded-2xl border-0 bg-slate-50 px-4 py-3 text-slate-900 ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:text-white dark:ring-slate-800 transition-all font-medium"
-                         />
-                      </div>
-                      <div className="space-y-2">
-                         <label className="text-sm font-bold text-slate-700 dark:text-slate-300 px-1">Phone Number</label>
-                         <input 
-                           name="phone" 
-                           defaultValue={currentCustomer?.phone} 
-                           placeholder="+971 -- --- ----"
-                           className="w-full rounded-2xl border-0 bg-slate-50 px-4 py-3 text-slate-900 ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:text-white dark:ring-slate-800 transition-all font-medium"
-                         />
+                   </div>
+
+                   <div className="space-y-4 pt-2">
+                      <h4 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-2 border-b border-[var(--card-border)]">Passport Information</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Passport No</label>
+                           <input 
+                             name="passport_no" 
+                             defaultValue={currentCustomer?.passportNo} 
+                             className="input-anthropic w-full px-4 py-3 text-sm uppercase"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Nationality</label>
+                           <input 
+                             name="nationality" 
+                             defaultValue={currentCustomer?.metadata?.nationality} 
+                             className="input-anthropic w-full px-4 py-3 text-sm uppercase"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Date of Birth</label>
+                           <input 
+                             name="dob" 
+                             type="date"
+                             defaultValue={currentCustomer?.metadata?.dob} 
+                             className="input-anthropic w-full px-4 py-3 text-sm"
+                           />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Expiry Date</label>
+                           <input 
+                             name="expiry_date" 
+                             type="date"
+                             defaultValue={currentCustomer?.metadata?.expiry_date} 
+                             className="input-anthropic w-full px-4 py-3 text-sm"
+                           />
+                        </div>
                       </div>
                    </div>
 
                    <button 
                      type="submit" 
                      disabled={isSaving}
-                     className="w-full flex items-center justify-center gap-3 rounded-2xl bg-blue-600 px-6 py-4 text-base font-bold text-white shadow-xl shadow-blue-600/20 hover:bg-blue-500 disabled:opacity-50 transition-all active:scale-[0.98]"
+                     className="w-full flex items-center justify-center gap-3 rounded-md bg-[#D97757] px-6 py-3.5 text-sm font-medium text-[#F5F4EF] hover:opacity-90 disabled:opacity-50 transition-all"
                    >
-                     {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : currentCustomer ? 'Save Changes' : 'Confirm Registration'}
+                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : currentCustomer ? 'Save Changes' : (passportFile ? 'Save Profile & Attach Passport' : 'Confirm Registration')}
                    </button>
                 </form>
              </div>
@@ -220,15 +509,14 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
         </div>
       )}
 
-      <style jsx>{`
-        .scale-in-center {
-          animation: scale-in-center 0.3s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
-        }
-        @keyframes scale-in-center {
-          0% { transform: scale(0.9); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
+      {docCustomer && (
+        <DocumentModal
+          isOpen={!!docCustomer}
+          onClose={() => setDocCustomer(null)}
+          customerId={docCustomer.id}
+          customerName={docCustomer.name}
+        />
+      )}
     </div>
   )
 }

@@ -1,34 +1,33 @@
 @import "tailwindcss";
 @import "react-datepicker/dist/react-datepicker.css";
+@import "@uploadthing/react/styles.css";
 
 :root {
-  --background: #f8fafc; /* Tailwind slate-50 */
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --sidebar-bg: #ffffff;
-  --sidebar-border: #e2e8f0;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
+  --background: #F5F4EF;
+  --foreground: #222222;
+  --sidebar-bg: #EAE9E4;
+  --sidebar-border: rgba(0, 0, 0, 0.05);
+  --card-bg: #FFFFFF;
+  --card-border: rgba(0, 0, 0, 0.08);
+  --anthropic-accent: #D97757;
+  --anthropic-surface: #EAE9E4;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-newsreader);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #020617; /* Tailwind slate-950 */
-    --foreground: #f8fafc; /* Tailwind slate-50 */
-    --primary: #3b82f6;
-    --primary-foreground: #ffffff;
-    --card: #0f172a; /* Tailwind slate-900 */
-    --card-foreground: #f8fafc;
-    --border: #1e293b; /* Tailwind slate-800 */
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8; /* Tailwind slate-400 */
+    --background: #1F1F1E;
+    --foreground: #F5F4EF;
+    --sidebar-bg: #1A1A19;
+    --card-bg: #292927;
+    --card-border: rgba(255, 255, 255, 0.1);
+    --anthropic-surface: #292927;
   }
 }
 
@@ -42,16 +41,67 @@ body {
 
 /* Custom scrollbar for a sleek look */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--muted-foreground);
+  background: rgba(0,0,0,0.2);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--foreground);
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Anthropic specific global tweaks */
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
+}
+
+.card-anthropic {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.input-anthropic {
+  background: var(--background);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.input-anthropic:focus {
+  border-color: #222222;
+  outline: none;
+}
+.dark .input-anthropic:focus {
+  border-color: #F5F4EF;
+}
+
+/* Modal Utility Classes */
+.modal-backdrop {
+  @apply fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 text-left;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.modal-container {
+  @apply relative w-full overflow-hidden rounded-2xl flex flex-col;
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+.dark .modal-container {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+.scale-in-center {
+  animation: scale-in-center 0.2s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
+}
+@keyframes scale-in-center {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }

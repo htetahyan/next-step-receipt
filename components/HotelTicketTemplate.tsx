@@ -5,6 +5,7 @@ export type HotelBookingData = {
   bookingDate: string;
   hotelName: string;
   hotelAddress: string;
+  hotelImage: string;
   checkIn: string;
   checkOut: string;
   totalNights: number;
@@ -21,7 +22,7 @@ type Props = {
 };
 
 const IconCalendar = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2 text-blue-500 flex-shrink-0">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2 text-emerald-600 flex-shrink-0">
     <rect x="3" y="6" width="18" height="15" rx="2" stroke="currentColor" strokeWidth="1.5"/>
     <path d="M8 3V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
     <path d="M16 3V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -32,13 +33,13 @@ const IconCalendar = () => (
 );
 
 const IconMoon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2 text-blue-500 flex-shrink-0">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2 text-emerald-600 flex-shrink-0">
     <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const IconBuilding = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2 text-blue-500 flex-shrink-0">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2 text-emerald-600 flex-shrink-0">
     <path d="M3 21H21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M5 21V5C5 4.44772 5.44772 4 6 4H18C18.5523 4 19 4.44772 19 5V21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     <path d="M9 8H15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -67,20 +68,13 @@ const HotelTicketTemplate = forwardRef<HTMLDivElement, Props>(({ data }, ref) =>
       <div className="bg-white rounded-xl border border-gray-300 p-6 mb-6">
         <div className="flex gap-6 mb-6">
           <img 
-            src="/hotelbooking/hotel-placeholder.png" 
+            src={data.hotelImage || '/hotelbooking/hotel-placeholder.png'} 
             alt="Hotel" 
             className="w-[200px] h-[130px] object-cover rounded-lg shadow-sm border border-gray-100"
           />
           <div className="flex-1 pt-2">
             <h2 className="text-[18px] font-bold text-gray-900 mb-2">{data.hotelName}</h2>
-            <p className="text-[13px] text-gray-600 max-w-[300px] leading-relaxed">{data.hotelAddress}</p>
-          </div>
-          <div className="flex-shrink-0 pt-1">
-             <img 
-               src="/hotelbooking/qr-placeholder.png" 
-               alt="QR Code" 
-               className="w-[110px] h-[110px] object-contain"
-             />
+            <p className="text-[13px] text-gray-600 max-w-[400px] leading-relaxed">{data.hotelAddress}</p>
           </div>
         </div>
 
@@ -136,7 +130,7 @@ const HotelTicketTemplate = forwardRef<HTMLDivElement, Props>(({ data }, ref) =>
         <div className="grid grid-cols-[60px_1fr_1fr_80px_80px_80px] text-[13px] py-4 px-5 items-center">
            <div className="text-gray-700">1</div>
            <div className="text-gray-900">{data.roomTypeBoard}</div>
-           <div className="font-bold text-blue-500 uppercase">{data.guestName}</div>
+           <div className="font-bold text-emerald-600 uppercase">{data.guestName}</div>
            <div className="text-center text-gray-700">{data.adults}</div>
            <div className="text-center text-gray-700">{data.children}</div>
            <div className="text-center text-gray-700">{data.infants}</div>

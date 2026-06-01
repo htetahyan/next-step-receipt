@@ -30,7 +30,7 @@ export default async function InvoicesPage() {
         </div>
         <Link 
           href="/dashboard/invoices/new" 
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-700/20 transition-all hover:bg-emerald-600 hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" />
           Create New Invoice

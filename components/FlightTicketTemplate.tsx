@@ -11,6 +11,8 @@ export type FlightLeg = {
   toCity: string;
   toAirport: string;
   toCode: string;
+  airlineName: string;
+  airlineLogo: string;
 };
 
 export type FlightBookingData = {
@@ -135,12 +137,14 @@ function FlightSection({ title, leg, cabin, fareType }: { title: string; leg: Fl
         <div className="grid grid-cols-[170px_180px_120px_180px_100px_120px] pt-4 items-start text-black text-[13px]">
           {/* Airline */}
           <div className="flex flex-col gap-1">
-            <img
-              src="/flightbooking/Myanmar-Airways-International-Logo.png"
-              alt="MAI"
-              className="w-9 h-9 object-contain"
-            />
-            <div className="font-bold">Myanmar Airways<br />Intl</div>
+            {leg.airlineLogo && (
+              <img
+                src={leg.airlineLogo}
+                alt={leg.airlineName || 'Airline'}
+                className="w-9 h-9 object-contain"
+              />
+            )}
+            <div className="font-bold text-[12px] leading-tight">{leg.airlineName || 'Airline'}</div>
           </div>
 
           {/* Departure */}

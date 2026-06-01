@@ -31,7 +31,7 @@ export default function FlightBookingList({ bookings }: { bookings: FlightBookin
         </p>
         <Link 
           href="/dashboard/flight-booking/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-all shadow-blue-600/20"
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 transition-all shadow-emerald-700/20"
         >
           <Plane className="w-4 h-4" />
           Create Flight Booking
@@ -57,7 +57,7 @@ export default function FlightBookingList({ bookings }: { bookings: FlightBookin
             <tr key={booking.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               <td className="px-6 py-4">
                 <span className="font-bold text-slate-900 dark:text-white">{booking.pnr}</span>
-                <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-400 dark:ring-blue-900/50 uppercase">
+                <span className="ml-2 inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-800/10 dark:bg-emerald-950/30 dark:text-emerald-400 dark:ring-emerald-950/50 uppercase">
                   {booking.trip_type}
                 </span>
               </td>
@@ -76,7 +76,7 @@ export default function FlightBookingList({ bookings }: { bookings: FlightBookin
                 <div className="flex items-center gap-3">
                   <Link 
                     href={`/dashboard/flight-booking/${booking.id}`}
-                    className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                    className="text-slate-400 hover:text-emerald-700 transition-colors p-1"
                     title="View Booking"
                   >
                     <Eye className="w-5 h-5" />

@@ -39,7 +39,7 @@ export default function SalesChart({ data }: { data: { name: string; value: numb
   const pathContent = getPath();
 
   return (
-    <div className="w-full bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-10 border-2 border-[#e2e8f0] dark:border-[#1e293b] shadow-2xl relative overflow-hidden group">
+    <div className="w-full bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-10 border-2 border-[#e2e8f0] dark:border-[#1e293b] shadow-md relative overflow-hidden group">
       {/* Background Glow */}
       <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-emerald-500/5 blur-[100px] -z-10 rounded-full"></div>
 
@@ -58,7 +58,7 @@ export default function SalesChart({ data }: { data: { name: string; value: numb
            </div>
            <div className="h-8 w-px bg-slate-200 dark:bg-slate-800"></div>
            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+              <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-sm"></div>
               <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Revenue (AED)</span>
            </div>
         </div>
@@ -110,7 +110,7 @@ export default function SalesChart({ data }: { data: { name: string; value: numb
             strokeLinecap="round"
             strokeLinejoin="round"
             filter="url(#glow)"
-            className="drop-shadow-[0_10px_10px_rgba(16,185,129,0.4)] transition-all duration-700"
+            className="drop-shadow-sm transition-all duration-700"
           />
 
           {/* Axis Labels */}

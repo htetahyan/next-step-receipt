@@ -74,7 +74,7 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
   return (
     <div ref={wrapperRef} className="relative w-full">
       <div className="relative group">
-        <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 transition-colors ${isOpen ? 'text-blue-500' : ''}`} />
+        <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 transition-colors ${isOpen ? 'text-emerald-600' : ''}`} />
         <input
           type="text"
           name={name}
@@ -85,15 +85,15 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder || "Search or enter customer name"}
-          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium shadow-sm"
+          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 transition-all font-medium shadow-sm"
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
-           {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-blue-500" /> : <Search className="w-5 h-5 text-slate-300" />}
+           {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-emerald-600" /> : <Search className="w-5 h-5 text-slate-300" />}
         </div>
       </div>
 
       {isOpen && (query.length > 0 || suggestions.length > 0) && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="max-h-[320px] overflow-y-auto p-2 scrollbar-hide">
             {suggestions.length > 0 ? (
               <div className="space-y-1">
@@ -103,7 +103,7 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
                     key={customer.id}
                     type="button"
                     onClick={() => handleSelect(customer)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition-all ${selectedIndex === index ? 'bg-blue-600 text-white translate-x-1' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition-all ${selectedIndex === index ? 'bg-emerald-700 text-white translate-x-1' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                   >
                     <div className="flex items-center gap-3">
                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${selectedIndex === index ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
@@ -111,7 +111,7 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
                        </div>
                        <div>
                           <div className={`font-bold text-sm ${selectedIndex === index ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{customer.name}</div>
-                          <div className={`text-[10px] ${selectedIndex === index ? 'text-blue-100' : 'text-slate-500'}`}>{customer.email || 'No email registered'}</div>
+                          <div className={`text-[10px] ${selectedIndex === index ? 'text-emerald-100' : 'text-slate-500'}`}>{customer.email || 'No email registered'}</div>
                        </div>
                     </div>
                     {selectedIndex === index && <Check className="h-4 w-4" />}
@@ -126,14 +126,14 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 text-blue-600 dark:text-blue-400 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
-                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/40">
+                  <div className="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center shadow-sm shadow-emerald-600/40">
                     <UserPlus className="h-4 w-4" />
                   </div>
                   <div className="flex-1">
                      <div className="text-sm font-bold">Register "{query}"</div>
-                     <div className="text-[10px] text-blue-600/60 dark:text-blue-400/60">New profile will be created on save</div>
+                     <div className="text-[10px] text-emerald-700/60 dark:text-emerald-400/60">New profile will be created on save</div>
                   </div>
                 </button>
               </div>
