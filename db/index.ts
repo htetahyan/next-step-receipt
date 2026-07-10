@@ -8,5 +8,5 @@ const connectionString = process.env.DATABASE_URL || '';
 
 // If DATABASE_URL is missing, we shouldn't crash immediately but warn.
 // This allows the build to succeed if it's omitted in certain environments.
-const client = postgres(connectionString, { max: 10 });
+const client = postgres(connectionString, { max: 10, prepare: false });
 export const db = drizzle(client, { schema });
