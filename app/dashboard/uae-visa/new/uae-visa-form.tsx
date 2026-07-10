@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Shield, Save, Loader2, FileText } from 'lucide-react';
@@ -24,6 +24,9 @@ interface Props {
 
 export default function UAEVisaForm({ customers, initialData }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedCustomerId = searchParams.get('customerId') || '';
+
   const [isPending, startTransition] = useTransition();
   const [refId, setRefId] = useState(initialData?.reference_id || '');
   const [showDocs, setShowDocs] = useState(false);
@@ -35,7 +38,7 @@ export default function UAEVisaForm({ customers, initialData }: Props) {
   const methods = useForm<UAEVisaFormValues>({
     resolver: zodResolver(uaeVisaSchema) as any,
     defaultValues: {
-      customerId: initialData?.customer_id || '',
+      customerId: initialData?.customer_id || preselectedCustomerId || '',
       isNewCustomer: false,
       status: initialData?.status || 'Open',
       category: initialData?.category || UAE_VISA_CATEGORIES[1], // 60 days
@@ -59,6 +62,22 @@ export default function UAEVisaForm({ customers, initialData }: Props) {
       }
     }
   });
+
+  const categoryWatch = methods.watch('category');
+  const travelDateWatch = methods.watch('details.travel_date');
+
+  useEffect(() => {
+    if ((categoryWatch === 'Visa Change by Bus' || categoryWatch === 'Visa Change by Air') && travelDateWatch) {
+      const tDate = new Date(travelDateWatch);
+      if (!isNaN(tDate.getTime())) {
+        tDate.setDate(tDate.getDate() + 60);
+        const yyyy = tDate.getFullYear();
+        const mm = String(tDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(tDate.getDate()).padStart(2, '0');
+        methods.setValue('details.visa_expiry_date', `${yyyy}-${mm}-${dd}`);
+      }
+    }
+  }, [categoryWatch, travelDateWatch, methods]);
 
   const onSubmit = async (data: UAEVisaFormValues) => {
     startTransition(async () => {
@@ -150,7 +169,7 @@ export default function UAEVisaForm({ customers, initialData }: Props) {
             <CustomerSelector 
               customers={customers} 
               readOnly={!!initialData} 
-              defaultCustomerName={initialData?.customers?.name} 
+              defaultCustomerName={initialData?.customers?.name || customers.find(c => c.id === methods.watch('customerId'))?.name} 
             />
           </div>
 

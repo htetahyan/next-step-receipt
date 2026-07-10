@@ -8,6 +8,7 @@ import {
   DollarSign, Tag, Check, X, Search, Loader2, ArrowLeft 
 } from 'lucide-react';
 import Link from 'next/link';
+import Pagination from '@/components/Pagination';
 
 const DEFAULT_CATEGORIES = [
   'UAE Visit Visa 30 Days',
@@ -56,6 +57,10 @@ export default function SuppliersPage() {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8; // 8 suppliers per page (2 columns x 4 rows)
+  
   // Form states
   const [name, setName] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -72,6 +77,10 @@ export default function SuppliersPage() {
   useEffect(() => {
     loadSuppliers();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   async function loadSuppliers() {
     setLoading(true);
@@ -189,11 +198,20 @@ export default function SuppliersPage() {
     }
   }
 
-  const filteredSuppliers = suppliers.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.contactPerson && s.contactPerson.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    s.services.some(srv => srv.serviceName.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredSuppliers = React.useMemo(() => {
+    return suppliers.filter(s => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.contactPerson && s.contactPerson.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      s.services.some(srv => srv.serviceName.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  }, [suppliers, searchQuery]);
+
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
+
+  const paginatedSuppliers = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredSuppliers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredSuppliers, currentPage]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -244,93 +262,105 @@ export default function SuppliersPage() {
         </div>
       ) : (
         /* Suppliers Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredSuppliers.map((supplier) => (
-            <div 
-              key={supplier.id}
-              className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-            >
-              <div>
-                {/* Supplier Header */}
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <h3 className="text-xl font-serif text-[var(--foreground)] font-semibold">{supplier.name}</h3>
-                    {supplier.contactPerson && (
-                      <p className="text-xs opacity-60 flex items-center gap-1.5 mt-1 font-medium">
-                        <User className="h-3 w-3 text-[#D97757]" />
-                        {supplier.contactPerson}
-                      </p>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {paginatedSuppliers.map((supplier) => (
+              <div 
+                key={supplier.id}
+                className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  {/* Supplier Header */}
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <h3 className="text-xl font-serif text-[var(--foreground)] font-semibold">{supplier.name}</h3>
+                      {supplier.contactPerson && (
+                        <p className="text-xs opacity-60 flex items-center gap-1.5 mt-1 font-medium">
+                          <User className="h-3 w-3 text-[#D97757]" />
+                          {supplier.contactPerson}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-[var(--background)] p-1 rounded-lg border border-[var(--card-border)]">
+                      <button 
+                        onClick={() => openEditModal(supplier)}
+                        className="p-1.5 text-blue-500 hover:bg-[var(--card-border)] rounded-md transition-all"
+                        title="Edit Supplier"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(supplier.id, supplier.name)}
+                        className="p-1.5 text-red-500 hover:bg-[var(--card-border)] rounded-md transition-all"
+                        title="Delete Supplier"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Contact details */}
+                  <div className="grid grid-cols-2 gap-3 text-xs border-t border-[var(--card-border)] pt-4 mb-4 opacity-75">
+                    <div className="flex items-center gap-2 truncate">
+                      <Phone className="h-3.5 w-3.5 opacity-50" />
+                      <span className="truncate">{supplier.phone || '—'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 truncate">
+                      <Mail className="h-3.5 w-3.5 opacity-50" />
+                      <span className="truncate">{supplier.email || '—'}</span>
+                    </div>
+                  </div>
+
+                  {/* Services supplied */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider opacity-50">Supplied Services & Rates</p>
+                    {supplier.services.length === 0 ? (
+                      <p className="text-xs opacity-40 italic">No services listed yet</p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
+                        {supplier.services.map((srv, idx) => (
+                          <div 
+                            key={idx}
+                            className="bg-[var(--background)] border border-[var(--card-border)] rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="font-semibold truncate flex items-center gap-1.5 text-[var(--foreground)]">
+                              <Tag className="h-3 w-3 opacity-40 text-[#D97757]" />
+                              <span className="truncate">{srv.serviceName}</span>
+                            </div>
+                            <div className="flex gap-4 text-[10px] font-mono text-right flex-shrink-0">
+                              <div>
+                                <span className="opacity-50 block">Cost (AED)</span>
+                                <span className="font-semibold">{Number(srv.defaultCost).toLocaleString()}</span>
+                              </div>
+                              <div>
+                                <span className="opacity-50 block">Price (AED)</span>
+                                <span className="font-semibold text-[#D97757]">{Number(srv.defaultPrice).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 bg-[var(--background)] p-1 rounded-lg border border-[var(--card-border)]">
-                    <button 
-                      onClick={() => openEditModal(supplier)}
-                      className="p-1.5 text-blue-500 hover:bg-[var(--card-border)] rounded-md transition-all"
-                      title="Edit Supplier"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(supplier.id, supplier.name)}
-                      className="p-1.5 text-red-500 hover:bg-[var(--card-border)] rounded-md transition-all"
-                      title="Delete Supplier"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
                 </div>
 
-                {/* Contact details */}
-                <div className="grid grid-cols-2 gap-3 text-xs border-t border-[var(--card-border)] pt-4 mb-4 opacity-75">
-                  <div className="flex items-center gap-2 truncate">
-                    <Phone className="h-3.5 w-3.5 opacity-50" />
-                    <span className="truncate">{supplier.phone || '—'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 truncate">
-                    <Mail className="h-3.5 w-3.5 opacity-50" />
-                    <span className="truncate">{supplier.email || '—'}</span>
-                  </div>
-                </div>
-
-                {/* Services supplied */}
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider opacity-50">Supplied Services & Rates</p>
-                  {supplier.services.length === 0 ? (
-                    <p className="text-xs opacity-40 italic">No services listed yet</p>
-                  ) : (
-                    <div className="max-h-48 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
-                      {supplier.services.map((srv, idx) => (
-                        <div 
-                          key={idx}
-                          className="bg-[var(--background)] border border-[var(--card-border)] rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="font-semibold truncate flex items-center gap-1.5 text-[var(--foreground)]">
-                            <Tag className="h-3 w-3 opacity-40 text-[#D97757]" />
-                            <span className="truncate">{srv.serviceName}</span>
-                          </div>
-                          <div className="flex gap-4 text-[10px] font-mono text-right flex-shrink-0">
-                            <div>
-                              <span className="opacity-50 block">Cost (AED)</span>
-                              <span className="font-semibold">{Number(srv.defaultCost).toLocaleString()}</span>
-                            </div>
-                            <div>
-                              <span className="opacity-50 block">Price (AED)</span>
-                              <span className="font-semibold text-[#D97757]">{Number(srv.defaultPrice).toLocaleString()}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="mt-6 pt-4 border-t border-[var(--card-border)] flex items-center justify-between text-[10px] opacity-40">
+                  <span>Supplier ID: {supplier.id.slice(0, 8)}</span>
+                  <span>Created {new Date(supplier.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
+            ))}
+          </div>
 
-              <div className="mt-6 pt-4 border-t border-[var(--card-border)] flex items-center justify-between text-[10px] opacity-40">
-                <span>Supplier ID: {supplier.id.slice(0, 8)}</span>
-                <span>Created {new Date(supplier.createdAt).toLocaleDateString()}</span>
-              </div>
-            </div>
-          ))}
+          <div className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl overflow-hidden shadow-sm">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredSuppliers.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </div>
       )}
 

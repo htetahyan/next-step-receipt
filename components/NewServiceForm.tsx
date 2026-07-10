@@ -6,23 +6,16 @@ import { addCustomerService } from '@/app/actions/services';
 import { uploadFiles } from '@/utils/uploadthing';
 import { Loader2, UploadCloud, File, X, Plane, Building, Stamp } from 'lucide-react';
 
-const CATEGORIES = [
-  'Flight Booking',
-  'Hotel Booking',
-  'Passport Renew',
-  'UAE Visit Visa',
-  'Visa Extension B2B',
-  'Visa Extension A2A',
-  'Inside Visa',
-  'Other'
-];
+import { SERVICE_CATEGORIES } from '@/lib/service-constants';
+
+const CATEGORIES = [...SERVICE_CATEGORIES];
 
 export default function NewServiceForm() {
   const searchParams = useSearchParams();
   const customerId = searchParams.get('customerId');
   const router = useRouter();
   
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
 
@@ -77,7 +70,21 @@ export default function NewServiceForm() {
           hotel_name: formData.get('hotel_name') || '',
           check_in: formData.get('check_in') || '',
           check_out: formData.get('check_out') || '',
-          visa_expiry_date: formData.get('visa_expiry_date') || '',
+          visa_expiry_date: (() => {
+            const travelDateStr = formData.get('travel_date') || formData.get('departure_date') || '';
+            const isBusOrAirChange = category === 'Visa Change by Bus' || category === 'Visa Change by Air';
+            if (isBusOrAirChange && travelDateStr) {
+              const tDate = new Date(String(travelDateStr));
+              if (!isNaN(tDate.getTime())) {
+                tDate.setDate(tDate.getDate() + 60);
+                const yyyy = tDate.getFullYear();
+                const mm = String(tDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(tDate.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+              }
+            }
+            return formData.get('visa_expiry_date') || '';
+          })(),
           visa_supplier: formData.get('visa_supplier') || '',
           visa_duration: formData.get('visa_duration') || '',
           referred_by: formData.get('referred_by') || '',

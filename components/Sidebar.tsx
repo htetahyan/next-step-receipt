@@ -14,7 +14,6 @@ export default function Sidebar() {
     { name: "UAE Visa Tracker", href: "/dashboard/uae-visa", icon: Shield },
     { name: "Air Tickets", href: "/dashboard/air-tickets", icon: Plane },
     { name: "Other Visa", href: "/dashboard/other-visa", icon: Globe },
-    { name: "Hotel Booking", href: "/dashboard/hotel-booking", icon: Ticket },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
     { name: "Suppliers", href: "/dashboard/suppliers", icon: Briefcase },
     { name: "Data Migration", href: "/dashboard/migrate", icon: Database },

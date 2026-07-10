@@ -30,6 +30,12 @@ export async function login(prevState: AuthState, formData: FormData) {
 
 export async function signup(prevState: AuthState, formData: FormData) {
   const supabase = await createClient()
+  
+  // Gate signup to already authenticated users (admins) only
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: 'Unauthorized. Only logged-in administrators can create new users.' }
+  }
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string

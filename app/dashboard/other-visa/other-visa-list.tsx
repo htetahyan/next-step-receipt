@@ -5,12 +5,8 @@ import { Search, Plus, Globe, X, Eye, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService } from '@/app/actions/services';
 
-const STATUS_COLORS: Record<string, string> = {
-  'Open': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  'In Progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  'Closed': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  'Cancelled': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-};
+import { STATUS_COLORS } from '@/lib/statusColors';
+import Pagination from '@/components/Pagination';
 
 const COUNTRY_EMOJI: Record<string, string> = {
   'Japan Visa': '🇯🇵',
@@ -170,79 +166,13 @@ export default function OtherVisaList({ initialServices, customers }: { initialS
           </table>
         </div>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-[var(--card-border)] bg-[var(--sidebar-bg)] px-6 py-4">
-            <div className="flex flex-1 justify-between sm:hidden">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="relative ml-3 inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs opacity-60 font-mono">
-                  Showing <span className="font-semibold text-[var(--foreground)]">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
-                  <span className="font-semibold text-[var(--foreground)]">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> of{' '}
-                  <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Previous
-                  </button>
-                  {(() => {
-                    const pages = [];
-                    const maxVisible = 5;
-                    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                    let end = Math.min(totalPages, start + maxVisible - 1);
-                    if (end - start + 1 < maxVisible) {
-                      start = Math.max(1, end - maxVisible + 1);
-                    }
-                    for (let i = start; i <= end; i++) {
-                      pages.push(i);
-                    }
-                    return pages.map(pageNum => (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`relative inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition-all hover:scale-[1.05] active:scale-[0.95] ${
-                          currentPage === pageNum
-                            ? 'bg-[#D97757] text-[#F5F4EF] border border-[#D97757]'
-                            : 'border border-[var(--card-border)] bg-[var(--background)] hover:bg-[var(--sidebar-bg)]'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    ));
-                  })()}
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );

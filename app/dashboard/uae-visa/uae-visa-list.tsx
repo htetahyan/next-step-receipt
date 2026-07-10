@@ -1,18 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Filter, ChevronDown, ChevronRight, Shield, X, Eye, Trash2, Loader2 } from 'lucide-react';
+import { Search, Plus, Filter, ChevronDown, ChevronRight, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { deleteCustomerService } from '@/app/actions/services';
+import { deleteCustomerService, quickUpdateService } from '@/app/actions/services';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
-const STATUS_COLORS: Record<string, string> = {
-  'Open': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  'In Progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  'Closed': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  'Cancelled': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  'Refund Pending': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-};
+import { STATUS_COLORS } from '@/lib/statusColors';
+import Pagination from '@/components/Pagination';
 
 interface Props {
   initialServices: any[];
@@ -228,6 +224,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
                 <th className="px-4 py-3 font-medium">Mode / Category</th>
                 <th className="px-4 py-3 font-medium">Supplier</th>
                 <th className="px-4 py-3 font-medium">Duration</th>
+                <th className="px-4 py-3 font-medium">Expiry</th>
                 <th className="px-4 py-3 font-medium text-right">Amount</th>
                 <th className="px-4 py-3 font-medium text-right">Receiving</th>
                 <th className="px-4 py-3 font-medium text-right">Supplier Cost</th>
@@ -241,8 +238,35 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
                 const customer = service.customers;
                 const details = service.details as any;
                 const fin = service.financials as any;
+
+                const expiryStr = details?.visa_expiry_date;
+                let isExpiringThisMonth = false;
+                let daysRemaining: number | null = null;
+                let isExpired = false;
+
+                const today = new Date();
+                const currentYear = today.getFullYear();
+                const currentMonth = today.getMonth(); // 0-indexed
+
+                if (expiryStr) {
+                  const expDate = new Date(expiryStr);
+                  if (!isNaN(expDate.getTime())) {
+                    isExpiringThisMonth = expDate.getFullYear() === currentYear && expDate.getMonth() === currentMonth;
+                    
+                    const todayZero = new Date();
+                    todayZero.setHours(0, 0, 0, 0);
+                    const diffTime = expDate.getTime() - todayZero.getTime();
+                    daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    isExpired = daysRemaining < 0;
+                  }
+                }
+
                 return (
-                  <tr key={service.id} className="hover:bg-[var(--sidebar-bg)] transition-colors group">
+                  <tr key={service.id} className={`hover:bg-[var(--sidebar-bg)] transition-colors group ${
+                    isExpiringThisMonth 
+                      ? (daysRemaining !== null && daysRemaining <= 7 ? 'bg-red-500/5 hover:bg-red-500/10' : 'bg-amber-500/5 hover:bg-amber-500/10') 
+                      : ''
+                  }`}>
                     <td className="px-4 py-3">
                       <span className="font-mono text-xs text-[#D97757] font-semibold">{service.reference_id || '—'}</span>
                     </td>
@@ -255,17 +279,88 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
                     <td className="px-4 py-3 text-xs">{service.category}</td>
                     <td className="px-4 py-3 text-xs">{details?.visa_supplier || '—'}</td>
                     <td className="px-4 py-3 text-xs">{details?.visa_duration || '—'}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {expiryStr ? (
+                        <div className="flex flex-col gap-0.5">
+                          <div className={`font-mono text-xs font-semibold ${
+                            isExpiringThisMonth 
+                              ? (daysRemaining !== null && daysRemaining <= 7 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-500') 
+                              : ''
+                          }`}>
+                            {expiryStr}
+                          </div>
+                          {isExpiringThisMonth && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider font-mono w-max ${
+                              daysRemaining !== null && daysRemaining <= 7 
+                                ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 animate-pulse' 
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                            }`}>
+                              {isExpired ? 'Expired' : daysRemaining === 0 ? 'Today' : `${daysRemaining}d left`}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="opacity-40">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.amount || 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.receiving_amount || 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.supplier_cost || 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-xs">{fin?.payment_method || details?.payment_method || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLORS[service.status] || 'bg-gray-100 text-gray-600'}`}>
-                        {service.status}
-                      </span>
+                      <select
+                        value={service.status}
+                        onChange={async (e) => {
+                          const nextStatus = e.target.value;
+                          const res = await quickUpdateService(service.id, { status: nextStatus });
+                          if (res.success) {
+                            setServices(prev => prev.map(s => s.id === service.id ? { ...s, status: nextStatus } : s));
+                            toast.success('Status updated successfully!');
+                          } else {
+                            toast.error(res.error || 'Failed to update status');
+                          }
+                        }}
+                        className={`inline-block px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wider border border-transparent hover:border-[var(--card-border)] bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#D97757]/40 ${STATUS_COLORS[service.status] || 'bg-gray-100 text-gray-600'}`}
+                      >
+                        <option value="Open">Open</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Closed">Closed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Refund Pending">Refund Pending</option>
+                      </select>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Extend Quick Action */}
+                        <Link
+                          href={`/dashboard/uae-visa/new?customerId=${service.customer_id}`}
+                          className="p-1.5 rounded hover:bg-[var(--card-border)] text-blue-600 hover:text-blue-700 transition-colors"
+                          title="Extend Visa"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" />
+                        </Link>
+
+                        {/* Clear Quick Action */}
+                        {service.status !== 'Closed' && service.status !== 'Cancelled' && (
+                          <button
+                            onClick={async () => {
+                              if (confirm('Clear/Close this active visa record?')) {
+                                const res = await quickUpdateService(service.id, { status: 'Closed' });
+                                if (res.success) {
+                                  setServices(prev => prev.map(s => s.id === service.id ? { ...s, status: 'Closed' } : s));
+                                  toast.success('Visa record cleared/closed!');
+                                } else {
+                                  toast.error(res.error || 'Failed to clear visa');
+                                }
+                              }
+                            }}
+                            className="p-1.5 rounded hover:bg-[var(--card-border)] text-green-600 hover:text-green-700 transition-colors"
+                            title="Clear/Close Visa"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
                         <Link
                           href={`/dashboard/uae-visa/${service.id}`}
                           className="p-1.5 rounded hover:bg-[var(--card-border)] transition-colors"
@@ -303,79 +398,13 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
           </table>
         </div>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-[var(--card-border)] bg-[var(--sidebar-bg)] px-6 py-4">
-            <div className="flex flex-1 justify-between sm:hidden">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="relative ml-3 inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs opacity-60 font-mono">
-                  Showing <span className="font-semibold text-[var(--foreground)]">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
-                  <span className="font-semibold text-[var(--foreground)]">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> of{' '}
-                  <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Previous
-                  </button>
-                  {(() => {
-                    const pages = [];
-                    const maxVisible = 5;
-                    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                    let end = Math.min(totalPages, start + maxVisible - 1);
-                    if (end - start + 1 < maxVisible) {
-                      start = Math.max(1, end - maxVisible + 1);
-                    }
-                    for (let i = start; i <= end; i++) {
-                      pages.push(i);
-                    }
-                    return pages.map(pageNum => (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`relative inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition-all hover:scale-[1.05] active:scale-[0.95] ${
-                          currentPage === pageNum
-                            ? 'bg-[#D97757] text-[#F5F4EF] border border-[#D97757]'
-                            : 'border border-[var(--card-border)] bg-[var(--background)] hover:bg-[var(--sidebar-bg)]'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    ));
-                  })()}
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { FileText, Search, Trash2, Loader2, Eye, X } from 'lucide-react'
 import Link from 'next/link'
 import { deleteInvoice } from '@/app/actions/invoices'
+import Pagination from './Pagination'
 
 export default function InvoiceList({ initialInvoices }: { initialInvoices: any[] }) {
   const [invoices, setInvoices] = useState(initialInvoices)
@@ -24,19 +25,36 @@ export default function InvoiceList({ initialInvoices }: { initialInvoices: any[
     setIsDeleting(null)
   }
 
-  // Reset page when search changes
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  // Reset page when search or date filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [search])
+  }, [search, startDate, endDate])
 
   const filtered = useMemo(() => {
-    if (!search) return invoices
-    const q = search.toLowerCase()
-    return invoices.filter(i => 
-      i.invoice_number.toLowerCase().includes(q) || 
-      i.customer?.name?.toLowerCase().includes(q)
-    )
-  }, [invoices, search])
+    return invoices.filter(i => {
+      // 1. Text Search
+      if (search) {
+        const q = search.toLowerCase()
+        const matchText = i.invoice_number.toLowerCase().includes(q) || i.customer?.name?.toLowerCase().includes(q)
+        if (!matchText) return false
+      }
+      
+      // 2. Start Date Filter
+      if (startDate && i.date < startDate) {
+        return false
+      }
+      
+      // 3. End Date Filter
+      if (endDate && i.date > endDate) {
+        return false
+      }
+
+      return true
+    })
+  }, [invoices, search, startDate, endDate])
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage)
 
@@ -47,8 +65,8 @@ export default function InvoiceList({ initialInvoices }: { initialInvoices: any[
 
   return (
     <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-sm dark:border-[#1e293b] dark:bg-[#0f172a] overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-           <div className="relative max-w-sm flex-1">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+           <div className="relative max-w-sm flex-1 w-full">
              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                <Search className="h-4 w-4 text-slate-400" />
              </div>
@@ -65,7 +83,40 @@ export default function InvoiceList({ initialInvoices }: { initialInvoices: any[
                 </button>
               )}
            </div>
-           <div className="text-xs font-mono opacity-60">Total: {filtered.length} matching</div>
+
+           <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
+             <div className="flex items-center gap-1.5 text-xs">
+               <span className="opacity-60">From:</span>
+               <input
+                 type="date"
+                 value={startDate}
+                 onChange={e => setStartDate(e.target.value)}
+                 className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+               />
+             </div>
+
+             <div className="flex items-center gap-1.5 text-xs">
+               <span className="opacity-60">To:</span>
+               <input
+                 type="date"
+                 value={endDate}
+                 onChange={e => setEndDate(e.target.value)}
+                 className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+               />
+             </div>
+
+             {(startDate || endDate) && (
+               <button
+                 onClick={() => { setStartDate(''); setEndDate(''); }}
+                 className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-red-500 font-semibold"
+                 title="Clear Date Filters"
+               >
+                 Clear
+               </button>
+             )}
+           </div>
+
+           <div className="text-xs font-mono opacity-60 flex-shrink-0">Total: {filtered.length} matching</div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
@@ -137,78 +188,13 @@ export default function InvoiceList({ initialInvoices }: { initialInvoices: any[
         </div>
 
         {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-6 py-4">
-            <div className="flex flex-1 justify-between sm:hidden">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold disabled:opacity-40 transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="relative ml-3 inline-flex items-center rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-semibold disabled:opacity-40 transition-colors"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs opacity-60 font-mono">
-                  Showing <span className="font-semibold">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
-                  <span className="font-semibold">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> of{' '}
-                  <span className="font-semibold">{filtered.length}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs font-semibold disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Previous
-                  </button>
-                  {(() => {
-                    const pages = [];
-                    const maxVisible = 5;
-                    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                    let end = Math.min(totalPages, start + maxVisible - 1);
-                    if (end - start + 1 < maxVisible) {
-                      start = Math.max(1, end - maxVisible + 1);
-                    }
-                    for (let i = start; i <= end; i++) {
-                      pages.push(i);
-                    }
-                    return pages.map(pageNum => (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`relative inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition-all hover:scale-[1.05] active:scale-[0.95] ${
-                          currentPage === pageNum
-                            ? 'bg-emerald-600 text-white border border-emerald-600'
-                            : 'border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    ));
-                  })()}
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs font-semibold disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
     </div>
   )
 }

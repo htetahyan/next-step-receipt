@@ -45,7 +45,35 @@ import { safeAction } from '@/lib/safeAction';
 // ── Add Service ─────────────────────────────────────────────
 export async function addCustomerService(data: any) {
   return safeAction(async (data: any) => {
+    // 1. Authenticate user
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
     const { customerId, referenceId, category, status, details, financials } = data;
+
+    // 2. Validate input using Zod schemas based on category
+    // Depending on form input structure, isNewCustomer/newCustomer might not be present or validated if existing customer is selected.
+    // So we can perform a partial or conditional validation.
+    const validationData = {
+      customerId,
+      isNewCustomer: false,
+      status,
+      category,
+      details: details || {},
+      financials: financials || {},
+    };
+
+    if (category && (category.startsWith('Visa Extension') || category.includes('Visa'))) {
+      uaeVisaSchema.parse(validationData);
+    } else if (category === 'Air Ticket' || category === 'Flight Booking') {
+      airTicketSchema.parse(validationData);
+    } else {
+      otherVisaSchema.parse(validationData);
+    }
 
     // Insert the service
     const [service] = await db.insert(customerServices).values({
@@ -60,7 +88,9 @@ export async function addCustomerService(data: any) {
     // Auto-generate invoice if there is a positive amount
     const amount = financials?.amount || 0;
     if (amount > 0) {
-      const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}`;
+      // Add randomness to prevent collisions
+      const randomSuffix = Math.floor(100 + Math.random() * 900); // 3-digit random
+      const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}${randomSuffix}`;
       const [newInvoice] = await db.insert(invoices).values({
         customerId: customerId,
         invoiceNumber: invoiceNumber,
@@ -247,6 +277,32 @@ export async function bulkMigrateCustomerServices(records: any[]) {
 // ── Update Service ──────────────────────────────────────────
 export async function updateCustomerService(serviceId: string, data: any) {
   try {
+    // 1. Authenticate user
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    // 2. Validate input using Zod schemas based on category
+    const validationData = {
+      customerId: data.customerId,
+      isNewCustomer: false,
+      status: data.status,
+      category: data.category,
+      details: data.details || {},
+      financials: data.financials || {},
+    };
+
+    if (data.category && (data.category.startsWith('Visa Extension') || data.category.includes('Visa'))) {
+      uaeVisaSchema.parse(validationData);
+    } else if (data.category === 'Air Ticket' || data.category === 'Flight Booking') {
+      airTicketSchema.parse(validationData);
+    } else {
+      otherVisaSchema.parse(validationData);
+    }
+
     const [updated] = await db
       .update(customerServices)
       .set({
@@ -298,3 +354,44 @@ export async function fetchServicesByCategories(categories: readonly string[]) {
     return { success: false, error: err.message, data: [] };
   }
 }
+
+// ── Quick Update Service Status/Details ─────────────────────
+export async function quickUpdateService(serviceId: string, payload: { status?: string; details?: any }) {
+  try {
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const [existing] = await db
+      .select()
+      .from(customerServices)
+      .where(eq(customerServices.id, serviceId))
+      .limit(1);
+
+    if (!existing) return { success: false, error: 'Service not found' };
+
+    const updateData: any = {};
+    if (payload.status) updateData.status = payload.status;
+    if (payload.details) {
+      updateData.details = {
+        ...(existing.details as any || {}),
+        ...payload.details,
+      };
+    }
+
+    const [updated] = await db
+      .update(customerServices)
+      .set(updateData)
+      .where(eq(customerServices.id, serviceId))
+      .returning();
+
+    revalidatePath('/dashboard/uae-visa');
+    revalidatePath('/dashboard/customers');
+    return { success: true, service: updated };
+  } catch (err: any) {
+    console.error('Failed to quick update service:', err);
+    return { success: false, error: err.message };
+  }
+}
+

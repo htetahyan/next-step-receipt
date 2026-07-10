@@ -251,7 +251,21 @@ export default function MigratePage() {
 
               const issuedDate = parseDateToISO(getCSVValue(row, ['Visa Issued date', 'Issued Date', 'Visa Issued']));
               const travelDate = parseDateToISO(getCSVValue(row, ['Travel Date', 'Travel']));
-              const expiryDate = parseDateToISO(getCSVValue(row, ['Visa Expiry Date', 'Expiry Date', 'Visa Expiry']));
+              let expiryDate = parseDateToISO(getCSVValue(row, ['Visa Expiry Date', 'Expiry Date', 'Visa Expiry']));
+
+              // Automatically set expiry date to travel date + 60 days for Visa Change by Bus or Visa Change by Air
+              const isBusOrAirChange = category === 'Visa Change by Bus' || category === 'Visa Change by Air';
+              if (isBusOrAirChange && travelDate) {
+                const tDate = new Date(travelDate);
+                if (!isNaN(tDate.getTime())) {
+                  tDate.setDate(tDate.getDate() + 60);
+                  const yyyy = tDate.getFullYear();
+                  const mm = String(tDate.getMonth() + 1).padStart(2, '0');
+                  const dd = String(tDate.getDate()).padStart(2, '0');
+                  expiryDate = `${yyyy}-${mm}-${dd}`;
+                }
+              }
+
               const supplier = getCSVValue(row, ['Visa Supplier', 'Supplier']);
               
               serviceData.details = {

@@ -5,30 +5,30 @@ import { Search, Plus, Plane, X, Eye, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService } from '@/app/actions/services';
 
-const STATUS_COLORS: Record<string, string> = {
-  'Open': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  'In Progress': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  'Closed': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  'Cancelled': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-};
+import { STATUS_COLORS } from '@/lib/statusColors';
+import Pagination from '@/components/Pagination';
 
 export default function AirTicketList({ initialServices, customers }: { initialServices: any[]; customers: any[] }) {
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
   const filtered = useMemo(() => {
-    if (!search) return services;
-    const q = search.toLowerCase();
     return services.filter(s => {
+      if (categoryFilter !== 'all' && s.category !== categoryFilter) return false;
+      if (statusFilter !== 'all' && s.status !== statusFilter) return false;
+      if (!search) return true;
+      const q = search.toLowerCase();
       const c = s.customers;
       const d = s.details as any;
       return [c?.name, c?.passport_no, s.reference_id, d?.destination, d?.handled_by]
         .some(v => v && String(v).toLowerCase().includes(q));
     });
-  }, [services, search]);
+  }, [services, search, categoryFilter, statusFilter]);
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
@@ -37,10 +37,10 @@ export default function AirTicketList({ initialServices, customers }: { initialS
     return filtered.slice(startIndex, startIndex + itemsPerPage);
   }, [filtered, currentPage]);
 
-  // Reset page when search changes
+  // Reset page when search or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+  }, [search, categoryFilter, statusFilter]);
 
   const summary = useMemo(() => {
     let totalAmount = 0, totalAirlineCost = 0;
@@ -90,12 +90,37 @@ export default function AirTicketList({ initialServices, customers }: { initialS
         ))}
       </div>
 
-      {/* Search */}
-      <div className="card-anthropic p-4">
-        <div className="relative">
+      {/* Search and Filters */}
+      <div className="card-anthropic p-4 flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, passport, route, ref ID..." className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]" />
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80"><X className="w-4 h-4" /></button>}
+        </div>
+        
+        <div className="flex gap-2">
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
+          >
+            <option value="all">All Types</option>
+            <option value="Air Ticket">Air Ticket</option>
+            <option value="Dummy Ticket">Dummy Ticket</option>
+            <option value="Ticket + Hotel Package">Ticket + Hotel Package</option>
+          </select>
+
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Closed">Closed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
         </div>
       </div>
 
@@ -164,79 +189,13 @@ export default function AirTicketList({ initialServices, customers }: { initialS
           </table>
         </div>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-[var(--card-border)] bg-[var(--sidebar-bg)] px-6 py-4">
-            <div className="flex flex-1 justify-between sm:hidden">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="relative ml-3 inline-flex items-center rounded-md border border-[var(--card-border)] bg-[var(--background)] px-4 py-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-colors"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs opacity-60 font-mono">
-                  Showing <span className="font-semibold text-[var(--foreground)]">{((currentPage - 1) * itemsPerPage) + 1}</span> to{' '}
-                  <span className="font-semibold text-[var(--foreground)]">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> of{' '}
-                  <span className="font-semibold text-[var(--foreground)]">{filtered.length}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm gap-1" aria-label="Pagination">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Previous
-                  </button>
-                  {(() => {
-                    const pages = [];
-                    const maxVisible = 5;
-                    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                    let end = Math.min(totalPages, start + maxVisible - 1);
-                    if (end - start + 1 < maxVisible) {
-                      start = Math.max(1, end - maxVisible + 1);
-                    }
-                    for (let i = start; i <= end; i++) {
-                      pages.push(i);
-                    }
-                    return pages.map(pageNum => (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`relative inline-flex items-center rounded-lg px-3 py-2 text-xs font-semibold transition-all hover:scale-[1.05] active:scale-[0.95] ${
-                          currentPage === pageNum
-                            ? 'bg-[#D97757] text-[#F5F4EF] border border-[#D97757]'
-                            : 'border border-[var(--card-border)] bg-[var(--background)] hover:bg-[var(--sidebar-bg)]'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    ));
-                  })()}
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center rounded-lg border border-[var(--card-border)] bg-[var(--background)] p-2 text-xs font-semibold hover:bg-[var(--sidebar-bg)] disabled:opacity-40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-                  >
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   );
