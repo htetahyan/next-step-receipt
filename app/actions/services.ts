@@ -117,7 +117,16 @@ export async function addCustomerService(data: any) {
 
 // ── Bulk Migrate Services ───────────────────────────────────
 export async function bulkMigrateCustomerServices(records: any[]) {
-  return safeAction(async (records: any[]) => {
+  // Create a FRESH connection with prepare:false to avoid Supabase pooler issues
+  const postgres = (await import('postgres')).default;
+  const { drizzle } = await import('drizzle-orm/postgres-js');
+  const schema = await import('@/db/schema');
+
+  const connectionString = process.env.DATABASE_URL || '';
+  const freshClient = postgres(connectionString, { max: 5, prepare: false });
+  const freshDb = drizzle(freshClient, { schema });
+
+  try {
     const results = [];
     let matchedCount = 0;
     let createdCount = 0;
@@ -142,7 +151,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         let matched = false;
 
         if (passportNo) {
-          const [byPassport] = await db
+          const [byPassport] = await freshDb
             .select()
             .from(customers)
             .where(eq(customers.passportNo, passportNo))
@@ -154,7 +163,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         }
 
         if (!customerId) {
-          const [byName] = await db
+          const [byName] = await freshDb
             .select()
             .from(customers)
             .where(eq(customers.name, name))
@@ -169,7 +178,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
           matchedCount++;
         } else {
           // Create new customer
-          const [newCust] = await db.insert(customers).values({
+          const [newCust] = await freshDb.insert(customers).values({
             name,
             phone: phone || null,
             email: email || null,
@@ -188,7 +197,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
           referenceId = await generateReferenceId(prefix);
         }
 
-        const [insertedService] = await db.insert(customerServices).values({
+        const [insertedService] = await freshDb.insert(customerServices).values({
           customerId,
           referenceId,
           category: service.category,
@@ -200,14 +209,14 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         // 2b. Auto-create Supplier if mentioned and missing
         const supplierName = String(service.details?.visa_supplier || '').trim();
         if (supplierName && supplierName !== '-' && supplierName.toLowerCase() !== 'null') {
-          const [existingSupplier] = await db
+          const [existingSupplier] = await freshDb
             .select()
             .from(suppliers)
             .where(eq(suppliers.name, supplierName))
             .limit(1);
 
           if (!existingSupplier) {
-            await db.insert(suppliers).values({
+            await freshDb.insert(suppliers).values({
               name: supplierName,
               services: [{
                 serviceName: service.category || 'UAE Visit Visa 30 Days',
@@ -222,7 +231,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         const amount = service.financials?.amount || 0;
         if (amount > 0) {
           const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
-          const [newInvoice] = await db.insert(invoices).values({
+          const [newInvoice] = await freshDb.insert(invoices).values({
             customerId: customerId,
             invoiceNumber: invoiceNumber,
             date: new Date().toISOString().split('T')[0],
@@ -233,7 +242,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
           }).returning();
 
           if (newInvoice) {
-            await db.insert(invoiceItems).values({
+            await freshDb.insert(invoiceItems).values({
               invoiceId: newInvoice.id,
               description: service.category || 'Service Fee',
               quantity: '1',
@@ -271,7 +280,10 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         errorCount,
       }
     };
-  }, ['/dashboard/customers', '/dashboard/uae-visa', '/dashboard/air-tickets', '/dashboard/other-visa'], records);
+  } finally {
+    // Always close the fresh connection when done
+    await freshClient.end();
+  }
 }
 
 // ── Update Service ──────────────────────────────────────────
