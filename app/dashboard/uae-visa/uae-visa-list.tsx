@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Filter, ChevronDown, ChevronRight, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle } from 'lucide-react';
+import { Search, Plus, Filter, ChevronDown, ChevronRight, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService, quickUpdateService } from '@/app/actions/services';
 import { useRouter } from 'next/navigation';
@@ -92,6 +92,61 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
     return { totalAmount, totalReceiving, totalSupplierCost, totalProfit, count: filtered.length };
   }, [filtered]);
 
+  // Smart Expiry Alerts: Group by customer, find latest active visa per person
+  const expiryAlerts = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const in30Days = new Date(today);
+    in30Days.setDate(in30Days.getDate() + 30);
+
+    // Group all services by customer_id
+    const byCustomer = new Map<string, any[]>();
+    services.forEach(s => {
+      const custId = s.customer_id;
+      if (!custId) return;
+      if (!byCustomer.has(custId)) byCustomer.set(custId, []);
+      byCustomer.get(custId)!.push(s);
+    });
+
+    const alerts: { service: any; daysLeft: number; isExpired: boolean; totalRecords: number }[] = [];
+
+    byCustomer.forEach((custServices) => {
+      // Find the latest active visa (by travel_date or created_at) — skip Closed/Cancelled
+      const activeServices = custServices.filter(s => s.status !== 'Closed' && s.status !== 'Cancelled');
+      if (activeServices.length === 0) return;
+
+      // Sort by travel_date descending to find the latest extension
+      const sorted = activeServices.sort((a, b) => {
+        const dateA = (a.details as any)?.travel_date || (a.details as any)?.visa_expiry_date || '';
+        const dateB = (b.details as any)?.travel_date || (b.details as any)?.visa_expiry_date || '';
+        return dateB.localeCompare(dateA);
+      });
+
+      const latest = sorted[0];
+      const details = latest.details as any;
+      const expiryStr = details?.visa_expiry_date;
+      if (!expiryStr) return;
+
+      const expDate = new Date(expiryStr);
+      if (isNaN(expDate.getTime())) return;
+
+      // Only show alerts for visas expiring within 30 days or already expired
+      if (expDate <= in30Days) {
+        const diffTime = expDate.getTime() - today.getTime();
+        const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        alerts.push({
+          service: latest,
+          daysLeft,
+          isExpired: daysLeft < 0,
+          totalRecords: custServices.length,
+        });
+      }
+    });
+
+    // Sort: expired first, then by days left ascending
+    return alerts.sort((a, b) => a.daysLeft - b.daysLeft);
+  }, [services]);
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this visa record?')) return;
     setDeletingId(id);
@@ -140,6 +195,71 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Smart Expiry Alerts Panel */}
+      {expiryAlerts.length > 0 && (
+        <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-semibold text-sm">
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
+              <span>Smart Expiry Tracker — Action Required ({expiryAlerts.length} clients)</span>
+            </div>
+            <span className="text-xs text-red-600/70 dark:text-red-400/70">Shows latest active visa per customer</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {expiryAlerts.map(({ service: s, daysLeft, isExpired, totalRecords }) => {
+              const cust = s.customers;
+              const details = s.details as any;
+              return (
+                <div
+                  key={s.id}
+                  className={`p-3 rounded-lg border text-xs flex flex-col justify-between gap-2 transition-all ${
+                    isExpired
+                      ? 'bg-red-100/80 dark:bg-red-900/40 border-red-300 dark:border-red-800 text-red-950 dark:text-red-100'
+                      : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 text-amber-950 dark:text-amber-100'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-sm line-clamp-1">{cust?.name || 'Unknown Customer'}</div>
+                      <div className="font-mono text-[11px] opacity-70">Passport: {cust?.passport_no || '-'}</div>
+                      {totalRecords > 1 && (
+                        <div className="text-[10px] font-medium text-blue-600 dark:text-blue-400 mt-0.5">
+                          {totalRecords} visa extensions on record
+                        </div>
+                      )}
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                        isExpired
+                          ? 'bg-red-600 text-white animate-pulse'
+                          : 'bg-amber-500 text-white'
+                      }`}
+                    >
+                      {isExpired ? `EXPIRED (${Math.abs(daysLeft)}d ago)` : `Expires in ${daysLeft}d`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] border-t border-black/5 dark:border-white/10 pt-2 mt-1">
+                    <div className="font-mono">
+                      Expiry: <span className="font-bold">{details?.visa_expiry_date || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/dashboard/uae-visa/new?customerId=${cust?.id || ''}`}
+                        className="px-2 py-1 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-medium hover:opacity-80 transition-opacity flex items-center gap-1 text-[10px]"
+                      >
+                        <PlusCircle className="w-3 h-3" /> Extend
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Search & Filters */}
       <div className="card-anthropic p-4">

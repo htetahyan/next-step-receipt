@@ -253,12 +253,24 @@ export default function MigratePage() {
               const travelDate = parseDateToISO(getCSVValue(row, ['Travel Date', 'Travel']));
               let expiryDate = parseDateToISO(getCSVValue(row, ['Visa Expiry Date', 'Expiry Date', 'Visa Expiry']));
 
-              // Automatically set expiry date to travel date + 60 days for Visa Change by Bus or Visa Change by Air
-              const isBusOrAirChange = category === 'Visa Change by Bus' || category === 'Visa Change by Air';
-              if (isBusOrAirChange && travelDate) {
+              // Automatically set expiry date from travel date + duration if not explicitly provided
+              if (!expiryDate && travelDate) {
+                const isBusOrAirChange = category === 'Visa Change by Bus' || category === 'Visa Change by Air';
+                let daysToAdd = 60; // default for bus/air changes
+
+                if (!isBusOrAirChange) {
+                  // Parse duration from the visa duration field (e.g. "30 Days", "60 Days", "90 Days")
+                  const durationStr = String(getCSVValue(row, ['Visa Duration', 'Duration']) || '').toLowerCase();
+                  if (durationStr.includes('90')) daysToAdd = 90;
+                  else if (durationStr.includes('60')) daysToAdd = 60;
+                  else if (durationStr.includes('30')) daysToAdd = 30;
+                  else if (durationStr.includes('14')) daysToAdd = 14;
+                  else daysToAdd = 30; // fallback
+                }
+
                 const tDate = new Date(travelDate);
                 if (!isNaN(tDate.getTime())) {
-                  tDate.setDate(tDate.getDate() + 60);
+                  tDate.setDate(tDate.getDate() + daysToAdd);
                   const yyyy = tDate.getFullYear();
                   const mm = String(tDate.getMonth() + 1).padStart(2, '0');
                   const dd = String(tDate.getDate()).padStart(2, '0');

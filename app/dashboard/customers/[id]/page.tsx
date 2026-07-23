@@ -1,26 +1,26 @@
-import { db } from '@/db';
-import { customers, customerServices, invoices, customerDocuments } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { createClient } from '@/utils/supabase/server';
 import { notFound } from 'next/navigation';
 import CustomerHubClient from './client-page';
 
 async function getCustomerData(id: string) {
-  const [result, services, pastInvoices, docs] = await Promise.all([
-    db.select().from(customers).where(eq(customers.id, id)),
-    db.select().from(customerServices).where(eq(customerServices.customerId, id)).orderBy(desc(customerServices.createdAt)),
-    db.select().from(invoices).where(eq(invoices.customerId, id)).orderBy(desc(invoices.createdAt)),
-    db.select().from(customerDocuments).where(eq(customerDocuments.customerId, id)).orderBy(desc(customerDocuments.createdAt))
+  const supabase = await createClient();
+
+  const [customerRes, servicesRes, invoicesRes, docsRes] = await Promise.all([
+    supabase.from('customers').select('*').eq('id', id).single(),
+    supabase.from('customer_services').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+    supabase.from('invoices').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+    supabase.from('customer_documents').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
   ]);
 
-  if (result.length === 0) {
+  if (!customerRes.data) {
     notFound();
   }
 
   return {
-    customer: result[0],
-    services,
-    pastInvoices,
-    documents: docs
+    customer: customerRes.data,
+    services: servicesRes.data || [],
+    pastInvoices: invoicesRes.data || [],
+    documents: docsRes.data || [],
   };
 }
 
