@@ -327,7 +327,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
       const cust = s.customers;
       const details = s.details as any;
       const fin = s.financials as any;
-      const { isExpiringThisMonth, isExpiringNextMonth, isExpired, daysRemaining } = getExpiryInfo(s);
+      const { expiryStr, isExpiringThisMonth, isExpiringNextMonth, isExpired, daysRemaining } = getExpiryInfo(s);
 
       let expiryStatus = 'Active';
       if (isExpired) {
@@ -354,7 +354,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
         'Visa Duration': details?.visa_duration || '',
         'Visa Issued Date': details?.visa_issued_date || '',
         'Travel Date': details?.travel_date || '',
-        'Visa Expiry Date': details?.visa_expiry_date || '',
+        'Visa Expiry Date': expiryStr || details?.visa_expiry_date || '',
         'Expiry Status': expiryStatus,
         'Status': s.status || '',
         'Amount (AED)': Number(fin?.amount || 0),
