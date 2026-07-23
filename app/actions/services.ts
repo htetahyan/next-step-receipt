@@ -420,3 +420,67 @@ export async function quickUpdateService(serviceId: string, payload: { status?: 
   }
 }
 
+// ── Close Services Expired Over 1 Month (30 Days) ───────────
+export async function closeExpiredServices(daysOver: number = 30) {
+  try {
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
+    // Fetch active services
+    const { data: services, error } = await supabase
+      .from('customer_services')
+      .select('id, reference_id, category, status, details, customers(name)')
+      .not('status', 'in', '("Closed","Cancelled")');
+
+    if (error) throw error;
+    if (!services || services.length === 0) {
+      return { success: true, count: 0, message: 'No active services found.' };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const thresholdDate = new Date(today);
+    thresholdDate.setDate(thresholdDate.getDate() - daysOver);
+
+    const toCloseIds: string[] = [];
+
+    for (const service of services) {
+      const details = (service.details as any) || {};
+      const expiryStr = details.visa_expiry_date || details.travel_date || details.departure_date;
+      if (!expiryStr) continue;
+
+      const expDate = new Date(expiryStr);
+      if (isNaN(expDate.getTime())) continue;
+
+      if (expDate <= thresholdDate) {
+        toCloseIds.push(service.id);
+      }
+    }
+
+    if (toCloseIds.length > 0) {
+      const { error: updateErr } = await supabase
+        .from('customer_services')
+        .update({ status: 'Closed' })
+        .in('id', toCloseIds);
+
+      if (updateErr) throw updateErr;
+
+      revalidatePath('/dashboard/uae-visa');
+      revalidatePath('/dashboard/customers');
+      revalidatePath('/dashboard/air-tickets');
+      revalidatePath('/dashboard/other-visa');
+    }
+
+    return {
+      success: true,
+      count: toCloseIds.length,
+      message: `Successfully closed ${toCloseIds.length} visa service records expired over ${daysOver} days!`,
+    };
+  } catch (err: any) {
+    console.error('Failed to close expired services:', err);
+    return { success: false, error: err.message, count: 0 };
+  }
+}
+
+
