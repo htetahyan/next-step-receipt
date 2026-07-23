@@ -92,33 +92,55 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
     return { totalAmount, totalReceiving, totalSupplierCost, totalProfit, count: filtered.length };
   }, [filtered]);
 
-  // Smart Expiry Alerts: Group by customer, find latest active visa per person
+  // Smart Expiry Alerts: Group by person (passport / name / customer_id), find latest active visa per person
   const expiryAlerts = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const in30Days = new Date(today);
     in30Days.setDate(in30Days.getDate() + 30);
 
-    // Group all services by customer_id
-    const byCustomer = new Map<string, any[]>();
+    // Helper to extract sortable date for a visa service (prioritizes visa_expiry_date, then travel_date, visa_issued_date, created_at)
+    const getVisaSortDate = (s: any) => {
+      const d = s.details as any;
+      return d?.visa_expiry_date || d?.travel_date || d?.visa_issued_date || s.created_at || '';
+    };
+
+    // Group all services by unique person (matching by Passport Number, OR Customer Name, OR Customer ID)
+    const byPerson = new Map<string, any[]>();
     services.forEach(s => {
-      const custId = s.customer_id;
-      if (!custId) return;
-      if (!byCustomer.has(custId)) byCustomer.set(custId, []);
-      byCustomer.get(custId)!.push(s);
+      const cust = s.customers;
+      const details = s.details as any;
+
+      const rawPassport = cust?.passport_no || details?.passport_no || '';
+      const cleanedPassport = String(rawPassport).replace(/\s+/g, '').toUpperCase();
+
+      const rawName = cust?.name || details?.customer_name || '';
+      const cleanedName = String(rawName).trim().toLowerCase().replace(/\s+/g, ' ');
+
+      let key = '';
+      if (cleanedPassport && cleanedPassport !== '-' && cleanedPassport !== 'N/A' && cleanedPassport.length >= 3) {
+        key = `passport:${cleanedPassport}`;
+      } else if (cleanedName && cleanedName !== '-' && cleanedName !== 'n/a') {
+        key = `name:${cleanedName}`;
+      } else {
+        key = `id:${s.customer_id || s.id}`;
+      }
+
+      if (!byPerson.has(key)) byPerson.set(key, []);
+      byPerson.get(key)!.push(s);
     });
 
     const alerts: { service: any; daysLeft: number; isExpired: boolean; totalRecords: number }[] = [];
 
-    byCustomer.forEach((custServices) => {
-      // Find the latest active visa (by travel_date or created_at) — skip Closed/Cancelled
-      const activeServices = custServices.filter(s => s.status !== 'Closed' && s.status !== 'Cancelled');
+    byPerson.forEach((personServices) => {
+      // Find active services (not Closed or Cancelled)
+      const activeServices = personServices.filter(s => s.status !== 'Closed' && s.status !== 'Cancelled');
       if (activeServices.length === 0) return;
 
-      // Sort by travel_date descending to find the latest extension
+      // Sort by latest sortable date descending to find the newest visa extension
       const sorted = activeServices.sort((a, b) => {
-        const dateA = (a.details as any)?.travel_date || (a.details as any)?.visa_expiry_date || '';
-        const dateB = (b.details as any)?.travel_date || (b.details as any)?.visa_expiry_date || '';
+        const dateA = getVisaSortDate(a);
+        const dateB = getVisaSortDate(b);
         return dateB.localeCompare(dateA);
       });
 
@@ -130,7 +152,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
       const expDate = new Date(expiryStr);
       if (isNaN(expDate.getTime())) return;
 
-      // Only show alerts for visas expiring within 30 days or already expired
+      // Only show alerts if the LATEST active visa is expiring within 30 days or already expired
       if (expDate <= in30Days) {
         const diffTime = expDate.getTime() - today.getTime();
         const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -138,7 +160,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
           service: latest,
           daysLeft,
           isExpired: daysLeft < 0,
-          totalRecords: custServices.length,
+          totalRecords: personServices.length,
         });
       }
     });

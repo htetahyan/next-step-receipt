@@ -55,7 +55,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
     const { data: allServices, error: servError } = await supabase
       .from('customer_services')
-      .select('*, customer:customers(name)')
+      .select('*, customer:customers(id, name, passport_no)')
       .order('created_at', { ascending: false });
 
     if (!invError && allInvoices && !servError && allServices) {
@@ -170,23 +170,66 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           });
         }
 
-        // Alert 3: Impending UAE Visa Expiration (within 10 days)
-        if (details.visa_expiry_date && srv.status !== 'Closed' && srv.status !== 'Cancelled') {
-          try {
-            const expDate = new Date(details.visa_expiry_date);
-            const daysLeft = differenceInDays(expDate, now);
-            if (daysLeft >= 0 && daysLeft <= 10) {
-              alerts.nearExpiry.push({
-                id: srv.id,
-                refId: srv.reference_id,
-                name: srv.customer?.name || 'Unknown',
-                category: srv.category,
-                expiryDate: details.visa_expiry_date,
-                daysLeft
-              });
-            }
-          } catch {}
+      });
+
+      // Alert 3: Impending UAE Visa Expiration (within 10 days) — Grouped per person (passport/name)
+      const uaeServicesByPerson = new Map<string, any[]>();
+      allServices.forEach((srv: any) => {
+        const details = srv.details as any || {};
+        if (!details.visa_expiry_date) return;
+
+        const cust = srv.customer;
+        const rawPassport = cust?.passport_no || details?.passport_no || '';
+        const cleanedPassport = String(rawPassport).replace(/\s+/g, '').toUpperCase();
+        const rawName = cust?.name || details?.customer_name || '';
+        const cleanedName = String(rawName).trim().toLowerCase().replace(/\s+/g, ' ');
+
+        let key = '';
+        if (cleanedPassport && cleanedPassport !== '-' && cleanedPassport !== 'N/A' && cleanedPassport.length >= 3) {
+          key = `passport:${cleanedPassport}`;
+        } else if (cleanedName && cleanedName !== '-' && cleanedName !== 'n/a') {
+          key = `name:${cleanedName}`;
+        } else {
+          key = `id:${srv.customer_id || srv.id}`;
         }
+
+        if (!uaeServicesByPerson.has(key)) uaeServicesByPerson.set(key, []);
+        uaeServicesByPerson.get(key)!.push(srv);
+      });
+
+      const getVisaSortDate = (s: any) => {
+        const d = s.details as any;
+        return d?.visa_expiry_date || d?.travel_date || d?.visa_issued_date || s.created_at || '';
+      };
+
+      uaeServicesByPerson.forEach((personServices) => {
+        const activeServices = personServices.filter(s => s.status !== 'Closed' && s.status !== 'Cancelled');
+        if (activeServices.length === 0) return;
+
+        const sorted = activeServices.sort((a, b) => {
+          const dateA = getVisaSortDate(a);
+          const dateB = getVisaSortDate(b);
+          return dateB.localeCompare(dateA);
+        });
+
+        const latest = sorted[0];
+        const details = latest.details as any;
+        if (!details?.visa_expiry_date) return;
+
+        try {
+          const expDate = new Date(details.visa_expiry_date);
+          const daysLeft = differenceInDays(expDate, now);
+          if (daysLeft >= 0 && daysLeft <= 10) {
+            alerts.nearExpiry.push({
+              id: latest.id,
+              refId: latest.reference_id,
+              name: latest.customer?.name || 'Unknown',
+              category: latest.category,
+              expiryDate: details.visa_expiry_date,
+              daysLeft
+            });
+          }
+        } catch {}
       });
 
       const grossProfit = totalReceiving - totalCost;
