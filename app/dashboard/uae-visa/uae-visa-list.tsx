@@ -75,25 +75,77 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
     };
   }, []);
 
-  // Helper to extract sortable date for a visa service
-  const getVisaSortDate = (s: any) => {
-    const d = s.details as any;
-    return d?.visa_expiry_date || d?.travel_date || d?.visa_issued_date || s.created_at || '';
+  // Robust date parser into numeric timestamp
+  const parseDateToTimestamp = (dateVal: any): number => {
+    if (!dateVal) return 0;
+    if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? 0 : dateVal.getTime();
+
+    const str = String(dateVal).trim();
+    if (!str) return 0;
+
+    // Handle DD/MM/YYYY or DD-MM-YYYY
+    if (/^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}/.test(str)) {
+      const parts = str.split(/[\/-]/);
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      return isNaN(d.getTime()) ? 0 : d.getTime();
+    }
+
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  };
+
+  // Helper to extract effective expiry date string (prefers visa_expiry_date, falls back to travel_date + duration)
+  const getExpiryStr = (s: any): string => {
+    const details = (s.details as any) || {};
+
+    if (details.visa_expiry_date) {
+      return details.visa_expiry_date;
+    }
+
+    if (details.travel_date) {
+      const travelTs = parseDateToTimestamp(details.travel_date);
+      if (travelTs > 0) {
+        const durationDays = parseInt(String(details.visa_duration || '60'), 10) || 60;
+        const expDate = new Date(travelTs);
+        expDate.setDate(expDate.getDate() + durationDays);
+        const yyyy = expDate.getFullYear();
+        const mm = String(expDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(expDate.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return details.travel_date;
+    }
+
+    return '';
+  };
+
+  // Helper to get maximum date timestamp for a visa service to determine which record is newest/latest
+  const getServiceLatestTimestamp = (s: any): number => {
+    const d = (s.details as any) || {};
+    const createdAtTs = parseDateToTimestamp(s.created_at);
+    const travelTs = parseDateToTimestamp(d.travel_date);
+    const expiryTs = parseDateToTimestamp(d.visa_expiry_date);
+    const issueTs = parseDateToTimestamp(d.visa_issued_date);
+
+    return Math.max(createdAtTs, travelTs, expiryTs, issueTs);
   };
 
   // Helper to compute expiry info for a service
   const getExpiryInfo = (s: any) => {
-    const details = s.details as any;
-    const expiryStr = details?.visa_expiry_date;
+    const expiryStr = getExpiryStr(s);
     if (!expiryStr) {
       return { expiryStr: '', isExpiringThisMonth: false, isExpiringNextMonth: false, isExpired: false, daysRemaining: null };
     }
 
-    const expDate = new Date(expiryStr);
-    if (isNaN(expDate.getTime())) {
+    const expTs = parseDateToTimestamp(expiryStr);
+    if (expTs === 0) {
       return { expiryStr, isExpiringThisMonth: false, isExpiringNextMonth: false, isExpired: false, daysRemaining: null };
     }
 
+    const expDate = new Date(expTs);
     const { today, currentYear, currentMonth, nextMonthYear, nextMonth } = dateInfo;
     const expYear = expDate.getFullYear();
     const expMonth = expDate.getMonth();
@@ -215,11 +267,12 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
       const activeServices = personServices.filter(s => s.status !== 'Closed' && s.status !== 'Cancelled');
       if (activeServices.length === 0) return;
 
-      // Sort by latest sortable date descending to find the newest visa extension
+      // Sort by latest timestamp descending to find the newest visa extension / travel date
       const sorted = activeServices.sort((a, b) => {
-        const dateA = getVisaSortDate(a);
-        const dateB = getVisaSortDate(b);
-        return dateB.localeCompare(dateA);
+        const timeA = getServiceLatestTimestamp(a);
+        const timeB = getServiceLatestTimestamp(b);
+        if (timeA !== timeB) return timeB - timeA;
+        return String(b.created_at || b.id).localeCompare(String(a.created_at || a.id));
       });
 
       const latest = sorted[0];

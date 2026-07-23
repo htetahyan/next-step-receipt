@@ -197,9 +197,28 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         uaeServicesByPerson.get(key)!.push(srv);
       });
 
-      const getVisaSortDate = (s: any) => {
-        const d = s.details as any;
-        return d?.visa_expiry_date || d?.travel_date || d?.visa_issued_date || s.created_at || '';
+      const parseDateToTimestamp = (dateVal: any): number => {
+        if (!dateVal) return 0;
+        if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? 0 : dateVal.getTime();
+        const str = String(dateVal).trim();
+        if (!str) return 0;
+        if (/^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}/.test(str)) {
+          const parts = str.split(/[\/-]/);
+          const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+        }
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? 0 : d.getTime();
+      };
+
+      const getServiceLatestTimestamp = (s: any): number => {
+        const d = (s.details as any) || {};
+        return Math.max(
+          parseDateToTimestamp(s.created_at),
+          parseDateToTimestamp(d.travel_date),
+          parseDateToTimestamp(d.visa_expiry_date),
+          parseDateToTimestamp(d.visa_issued_date)
+        );
       };
 
       uaeServicesByPerson.forEach((personServices) => {
@@ -207,17 +226,35 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         if (activeServices.length === 0) return;
 
         const sorted = activeServices.sort((a, b) => {
-          const dateA = getVisaSortDate(a);
-          const dateB = getVisaSortDate(b);
-          return dateB.localeCompare(dateA);
+          const timeA = getServiceLatestTimestamp(a);
+          const timeB = getServiceLatestTimestamp(b);
+          if (timeA !== timeB) return timeB - timeA;
+          return String(b.created_at || b.id).localeCompare(String(a.created_at || a.id));
         });
 
         const latest = sorted[0];
-        const details = latest.details as any;
-        if (!details?.visa_expiry_date) return;
+        const details = (latest.details as any) || {};
+        
+        let expiryStr = details.visa_expiry_date;
+        if (!expiryStr && details.travel_date) {
+          const travelTs = parseDateToTimestamp(details.travel_date);
+          if (travelTs > 0) {
+            const durationDays = parseInt(String(details.visa_duration || '60'), 10) || 60;
+            const expDate = new Date(travelTs);
+            expDate.setDate(expDate.getDate() + durationDays);
+            const yyyy = expDate.getFullYear();
+            const mm = String(expDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(expDate.getDate()).padStart(2, '0');
+            expiryStr = `${yyyy}-${mm}-${dd}`;
+          }
+        }
+
+        if (!expiryStr) return;
 
         try {
-          const expDate = new Date(details.visa_expiry_date);
+          const expTs = parseDateToTimestamp(expiryStr);
+          if (expTs === 0) return;
+          const expDate = new Date(expTs);
           const daysLeft = differenceInDays(expDate, now);
           if (daysLeft >= 0 && daysLeft <= 10) {
             alerts.nearExpiry.push({
@@ -225,7 +262,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               refId: latest.reference_id,
               name: latest.customer?.name || 'Unknown',
               category: latest.category,
-              expiryDate: details.visa_expiry_date,
+              expiryDate: expiryStr,
               daysLeft
             });
           }
