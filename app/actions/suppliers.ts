@@ -1,18 +1,19 @@
 'use server';
 
-import { db } from '@/db';
-import { suppliers } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 // Fetch all suppliers
 export async function getSuppliers() {
   try {
-    const data = await db
-      .select()
-      .from(suppliers)
-      .orderBy(desc(suppliers.createdAt));
-    return { success: true, data };
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data: data || [] };
   } catch (err: any) {
     console.error('Failed to get suppliers:', err);
     return { success: false, error: err.message, data: [] };
@@ -28,16 +29,22 @@ export async function addSupplier(data: {
   services?: any[];
 }) {
   try {
-    const [newSupplier] = await db
-      .insert(suppliers)
-      .values({
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
+    const { data: newSupplier, error } = await supabase
+      .from('suppliers')
+      .insert({
         name: data.name,
-        contactPerson: data.contactPerson || null,
+        contact_person: data.contactPerson || null,
         phone: data.phone || null,
         email: data.email || null,
         services: data.services || [],
       })
-      .returning();
+      .select()
+      .single();
+
+    if (error) throw error;
 
     revalidatePath('/dashboard/suppliers');
     return { success: true, data: newSupplier };
@@ -59,17 +66,23 @@ export async function updateSupplier(
   }
 ) {
   try {
-    const [updated] = await db
-      .update(suppliers)
-      .set({
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
+    const { data: updated, error } = await supabase
+      .from('suppliers')
+      .update({
         name: data.name,
-        contactPerson: data.contactPerson || null,
+        contact_person: data.contactPerson || null,
         phone: data.phone || null,
         email: data.email || null,
         services: data.services || [],
       })
-      .where(eq(suppliers.id, id))
-      .returning();
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
 
     revalidatePath('/dashboard/suppliers');
     return { success: true, data: updated };
@@ -82,7 +95,12 @@ export async function updateSupplier(
 // Delete a supplier
 export async function deleteSupplier(id: string) {
   try {
-    await db.delete(suppliers).where(eq(suppliers.id, id));
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
+    const { error } = await supabase.from('suppliers').delete().eq('id', id);
+    if (error) throw error;
+
     revalidatePath('/dashboard/suppliers');
     return { success: true };
   } catch (err: any) {

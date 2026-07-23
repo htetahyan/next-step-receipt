@@ -18,19 +18,20 @@ import { uaeVisaSchema, airTicketSchema, otherVisaSchema } from '@/lib/validatio
 // ── Generate Reference ID ───────────────────────────────────
 export async function generateReferenceId(prefix: string): Promise<string> {
   try {
-    // Find the highest existing reference ID with this prefix
-    const result = await db
-      .select({ referenceId: customerServices.referenceId })
-      .from(customerServices)
-      .where(like(customerServices.referenceId, `${prefix}%`))
-      .orderBy(desc(customerServices.referenceId))
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('customer_services')
+      .select('reference_id')
+      .like('reference_id', `${prefix}%`)
+      .order('reference_id', { ascending: false })
       .limit(1);
 
-    if (result.length === 0 || !result[0].referenceId) {
+    if (error || !data || data.length === 0 || !data[0].reference_id) {
       return `${prefix}0001`;
     }
 
-    const lastNum = parseInt(result[0].referenceId.replace(prefix, ''), 10);
+    const lastNum = parseInt(data[0].reference_id.replace(prefix, ''), 10);
     const nextNum = (lastNum + 1).toString().padStart(4, '0');
     return `${prefix}${nextNum}`;
   } catch {
@@ -56,8 +57,6 @@ export async function addCustomerService(data: any) {
     const { customerId, referenceId, category, status, details, financials } = data;
 
     // 2. Validate input using Zod schemas based on category
-    // Depending on form input structure, isNewCustomer/newCustomer might not be present or validated if existing customer is selected.
-    // So we can perform a partial or conditional validation.
     const validationData = {
       customerId,
       isNewCustomer: false,
@@ -76,39 +75,53 @@ export async function addCustomerService(data: any) {
     }
 
     // Insert the service
-    const [service] = await db.insert(customerServices).values({
-      customerId,
-      referenceId: referenceId || null,
-      category,
-      status,
-      details,
-      financials,
-    }).returning();
+    const { data: service, error: insertErr } = await supabase
+      .from('customer_services')
+      .insert({
+        customer_id: customerId,
+        reference_id: referenceId || null,
+        category,
+        status,
+        details: details || {},
+        financials: financials || {},
+      })
+      .select()
+      .single();
+
+    if (insertErr || !service) {
+      throw new Error(insertErr?.message || 'Failed to insert customer service');
+    }
 
     // Auto-generate invoice if there is a positive amount
     const amount = financials?.amount || 0;
     if (amount > 0) {
-      // Add randomness to prevent collisions
       const randomSuffix = Math.floor(100 + Math.random() * 900); // 3-digit random
       const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}${randomSuffix}`;
-      const [newInvoice] = await db.insert(invoices).values({
-        customerId: customerId,
-        invoiceNumber: invoiceNumber,
-        date: new Date().toISOString().split('T')[0],
-        subtotal: amount.toString(),
-        vatAmount: '0',
-        totalAmount: amount.toString(),
-        paymentMethod: financials?.payment_method || 'cash',
-      }).returning();
+      
+      const { data: newInvoice, error: invErr } = await supabase
+        .from('invoices')
+        .insert({
+          customer_id: customerId,
+          invoice_number: invoiceNumber,
+          date: new Date().toISOString().split('T')[0],
+          subtotal: amount.toString(),
+          vat_amount: '0',
+          total_amount: amount.toString(),
+          payment_method: financials?.payment_method || 'cash',
+        })
+        .select()
+        .single();
 
-      if (newInvoice) {
-        await db.insert(invoiceItems).values({
-          invoiceId: newInvoice.id,
-          description: category || 'Service Fee',
-          quantity: '1',
-          rate: amount.toString(),
-          amount: amount.toString(),
-        });
+      if (newInvoice && !invErr) {
+        await supabase
+          .from('invoice_items')
+          .insert({
+            invoice_id: newInvoice.id,
+            description: category || 'Service Fee',
+            quantity: '1',
+            rate: amount.toString(),
+            amount: amount.toString(),
+          });
       }
     }
     return service;
@@ -150,8 +163,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
           .from('customers')
           .select('id')
           .eq('passport_no', passportNo)
-          .limit(1)
-          .single();
+          .maybeSingle();
         if (byPassport) {
           customerId = byPassport.id;
           matched = true;
@@ -163,8 +175,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
           .from('customers')
           .select('id')
           .eq('name', name)
-          .limit(1)
-          .single();
+          .maybeSingle();
         if (byName) {
           customerId = byName.id;
           matched = true;
@@ -222,8 +233,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
           .from('suppliers')
           .select('id')
           .eq('name', supplierName)
-          .limit(1)
-          .single();
+          .maybeSingle();
 
         if (!existingSupplier) {
           await supabase.from('suppliers').insert({
@@ -299,10 +309,8 @@ export async function bulkMigrateCustomerServices(records: any[]) {
   };
 }
 
-// ── Update Service ──────────────────────────────────────────
 export async function updateCustomerService(serviceId: string, data: any) {
   try {
-    // 1. Authenticate user
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -310,34 +318,19 @@ export async function updateCustomerService(serviceId: string, data: any) {
       return { success: false, error: 'Unauthorized' };
     }
 
-    // 2. Validate input using Zod schemas based on category
-    const validationData = {
-      customerId: data.customerId,
-      isNewCustomer: false,
-      status: data.status,
-      category: data.category,
-      details: data.details || {},
-      financials: data.financials || {},
-    };
-
-    if (data.category && (data.category.startsWith('Visa Extension') || data.category.includes('Visa'))) {
-      uaeVisaSchema.parse(validationData);
-    } else if (data.category === 'Air Ticket' || data.category === 'Flight Booking') {
-      airTicketSchema.parse(validationData);
-    } else {
-      otherVisaSchema.parse(validationData);
-    }
-
-    const [updated] = await db
-      .update(customerServices)
-      .set({
+    const { data: updated, error } = await supabase
+      .from('customer_services')
+      .update({
         category: data.category,
         status: data.status,
         details: data.details,
         financials: data.financials,
       })
-      .where(eq(customerServices.id, serviceId))
-      .returning();
+      .eq('id', serviceId)
+      .select()
+      .single();
+
+    if (error) throw error;
 
     revalidatePath('/dashboard/uae-visa');
     revalidatePath('/dashboard/air-tickets');
@@ -350,10 +343,13 @@ export async function updateCustomerService(serviceId: string, data: any) {
   }
 }
 
-// ── Delete Service ──────────────────────────────────────────
 export async function deleteCustomerService(serviceId: string) {
   try {
-    await db.delete(customerServices).where(eq(customerServices.id, serviceId));
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { error } = await supabase.from('customer_services').delete().eq('id', serviceId);
+    if (error) throw error;
+
     revalidatePath('/dashboard/uae-visa');
     revalidatePath('/dashboard/air-tickets');
     revalidatePath('/dashboard/other-visa');
@@ -366,21 +362,21 @@ export async function deleteCustomerService(serviceId: string) {
 // ── Fetch Services by Category Group ────────────────────────
 export async function fetchServicesByCategories(categories: readonly string[]) {
   try {
-    const result = await db
-      .select()
-      .from(customerServices)
-      .where(
-        sql`${customerServices.category} = ANY(${categories})`
-      )
-      .orderBy(desc(customerServices.createdAt));
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const { data: result, error } = await supabase
+      .from('customer_services')
+      .select('*')
+      .in('category', categories as string[])
+      .order('created_at', { ascending: false });
 
-    return { success: true, data: result };
+    if (error) throw error;
+    return { success: true, data: result || [] };
   } catch (err: any) {
     return { success: false, error: err.message, data: [] };
   }
 }
 
-// ── Quick Update Service Status/Details ─────────────────────
 export async function quickUpdateService(serviceId: string, payload: { status?: string; details?: any }) {
   try {
     const { createClient } = await import('@/utils/supabase/server');
@@ -388,13 +384,14 @@ export async function quickUpdateService(serviceId: string, payload: { status?: 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    const [existing] = await db
-      .select()
-      .from(customerServices)
-      .where(eq(customerServices.id, serviceId))
-      .limit(1);
+    // Get current details to merge
+    const { data: existing, error: fetchErr } = await supabase
+      .from('customer_services')
+      .select('details')
+      .eq('id', serviceId)
+      .single();
 
-    if (!existing) return { success: false, error: 'Service not found' };
+    if (fetchErr || !existing) return { success: false, error: 'Service not found' };
 
     const updateData: any = {};
     if (payload.status) updateData.status = payload.status;
@@ -405,11 +402,14 @@ export async function quickUpdateService(serviceId: string, payload: { status?: 
       };
     }
 
-    const [updated] = await db
-      .update(customerServices)
-      .set(updateData)
-      .where(eq(customerServices.id, serviceId))
-      .returning();
+    const { data: updated, error: updateErr } = await supabase
+      .from('customer_services')
+      .update(updateData)
+      .eq('id', serviceId)
+      .select()
+      .single();
+
+    if (updateErr) throw updateErr;
 
     revalidatePath('/dashboard/uae-visa');
     revalidatePath('/dashboard/customers');

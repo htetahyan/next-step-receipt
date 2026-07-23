@@ -1,8 +1,5 @@
 'use server'
 
-import { db } from '@/db'
-import { customerDocuments } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { deleteFromR2 } from './r2'
 
@@ -15,14 +12,21 @@ export async function addDocument(data: {
   tag?: string;
 }) {
   try {
-    await db.insert(customerDocuments).values({
-      customerId: data.customerId,
-      serviceId: data.serviceId || null,
-      title: data.title,
-      fileUrl: data.file_url,
-      fileKey: data.file_key,
-      tag: data.tag || 'General',
-    });
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
+    const { error } = await supabase
+      .from('customer_documents')
+      .insert({
+        customer_id: data.customerId,
+        service_id: data.serviceId || null,
+        title: data.title,
+        file_url: data.file_url,
+        file_key: data.file_key,
+        tag: data.tag || 'General',
+      });
+
+    if (error) throw error;
 
     revalidatePath('/dashboard/customers')
     if (data.serviceId) {
@@ -39,20 +43,23 @@ export async function addDocument(data: {
 
 export async function getDocuments(customerId: string, serviceId?: string) {
   try {
-    let query = db.select().from(customerDocuments).where(eq(customerDocuments.customerId, customerId));
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
+    let query = supabase
+      .from('customer_documents')
+      .select('*')
+      .eq('customer_id', customerId);
     
-    // If we pass serviceId = 'all', fetch everything for the customer.
-    // If we pass a specific serviceId, fetch only docs for that service.
-    // If we pass NO serviceId, we could fetch only general docs (serviceId is null), but usually we want all docs for the customer view.
     if (serviceId && serviceId !== 'all') {
-       query = db.select().from(customerDocuments).where(and(eq(customerDocuments.customerId, customerId), eq(customerDocuments.serviceId, serviceId)));
+      query = query.eq('service_id', serviceId);
     }
 
-    const data = await query;
-    // Sort descending by created_at
-    data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const { data, error } = await query.order('created_at', { ascending: false });
 
-    return { documents: data }
+    if (error) throw error;
+
+    return { documents: data || [] }
   } catch (error: any) {
     console.error('Fetch documents error:', error)
     return { error: error.message || 'Failed to fetch documents' }
@@ -61,11 +68,19 @@ export async function getDocuments(customerId: string, serviceId?: string) {
 
 export async function deleteDocument(id: string, fileKey: string) {
   try {
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
     // 1. Delete from R2 storage
     await deleteFromR2(fileKey);
 
     // 2. Delete from database
-    await db.delete(customerDocuments).where(eq(customerDocuments.id, id));
+    const { error } = await supabase
+      .from('customer_documents')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
 
     revalidatePath('/dashboard/customers')
     revalidatePath('/dashboard/uae-visa');

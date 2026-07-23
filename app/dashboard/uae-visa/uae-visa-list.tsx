@@ -248,9 +248,9 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
                     <div className="flex items-center gap-1">
                       <Link
                         href={`/dashboard/uae-visa/new?customerId=${cust?.id || ''}`}
-                        className="px-2 py-1 rounded bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-medium hover:opacity-80 transition-opacity flex items-center gap-1 text-[10px]"
+                        className="px-2.5 py-1 rounded-md bg-[#D97757] text-white hover:bg-[#c26243] font-semibold transition-colors flex items-center gap-1 text-[11px] shadow-xs"
                       >
-                        <PlusCircle className="w-3 h-3" /> Extend
+                        <PlusCircle className="w-3.5 h-3.5" /> Extend
                       </Link>
                     </div>
                   </div>
