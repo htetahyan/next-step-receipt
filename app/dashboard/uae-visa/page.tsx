@@ -4,22 +4,12 @@ import UAEVisaList from './uae-visa-list';
 export default async function UAEVisaPage() {
   const supabase = await createClient();
 
-  // Fetch all UAE visa services with their customer data
-  const uaeCategories = [
-    'UAE Visit Visa 30 Days',
-    'UAE Visit Visa 60 Days',
-    'UAE Transit Visa',
-    'UAE Multi Entry Visa',
-    'Visa Change by Bus',
-    'Visa Change by Air',
-    'Inside Visa Extension',
-    'Oman Visit Visa',
-    '30 Days Visa Extension',
-    // Legacy categories
-    'UAE Visit Visa',
-    'Visa Extension B2B',
-    'Visa Extension A2A',
-    'Inside Visa',
+  // Exclude non-UAE categories (air tickets and other country visas)
+  // This ensures all migrated UAE visa variants (e.g. "60 days visit visa", "Bus", "Inside", "A2A", etc.) are included
+  const nonUAECategories = [
+    'Air Ticket', 'Dummy Ticket', 'Ticket + Hotel Package', 'Flight Booking',
+    'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
+    'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only'
   ];
 
   let services: any[] = [];
@@ -27,7 +17,7 @@ export default async function UAEVisaPage() {
     const { data } = await supabase
       .from('customer_services')
       .select('*, customers!inner(id, name, phone, email, passport_no)')
-      .in('category', uaeCategories)
+      .not('category', 'in', `("${nonUAECategories.join('","')}")`)
       .order('created_at', { ascending: false });
 
     if (data) services = data;
@@ -49,3 +39,4 @@ export default async function UAEVisaPage() {
 
   return <UAEVisaList initialServices={services} customers={customers} />;
 }
+
