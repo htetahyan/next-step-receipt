@@ -117,161 +117,177 @@ export async function addCustomerService(data: any) {
 
 // ── Bulk Migrate Services ───────────────────────────────────
 export async function bulkMigrateCustomerServices(records: any[]) {
-  // Create a FRESH connection with prepare:false to avoid Supabase pooler issues
-  const postgres = (await import('postgres')).default;
-  const { drizzle } = await import('drizzle-orm/postgres-js');
-  const schema = await import('@/db/schema');
+  // Use Supabase REST client — same one that works for all page queries
+  // This avoids Drizzle's postgres wire protocol which fails with Supabase pooler
+  const { createClient } = await import('@/utils/supabase/server');
+  const supabase = await createClient();
 
-  const connectionString = process.env.DATABASE_URL || '';
-  const freshClient = postgres(connectionString, { max: 5, prepare: false });
-  const freshDb = drizzle(freshClient, { schema });
+  const results = [];
+  let matchedCount = 0;
+  let createdCount = 0;
+  let errorCount = 0;
 
-  try {
-    const results = [];
-    let matchedCount = 0;
-    let createdCount = 0;
-    let errorCount = 0;
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    try {
+      const { customer, service } = record;
+      const name = String(customer.name || '').trim();
+      if (!name) {
+        results.push({ success: false, message: `Row ${i + 1}: Skipped (No Customer Name found).` });
+        continue;
+      }
 
-    for (let i = 0; i < records.length; i++) {
-      const record = records[i];
-      try {
-        const { customer, service } = record;
-        const name = String(customer.name || '').trim();
-        if (!name) {
-          results.push({ success: false, message: `Row ${i + 1}: Skipped (No Customer Name found).` });
-          continue;
+      const passportNo = String(customer.passportNo || '').trim().replace(/\s+/g, '').toUpperCase();
+      const phone = String(customer.phone || '').trim();
+      const email = String(customer.email || '').trim();
+
+      // 1. Smart Deduplication: Check if customer already exists in DB
+      let customerId = '';
+      let matched = false;
+
+      if (passportNo) {
+        const { data: byPassport } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('passport_no', passportNo)
+          .limit(1)
+          .single();
+        if (byPassport) {
+          customerId = byPassport.id;
+          matched = true;
         }
+      }
 
-        const passportNo = String(customer.passportNo || '').trim().replace(/\s+/g, '').toUpperCase();
-        const phone = String(customer.phone || '').trim();
-        const email = String(customer.email || '').trim();
-
-        // 1. Smart Deduplication: Check if customer already exists in DB
-        let customerId = '';
-        let matched = false;
-
-        if (passportNo) {
-          const [byPassport] = await freshDb
-            .select()
-            .from(customers)
-            .where(eq(customers.passportNo, passportNo))
-            .limit(1);
-          if (byPassport) {
-            customerId = byPassport.id;
-            matched = true;
-          }
+      if (!customerId) {
+        const { data: byName } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('name', name)
+          .limit(1)
+          .single();
+        if (byName) {
+          customerId = byName.id;
+          matched = true;
         }
+      }
 
-        if (!customerId) {
-          const [byName] = await freshDb
-            .select()
-            .from(customers)
-            .where(eq(customers.name, name))
-            .limit(1);
-          if (byName) {
-            customerId = byName.id;
-            matched = true;
-          }
-        }
-
-        if (matched) {
-          matchedCount++;
-        } else {
-          // Create new customer
-          const [newCust] = await freshDb.insert(customers).values({
+      if (matched) {
+        matchedCount++;
+      } else {
+        // Create new customer
+        const { data: newCust, error: custErr } = await supabase
+          .from('customers')
+          .insert({
             name,
             phone: phone || null,
             email: email || null,
-            passportNo: passportNo || null,
+            passport_no: passportNo || null,
             metadata: customer.metadata || {},
-          }).returning();
-          customerId = newCust.id;
-          createdCount++;
+          })
+          .select('id')
+          .single();
+        if (custErr || !newCust) {
+          throw new Error(custErr?.message || 'Failed to create customer');
         }
+        customerId = newCust.id;
+        createdCount++;
+      }
 
-        // 2. Insert Service
-        let referenceId = service.referenceId || null;
-        if (!referenceId) {
-          const cat = String(service.category || '').toLowerCase();
-          const prefix = cat.includes('ticket') ? 'TK' : cat.includes('uae') ? 'AE' : 'OT';
-          referenceId = await generateReferenceId(prefix);
-        }
+      // 2. Insert Service
+      let referenceId = service.referenceId || null;
+      if (!referenceId) {
+        const cat = String(service.category || '').toLowerCase();
+        const prefix = cat.includes('ticket') ? 'TK' : cat.includes('uae') ? 'AE' : 'OT';
+        referenceId = await generateReferenceId(prefix);
+      }
 
-        const [insertedService] = await freshDb.insert(customerServices).values({
-          customerId,
-          referenceId,
+      const { error: svcErr } = await supabase
+        .from('customer_services')
+        .insert({
+          customer_id: customerId,
+          reference_id: referenceId,
           category: service.category,
           status: service.status || 'Open',
           details: service.details || {},
           financials: service.financials || {},
-        }).returning();
-
-        // 2b. Auto-create Supplier if mentioned and missing
-        const supplierName = String(service.details?.visa_supplier || '').trim();
-        if (supplierName && supplierName !== '-' && supplierName.toLowerCase() !== 'null') {
-          const [existingSupplier] = await freshDb
-            .select()
-            .from(suppliers)
-            .where(eq(suppliers.name, supplierName))
-            .limit(1);
-
-          if (!existingSupplier) {
-            await freshDb.insert(suppliers).values({
-              name: supplierName,
-              services: [{
-                serviceName: service.category || 'UAE Visit Visa 30 Days',
-                defaultCost: service.financials?.supplier_cost || 0,
-                defaultPrice: service.financials?.amount || 0
-              }]
-            });
-          }
-        }
-
-        // 3. Auto-generate invoice if positive amount
-        const amount = service.financials?.amount || 0;
-        if (amount > 0) {
-          const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
-          const [newInvoice] = await freshDb.insert(invoices).values({
-            customerId: customerId,
-            invoiceNumber: invoiceNumber,
-            date: new Date().toISOString().split('T')[0],
-            subtotal: amount.toString(),
-            vatAmount: '0',
-            totalAmount: amount.toString(),
-            paymentMethod: service.financials?.payment_method || 'cash',
-          }).returning();
-
-          if (newInvoice) {
-            await freshDb.insert(invoiceItems).values({
-              invoiceId: newInvoice.id,
-              description: service.category || 'Service Fee',
-              quantity: '1',
-              rate: amount.toString(),
-              amount: amount.toString(),
-            });
-          }
-        }
-
-        results.push({
-          success: true,
-          message: `Row ${i + 1}: ${matched ? 'Matched' : 'Created'} customer "${name}", migrated service ${service.referenceId || ''}`,
         });
-
-      } catch (err: any) {
-        errorCount++;
-        results.push({
-          success: false,
-          message: `Row ${i + 1}: Error - ${err.message}`,
-        });
+      if (svcErr) {
+        throw new Error(svcErr.message);
       }
+
+      // 2b. Auto-create Supplier if mentioned and missing
+      const supplierName = String(service.details?.visa_supplier || '').trim();
+      if (supplierName && supplierName !== '-' && supplierName.toLowerCase() !== 'null') {
+        const { data: existingSupplier } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('name', supplierName)
+          .limit(1)
+          .single();
+
+        if (!existingSupplier) {
+          await supabase.from('suppliers').insert({
+            name: supplierName,
+            services: [{
+              serviceName: service.category || 'UAE Visit Visa 30 Days',
+              defaultCost: service.financials?.supplier_cost || 0,
+              defaultPrice: service.financials?.amount || 0
+            }]
+          });
+        }
+      }
+
+      // 3. Auto-generate invoice if positive amount
+      const amount = service.financials?.amount || 0;
+      if (amount > 0) {
+        const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+        const { data: newInvoice } = await supabase
+          .from('invoices')
+          .insert({
+            customer_id: customerId,
+            invoice_number: invoiceNumber,
+            date: new Date().toISOString().split('T')[0],
+            subtotal: amount,
+            vat_amount: 0,
+            total_amount: amount,
+            payment_method: service.financials?.payment_method || 'cash',
+          })
+          .select('id')
+          .single();
+
+        if (newInvoice) {
+          await supabase.from('invoice_items').insert({
+            invoice_id: newInvoice.id,
+            description: service.category || 'Service Fee',
+            quantity: 1,
+            rate: amount,
+            amount: amount,
+          });
+        }
+      }
+
+      results.push({
+        success: true,
+        message: `Row ${i + 1}: ${matched ? 'Matched' : 'Created'} customer "${name}", migrated service ${service.referenceId || ''}`,
+      });
+
+    } catch (err: any) {
+      errorCount++;
+      results.push({
+        success: false,
+        message: `Row ${i + 1}: Error - ${err.message}`,
+      });
     }
+  }
 
-    revalidatePath('/dashboard/customers');
-    revalidatePath('/dashboard/uae-visa');
-    revalidatePath('/dashboard/air-tickets');
-    revalidatePath('/dashboard/other-visa');
+  revalidatePath('/dashboard/customers');
+  revalidatePath('/dashboard/uae-visa');
+  revalidatePath('/dashboard/air-tickets');
+  revalidatePath('/dashboard/other-visa');
 
-    return {
+  return {
+    success: true,
+    data: {
       success: true,
       results,
       summary: {
@@ -279,11 +295,8 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         createdCount,
         errorCount,
       }
-    };
-  } finally {
-    // Always close the fresh connection when done
-    await freshClient.end();
-  }
+    }
+  };
 }
 
 // ── Update Service ──────────────────────────────────────────
