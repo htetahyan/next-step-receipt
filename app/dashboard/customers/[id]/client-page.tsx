@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import NewServiceDialog from '@/components/NewServiceDialog';
 import DocumentModal from '@/components/DocumentModal';
+import CustomerDocumentsSection from '@/components/CustomerDocumentsSection';
 
 export default function CustomerHubClient({ customer, services, pastInvoices, documents }: {
   customer: any;
@@ -180,39 +181,10 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
           </div>
 
           {/* Documents Section */}
-          <div className="card-anthropic p-8">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-[var(--card-border)]">
-              <h3 className="text-lg font-serif">Documents</h3>
-              <button
-                onClick={() => setIsDocsModalOpen(true)}
-                className="text-sm font-medium text-[#D97757] hover:underline flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                Manage Documents
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {documents.length === 0 ? (
-                <div className="col-span-2 text-sm opacity-50 pb-4">No documents found.</div>
-              ) : (
-                documents.slice(0, 4).map(doc => (
-                  <a 
-                    key={doc.id} 
-                    href={doc.fileUrl} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg bg-[var(--anthropic-surface)] border border-[var(--card-border)] hover:bg-[var(--card-border)] transition-colors group"
-                  >
-                    <FileText className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">{doc.title}</div>
-                      <div className="text-[10px] opacity-40 uppercase tracking-tighter">{doc.tag}</div>
-                    </div>
-                  </a>
-                ))
-              )}
-            </div>
-          </div>
+          <CustomerDocumentsSection
+            documents={documents}
+            onOpenModal={() => setIsDocsModalOpen(true)}
+          />
         </div>
       </div>
 

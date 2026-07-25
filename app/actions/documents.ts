@@ -1,7 +1,15 @@
-'use server'
+'use server';
 
-import { revalidatePath } from 'next/cache'
-import { deleteFromR2 } from './r2'
+import { revalidatePath } from 'next/cache';
+import { deleteFromR2 } from './r2';
+
+function safeRevalidate(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    // Ignore revalidation error outside request scope
+  }
+}
 
 export async function addDocument(data: {
   customerId: string;
@@ -28,16 +36,16 @@ export async function addDocument(data: {
 
     if (error) throw error;
 
-    revalidatePath('/dashboard/customers')
+    safeRevalidate('/dashboard/customers');
     if (data.serviceId) {
-      revalidatePath('/dashboard/uae-visa');
-      revalidatePath('/dashboard/air-tickets');
-      revalidatePath('/dashboard/other-visa');
+      safeRevalidate('/dashboard/uae-visa');
+      safeRevalidate('/dashboard/air-tickets');
+      safeRevalidate('/dashboard/other-visa');
     }
-    return { success: true }
+    return { success: true };
   } catch (error: any) {
-    console.error('Add document error:', error)
-    return { error: error.message || 'Failed to add document' }
+    console.error('Add document error:', error);
+    return { error: error.message || 'Failed to add document' };
   }
 }
 
@@ -59,10 +67,10 @@ export async function getDocuments(customerId: string, serviceId?: string) {
 
     if (error) throw error;
 
-    return { documents: data || [] }
+    return { documents: data || [] };
   } catch (error: any) {
-    console.error('Fetch documents error:', error)
-    return { error: error.message || 'Failed to fetch documents' }
+    console.error('Fetch documents error:', error);
+    return { error: error.message || 'Failed to fetch documents' };
   }
 }
 
@@ -71,8 +79,10 @@ export async function deleteDocument(id: string, fileKey: string) {
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
-    // 1. Delete from R2 storage
-    await deleteFromR2(fileKey);
+    // 1. Delete from R2 storage if key exists
+    if (fileKey) {
+      await deleteFromR2(fileKey);
+    }
 
     // 2. Delete from database
     const { error } = await supabase
@@ -82,13 +92,13 @@ export async function deleteDocument(id: string, fileKey: string) {
 
     if (error) throw error;
 
-    revalidatePath('/dashboard/customers')
-    revalidatePath('/dashboard/uae-visa');
-    revalidatePath('/dashboard/air-tickets');
-    revalidatePath('/dashboard/other-visa');
-    return { success: true }
+    safeRevalidate('/dashboard/customers');
+    safeRevalidate('/dashboard/uae-visa');
+    safeRevalidate('/dashboard/air-tickets');
+    safeRevalidate('/dashboard/other-visa');
+    return { success: true };
   } catch (error: any) {
-    console.error('Delete document error:', error)
-    return { error: error.message || 'Failed to delete document' }
+    console.error('Delete document error:', error);
+    return { error: error.message || 'Failed to delete document' };
   }
 }
