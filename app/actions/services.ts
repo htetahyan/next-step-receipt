@@ -377,24 +377,39 @@ export async function fetchServicesByCategories(categories: readonly string[]) {
   }
 }
 
-export async function quickUpdateService(serviceId: string, payload: { status?: string; details?: any }) {
+export async function quickUpdateService(
+  serviceId: string,
+  payload: {
+    status?: string;
+    category?: string;
+    details?: any;
+    financials?: any;
+    customer?: {
+      name?: string;
+      phone?: string;
+      passport_no?: string;
+    };
+  }
+) {
   try {
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    // Get current details to merge
+    // Get current record to merge details and financials
     const { data: existing, error: fetchErr } = await supabase
       .from('customer_services')
-      .select('details')
+      .select('id, customer_id, category, status, details, financials')
       .eq('id', serviceId)
       .single();
 
-    if (fetchErr || !existing) return { success: false, error: 'Service not found' };
+    if (fetchErr || !existing) return { success: false, error: 'Service record not found' };
 
     const updateData: any = {};
     if (payload.status) updateData.status = payload.status;
+    if (payload.category) updateData.category = payload.category;
+
     if (payload.details) {
       updateData.details = {
         ...(existing.details as any || {}),
@@ -402,21 +417,52 @@ export async function quickUpdateService(serviceId: string, payload: { status?: 
       };
     }
 
+    if (payload.financials) {
+      updateData.financials = {
+        ...(existing.financials as any || {}),
+        ...payload.financials,
+      };
+    }
+
+    // Update service
     const { data: updated, error: updateErr } = await supabase
       .from('customer_services')
       .update(updateData)
       .eq('id', serviceId)
-      .select()
+      .select('*, customers(id, name, phone, email, passport_no)')
       .single();
 
     if (updateErr) throw updateErr;
 
+    // Update customer info if provided
+    if (payload.customer && existing.customer_id) {
+      const custData: any = {};
+      if (payload.customer.name !== undefined) custData.name = payload.customer.name;
+      if (payload.customer.phone !== undefined) custData.phone = payload.customer.phone;
+      if (payload.customer.passport_no !== undefined) custData.passport_no = payload.customer.passport_no;
+
+      if (Object.keys(custData).length > 0) {
+        const { data: updatedCust } = await supabase
+          .from('customers')
+          .update(custData)
+          .eq('id', existing.customer_id)
+          .select('id, name, phone, email, passport_no')
+          .single();
+
+        if (updatedCust && updated) {
+          updated.customers = updatedCust;
+        }
+      }
+    }
+
     revalidatePath('/dashboard/uae-visa');
     revalidatePath('/dashboard/customers');
+    revalidatePath('/dashboard/air-tickets');
+    revalidatePath('/dashboard/other-visa');
     return { success: true, service: updated };
   } catch (err: any) {
     console.error('Failed to quick update service:', err);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || 'Database update error' };
   }
 }
 

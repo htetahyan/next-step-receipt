@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy } from 'lucide-react';
+import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy, LayoutGrid, List, Layers, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService, quickUpdateService } from '@/app/actions/services';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,8 @@ import * as XLSX from 'xlsx';
 
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
+import OdooQuickEditDrawer from '@/components/OdooQuickEditDrawer';
+import OdooKanbanView from '@/components/OdooKanbanView';
 
 interface Props {
   initialServices: any[];
@@ -30,6 +32,12 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  // Odoo Specific View Modes & Quick Edit Drawer State
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [groupBy, setGroupBy] = useState<'none' | 'status' | 'supplier' | 'category'>('none');
+  const [selectedService, setSelectedService] = useState<any | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Extract unique suppliers from data
   const suppliers = useMemo(() => {
@@ -680,17 +688,18 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
         </div>
       )}
 
-      {/* Search & Filters */}
-      <div className="card-anthropic p-4">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+      {/* Odoo Control Panel & Search Bar */}
+      <div className="card-anthropic p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
+          {/* Search Box */}
+          <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, passport, phone, ref ID, supplier..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
+              className="w-full pl-10 pr-10 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80">
@@ -698,26 +707,58 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
               </button>
             )}
           </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-              showFilters || statusFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || expiryFilter !== 'all'
-                ? 'border-[#D97757] text-[#D97757] bg-[#D97757]/5'
-                : 'border-[var(--card-border)] hover:bg-[var(--sidebar-bg)]'
-            }`}
-          >
-            <Filter className="w-4 h-4" />
-            Filters
-            {(statusFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || expiryFilter !== 'all') && (
-              <span className="w-2 h-2 rounded-full bg-[#D97757]" />
-            )}
-          </button>
+
+          {/* Odoo View Mode Toggles & Action Controls */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {/* View Mode Switcher */}
+            <div className="inline-flex p-1 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-[var(--card-bg)] text-[#D97757] shadow-xs'
+                    : 'opacity-65 hover:opacity-100'
+                }`}
+                title="List / Tree View"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span>List</span>
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  viewMode === 'kanban'
+                    ? 'bg-[#D97757] text-white shadow-xs'
+                    : 'opacity-65 hover:opacity-100'
+                }`}
+                title="Kanban Pipeline View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Kanban</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                showFilters || statusFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || expiryFilter !== 'all'
+                  ? 'border-[#D97757] text-[#D97757] bg-[#D97757]/5'
+                  : 'border-[var(--card-border)] hover:bg-[var(--sidebar-bg)]'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              Filters
+              {(statusFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || expiryFilter !== 'all') && (
+                <span className="w-2 h-2 rounded-full bg-[#D97757]" />
+              )}
+            </button>
+          </div>
         </div>
 
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-[var(--card-border)]">
             <div>
-              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold">Status Header</label>
+              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold">Status</label>
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
@@ -733,7 +774,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold font-sans">Expiry Period Header</label>
+              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold">Expiry Period</label>
               <select
                 value={expiryFilter}
                 onChange={e => setExpiryFilter(e.target.value as any)}
@@ -748,7 +789,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold font-sans">Supplier Header</label>
+              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold">Supplier</label>
               <select
                 value={supplierFilter}
                 onChange={e => setSupplierFilter(e.target.value)}
@@ -760,7 +801,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold font-sans">Category Header</label>
+              <label className="text-xs uppercase tracking-wider opacity-60 mb-1 block font-semibold">Category</label>
               <select
                 value={categoryFilter}
                 onChange={e => setCategoryFilter(e.target.value)}
@@ -788,217 +829,275 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
         )}
       </div>
 
-      {/* Table */}
-      <div className="card-anthropic overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-[10px] uppercase tracking-wider opacity-70">
-              <tr>
-                <th className="px-4 py-3 font-medium">Ref ID</th>
-                <th className="px-4 py-3 font-medium">Customer / Phone</th>
-                <th className="px-4 py-3 font-medium">Mode / Category</th>
-                <th className="px-4 py-3 font-medium">Supplier</th>
-                <th className="px-4 py-3 font-medium">Duration</th>
-                <th className="px-4 py-3 font-medium">Visa Expiry</th>
-                <th className="px-4 py-3 font-medium text-right">Amount</th>
-                <th className="px-4 py-3 font-medium text-right">Receiving</th>
-                <th className="px-4 py-3 font-medium text-right">Supplier Cost</th>
-                <th className="px-4 py-3 font-medium">Payment</th>
-                <th className="px-4 py-3 font-medium">Status Header</th>
-                <th className="px-4 py-3 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--card-border)]">
-              {paginatedItems.map(service => {
-                const customer = service.customers;
-                const details = service.details as any;
-                const fin = service.financials as any;
-                const { expiryStr, isExpiringThisMonth, isExpiringNextMonth, isExpired, daysRemaining } = getExpiryInfo(service);
-                const phoneNum = customer?.phone || details?.phone;
+      {/* Main Content Area: Kanban View vs. List View */}
+      {viewMode === 'kanban' ? (
+        <OdooKanbanView
+          services={filtered}
+          onSelectService={s => {
+            setSelectedService(s);
+            setIsDrawerOpen(true);
+          }}
+          onQuickStatusChange={async (id, nextStatus) => {
+            setServices(prev => prev.map(s => s.id === id ? { ...s, status: nextStatus } : s));
+            toast.loading(`Updating status to ${nextStatus}...`, { id: 'kanban-status' });
+            const res = await quickUpdateService(id, { status: nextStatus });
+            if (res.success && res.service) {
+              setServices(prev => prev.map(s => s.id === id ? res.service : s));
+              toast.success(`Updated status to ${nextStatus}!`, { id: 'kanban-status' });
+            } else {
+              toast.error(res.error || 'Failed to update status', { id: 'kanban-status' });
+            }
+          }}
+          getExpiryInfo={getExpiryInfo}
+        />
+      ) : (
+        /* List / Tree View */
+        <div className="card-anthropic overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-[10px] uppercase tracking-wider opacity-70">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Ref ID</th>
+                  <th className="px-4 py-3 font-medium">Customer / Phone</th>
+                  <th className="px-4 py-3 font-medium">Mode / Category</th>
+                  <th className="px-4 py-3 font-medium">Supplier</th>
+                  <th className="px-4 py-3 font-medium">Duration</th>
+                  <th className="px-4 py-3 font-medium">Visa Expiry</th>
+                  <th className="px-4 py-3 font-medium text-right">Amount</th>
+                  <th className="px-4 py-3 font-medium text-right">Receiving</th>
+                  <th className="px-4 py-3 font-medium text-right">Supplier Cost</th>
+                  <th className="px-4 py-3 font-medium">Payment</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--card-border)]">
+                {paginatedItems.map(service => {
+                  const customer = service.customers;
+                  const details = service.details as any;
+                  const fin = service.financials as any;
+                  const { expiryStr, isExpiringThisMonth, isExpiringNextMonth, isExpired, daysRemaining } = getExpiryInfo(service);
+                  const phoneNum = customer?.phone || details?.phone;
 
-                return (
-                  <tr key={service.id} className={`hover:bg-[var(--sidebar-bg)] transition-colors group ${
-                    isExpiringThisMonth 
-                      ? (daysRemaining !== null && daysRemaining <= 7 ? 'bg-red-500/5 hover:bg-red-500/10' : 'bg-amber-500/5 hover:bg-amber-500/10') 
-                      : isExpiringNextMonth
-                      ? 'bg-blue-500/5 hover:bg-blue-500/10'
-                      : ''
-                  }`}>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-[#D97757] font-semibold">{service.reference_id || '—'}</span>
-                    </td>
-                    
-                    {/* Customer & Phone Details */}
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium text-sm text-slate-900 dark:text-slate-100">{customer?.name || details?.customer_name || '—'}</div>
-                        <div className="text-[11px] opacity-70 font-mono flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span>Pass: {customer?.passport_no || details?.passport_no || '—'}</span>
-                          {phoneNum && (
-                            <>
-                              <span className="opacity-30">•</span>
-                              <span className="text-[#D97757] font-sans font-semibold flex items-center gap-0.5">
-                                <Phone className="w-2.5 h-2.5" />
-                                {phoneNum}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3 text-xs">{service.category}</td>
-                    <td className="px-4 py-3 text-xs">{details?.visa_supplier || '—'}</td>
-                    <td className="px-4 py-3 text-xs">{details?.visa_duration || '—'}</td>
-                    
-                    {/* Expiry Column */}
-                    <td className="px-4 py-3 text-xs">
-                      {expiryStr ? (
-                        <div className="flex flex-col gap-0.5">
-                          <div className={`font-mono text-xs font-semibold ${
-                            isExpired
-                              ? 'text-red-600 dark:text-red-400'
-                              : isExpiringThisMonth 
-                              ? 'text-amber-600 dark:text-amber-500' 
-                              : isExpiringNextMonth
-                              ? 'text-blue-600 dark:text-blue-400'
-                              : ''
-                          }`}>
-                            {expiryStr}
+                  return (
+                    <tr
+                      key={service.id}
+                      onClick={() => {
+                        setSelectedService(service);
+                        setIsDrawerOpen(true);
+                      }}
+                      className={`hover:bg-[var(--sidebar-bg)] cursor-pointer transition-colors group ${
+                        isExpiringThisMonth 
+                          ? (daysRemaining !== null && daysRemaining <= 7 ? 'bg-red-500/5 hover:bg-red-500/10' : 'bg-amber-500/5 hover:bg-amber-500/10') 
+                          : isExpiringNextMonth
+                          ? 'bg-blue-500/5 hover:bg-blue-500/10'
+                          : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-xs text-[#D97757] font-bold hover:underline">
+                          {service.reference_id || '—'}
+                        </span>
+                      </td>
+                      
+                      {/* Customer & Phone Details */}
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-[#D97757] transition-colors">
+                            {customer?.name || details?.customer_name || '—'}
                           </div>
-                          {(isExpiringThisMonth || isExpiringNextMonth || isExpired) && (
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider font-mono w-max ${
-                              isExpired
-                                ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 animate-pulse'
-                                : isExpiringThisMonth 
-                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300' 
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300'
-                            }`}>
-                              {isExpired
-                                ? 'Expired'
-                                : isExpiringThisMonth
-                                ? `This Month (${daysRemaining}d)`
-                                : `Next Month (${daysRemaining}d)`}
-                            </span>
-                          )}
+                          <div className="text-[11px] opacity-70 font-mono flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span>Pass: {customer?.passport_no || details?.passport_no || '—'}</span>
+                            {phoneNum && (
+                              <>
+                                <span className="opacity-30">•</span>
+                                <span className="text-[#D97757] font-sans font-semibold flex items-center gap-0.5">
+                                  <Phone className="w-2.5 h-2.5" />
+                                  {phoneNum}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      ) : (
-                        <span className="opacity-40">—</span>
-                      )}
-                    </td>
+                      </td>
 
-                    <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.amount || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.receiving_amount || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.supplier_cost || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs">{fin?.payment_method || details?.payment_method || '—'}</td>
-                    
-                    <td className="px-4 py-3">
-                      <select
-                        value={service.status}
-                        onChange={async (e) => {
-                          const nextStatus = e.target.value;
-                          const res = await quickUpdateService(service.id, { status: nextStatus });
-                          if (res.success) {
-                            setServices(prev => prev.map(s => s.id === service.id ? { ...s, status: nextStatus } : s));
-                            toast.success('Status updated successfully!');
-                          } else {
-                            toast.error(res.error || 'Failed to update status');
-                          }
-                        }}
-                        className={`inline-block px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wider border border-transparent hover:border-[var(--card-border)] bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#D97757]/40 ${STATUS_COLORS[service.status] || 'bg-gray-100 text-gray-600'}`}
-                      >
-                        <option value="Open">Open</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Closed">Closed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="Refund Pending">Refund Pending</option>
-                      </select>
-                    </td>
-                    
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {/* Extend Quick Action */}
-                        <Link
-                          href={`/dashboard/uae-visa/new?customerId=${service.customer_id}`}
-                          className="p-1.5 rounded hover:bg-[var(--card-border)] text-blue-600 hover:text-blue-700 transition-colors"
-                          title="Extend Visa"
-                        >
-                          <PlusCircle className="w-3.5 h-3.5" />
-                        </Link>
-
-                        {/* Clear Quick Action */}
-                        {service.status !== 'Closed' && service.status !== 'Cancelled' && (
-                          <button
-                            onClick={async () => {
-                              if (confirm('Clear/Close this active visa record?')) {
-                                const res = await quickUpdateService(service.id, { status: 'Closed' });
-                                if (res.success) {
-                                  setServices(prev => prev.map(s => s.id === service.id ? { ...s, status: 'Closed' } : s));
-                                  toast.success('Visa record cleared/closed!');
-                                } else {
-                                  toast.error(res.error || 'Failed to clear visa');
-                                }
-                              }
-                            }}
-                            className="p-1.5 rounded hover:bg-[var(--card-border)] text-green-600 hover:text-green-700 transition-colors"
-                            title="Clear/Close Visa"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                          </button>
+                      <td className="px-4 py-3 text-xs font-medium">{service.category}</td>
+                      <td className="px-4 py-3 text-xs">{details?.visa_supplier || '—'}</td>
+                      <td className="px-4 py-3 text-xs">{details?.visa_duration || '—'}</td>
+                      
+                      {/* Expiry Column */}
+                      <td className="px-4 py-3 text-xs">
+                        {expiryStr ? (
+                          <div className="flex flex-col gap-0.5">
+                            <div className={`font-mono text-xs font-semibold ${
+                              isExpired
+                                ? 'text-red-600 dark:text-red-400'
+                                : isExpiringThisMonth 
+                                ? 'text-amber-600 dark:text-amber-500' 
+                                : isExpiringNextMonth
+                                ? 'text-blue-600 dark:text-blue-400'
+                                : ''
+                            }`}>
+                              {expiryStr}
+                            </div>
+                            {(isExpiringThisMonth || isExpiringNextMonth || isExpired) && (
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider font-mono w-max ${
+                                isExpired
+                                  ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 animate-pulse'
+                                  : isExpiringThisMonth 
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300' 
+                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300'
+                              }`}>
+                                {isExpired
+                                  ? 'Expired'
+                                  : isExpiringThisMonth
+                                  ? `This Month (${daysRemaining}d)`
+                                  : `Next Month (${daysRemaining}d)`}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="opacity-40">—</span>
                         )}
+                      </td>
 
-                        <Link
-                          href={`/dashboard/uae-visa/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`}
-                          className="p-1.5 rounded hover:bg-[var(--card-border)] transition-colors"
-                          title="Duplicate"
+                      <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.amount || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-blue-600">{Number(fin?.receiving_amount || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-right font-mono text-xs text-amber-600">{Number(fin?.supplier_cost || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-xs capitalize">{fin?.payment_method || details?.payment_method || '—'}</td>
+                      
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        <select
+                          value={service.status}
+                          onChange={async (e) => {
+                            const nextStatus = e.target.value;
+                            setServices(prev => prev.map(s => s.id === service.id ? { ...s, status: nextStatus } : s));
+                            const res = await quickUpdateService(service.id, { status: nextStatus });
+                            if (res.success && res.service) {
+                              setServices(prev => prev.map(s => s.id === service.id ? res.service : s));
+                              toast.success('Status updated successfully!');
+                            } else {
+                              toast.error(res.error || 'Failed to update status');
+                            }
+                          }}
+                          className={`inline-block px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wider border border-transparent hover:border-[var(--card-border)] bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#D97757]/40 ${STATUS_COLORS[service.status] || 'bg-gray-100 text-gray-600'}`}
                         >
-                          <Copy className="w-3.5 h-3.5" />
+                          <option value="Open">Open</option>
+                          <option value="In Progress">In Progress</option>
+                          <option value="Closed">Closed</option>
+                          <option value="Cancelled">Cancelled</option>
+                          <option value="Refund Pending">Refund Pending</option>
+                        </select>
+                      </td>
+                      
+                      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Quick Edit Drawer Trigger */}
+                          <button
+                            onClick={() => {
+                              setSelectedService(service);
+                              setIsDrawerOpen(true);
+                            }}
+                            className="p-1.5 rounded hover:bg-[var(--card-border)] text-[#D97757] transition-colors"
+                            title="Quick Edit Drawer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Extend Quick Action */}
+                          <Link
+                            href={`/dashboard/uae-visa/new?customerId=${service.customer_id}`}
+                            className="p-1.5 rounded hover:bg-[var(--card-border)] text-blue-600 hover:text-blue-700 transition-colors"
+                            title="Extend Visa"
+                          >
+                            <PlusCircle className="w-3.5 h-3.5" />
+                          </Link>
+
+                          {/* Clear Quick Action */}
+                          {service.status !== 'Closed' && service.status !== 'Cancelled' && (
+                            <button
+                              onClick={async () => {
+                                if (confirm('Clear/Close this active visa record?')) {
+                                  setServices(prev => prev.map(s => s.id === service.id ? { ...s, status: 'Closed' } : s));
+                                  const res = await quickUpdateService(service.id, { status: 'Closed' });
+                                  if (res.success) {
+                                    toast.success('Visa record cleared/closed!');
+                                  } else {
+                                    toast.error(res.error || 'Failed to clear visa');
+                                  }
+                                }
+                              }}
+                              className="p-1.5 rounded hover:bg-[var(--card-border)] text-green-600 hover:text-green-700 transition-colors"
+                              title="Clear/Close Visa"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          <Link
+                            href={`/dashboard/uae-visa/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`}
+                            className="p-1.5 rounded hover:bg-[var(--card-border)] transition-colors"
+                            title="Duplicate"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </Link>
+
+                          <button
+                            onClick={() => handleDelete(service.id)}
+                            disabled={deletingId === service.id}
+                            className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 transition-colors"
+                            title="Delete"
+                          >
+                            {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {paginatedItems.length === 0 && (
+                  <tr>
+                    <td colSpan={12} className="px-4 py-16 text-center">
+                      <div className="inline-flex flex-col items-center gap-3">
+                        <Shield className="w-10 h-10 opacity-20" />
+                        <p className="opacity-50 font-serif">No visa records found.</p>
+                        <Link href="/dashboard/uae-visa/new" className="text-[#D97757] text-sm font-medium hover:underline">
+                          Add your first record
                         </Link>
-                        <Link
-                          href={`/dashboard/uae-visa/${service.id}`}
-                          className="p-1.5 rounded hover:bg-[var(--card-border)] transition-colors"
-                          title="View / Edit"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(service.id)}
-                          disabled={deletingId === service.id}
-                          className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 transition-colors"
-                          title="Delete"
-                        >
-                          {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
                       </div>
                     </td>
                   </tr>
-                );
-              })}
-              {paginatedItems.length === 0 && (
-                <tr>
-                  <td colSpan={12} className="px-4 py-16 text-center">
-                    <div className="inline-flex flex-col items-center gap-3">
-                      <Shield className="w-10 h-10 opacity-20" />
-                      <p className="opacity-50 font-serif">No visa records found.</p>
-                      <Link href="/dashboard/uae-visa/new" className="text-[#D97757] text-sm font-medium hover:underline">
-                        Add your first record
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filtered.length}
-          itemsPerPage={itemsPerPage}
-          onPageChange={setCurrentPage}
-        />
-      </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filtered.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
+
+      {/* Odoo Quick Edit Side Drawer */}
+      <OdooQuickEditDrawer
+        service={selectedService}
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        onUpdate={updatedService => {
+          setServices(prev => prev.map(s => s.id === updatedService.id ? updatedService : s));
+          setSelectedService(updatedService);
+        }}
+        onDelete={serviceId => {
+          setServices(prev => prev.filter(s => s.id !== serviceId));
+          setIsDrawerOpen(false);
+        }}
+        suppliersList={suppliers}
+        categoriesList={categories}
+      />
     </div>
   );
 }

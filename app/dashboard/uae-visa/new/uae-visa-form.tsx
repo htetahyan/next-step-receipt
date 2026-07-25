@@ -19,11 +19,12 @@ import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 interface Props {
   customers: any[];
+  suppliers?: any[];
   initialData?: any;
   duplicateData?: any;
 }
 
-export default function UAEVisaForm({ customers, initialData, duplicateData }: Props) {
+export default function UAEVisaForm({ customers, suppliers = [], initialData, duplicateData }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
