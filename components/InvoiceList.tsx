@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { FileText, Search, Trash2, Loader2, Eye, X } from 'lucide-react'
 import Link from 'next/link'
 import { deleteInvoice } from '@/app/actions/invoices'
+import { toast } from 'sonner'
 import Pagination from './Pagination'
 
 export default function InvoiceList({ initialInvoices }: { initialInvoices: any[] }) {
@@ -18,7 +19,7 @@ export default function InvoiceList({ initialInvoices }: { initialInvoices: any[
     setIsDeleting(id)
     const res = await deleteInvoice(id)
     if (res.error) {
-       alert(res.error)
+       toast.error(res.error)
     } else {
        setInvoices(invoices.filter(i => i.id !== id))
     }

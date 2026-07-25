@@ -5,7 +5,7 @@ import { getSuppliers, addSupplier, updateSupplier, deleteSupplier } from '@/app
 import { toast } from 'sonner';
 import { 
   Plus, Edit2, Trash2, Mail, Phone, User, Briefcase, 
-  DollarSign, Tag, Check, X, Search, Loader2, ArrowLeft 
+  DollarSign, Tag, Check, X, Search, Loader2 
 } from 'lucide-react';
 import Link from 'next/link';
 import Pagination from '@/components/Pagination';
@@ -219,12 +219,9 @@ export default function SuppliersPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--card-border)] pb-6">
         <div>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="p-2 hover:bg-[var(--card-border)] rounded-full transition-colors text-[var(--foreground)] opacity-60 hover:opacity-100">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
             <h1 className="text-3xl font-serif text-[var(--foreground)]">Suppliers & rates</h1>
           </div>
-          <p className="text-sm opacity-60 mt-1.5 ml-10">Manage external suppliers, default services, and prefilled costs/prices</p>
+          <p className="text-sm opacity-60 mt-1.5 ml-1">Manage external suppliers, default services, and prefilled costs/prices</p>
         </div>
 
         <button 

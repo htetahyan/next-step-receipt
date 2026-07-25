@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useMemo, useEffect } from 'react'
+import { toast } from 'sonner'
 import { Plus, User, Mail, Phone, Calendar, MoreHorizontal, Edit2, Trash2, Loader2, X, FileText, ArrowRight, Scan, UploadCloud, CheckCircle2, Search } from 'lucide-react'
 import { updateCustomer, deleteCustomer, addCustomer } from '@/app/actions/customers'
 import { addDocument } from '@/app/actions/documents'
@@ -54,7 +55,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
         if (data.expiry_date) (form.elements.namedItem('expiry_date') as HTMLInputElement).value = data.expiry_date;
       }
     } catch (err: any) {
-      alert(`Failed to scan passport: ${err.message}`);
+      toast.error(`Failed to scan passport: ${err.message}`);
     } finally {
       setIsScanning(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -78,7 +79,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
     setIsDeleting(id)
     const res = await deleteCustomer(id)
     if (res.error) {
-      alert(res.error)
+      toast.error(res.error)
     } else {
       setCustomers(customers.filter(c => c.id !== id))
     }
@@ -104,7 +105,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
     if (currentCustomer) {
       const res = await updateCustomer(customerId, formData)
       if (res.error) {
-        alert(res.error)
+        toast.error(res.error)
         setIsSaving(false)
         return
       }
@@ -117,7 +118,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: a
     } else {
       const res = await addCustomer(formData)
       if (res.error || !res.data) {
-        alert(res.error || "Failed to add customer")
+        toast.error(res.error || "Failed to add customer")
         setIsSaving(false)
         return
       }

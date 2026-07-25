@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useActionState, useEffect, useState } from 'react'
-import { Save, Loader2, CheckCircle2 } from 'lucide-react'
+import { Save, Loader2, CheckCircle2, Settings } from 'lucide-react'
 import { updateSettings, getSettings, type SettingsState } from '@/app/actions/settings'
 
 export default function SettingsPage() {
@@ -21,7 +21,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-700" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#D97757]" />
       </div>
     )
   }
@@ -30,7 +30,7 @@ export default function SettingsPage() {
     <form action={action} className="space-y-6 max-w-4xl pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Settings</h1>
+          <h1 className="text-3xl font-serif font-normal tracking-tight flex items-center gap-3"><Settings className="w-8 h-8 text-[#D97757]" /> Settings</h1>
           <p className="text-slate-500 dark:text-slate-400">Manage your business details and invoice defaults.</p>
         </div>
         {state?.message && (
@@ -41,7 +41,7 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-sm dark:border-[#1e293b] dark:bg-[#0f172a] overflow-hidden">
+      <div className="rounded-xl card-anthropic overflow-hidden">
          <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
             <h3 className="text-base font-semibold leading-6 text-slate-900 dark:text-white">Business Details</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">These details will be used on your generated invoices.</p>
@@ -55,7 +55,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="company_name"
                   defaultValue={initialData?.company_name || "NextStep Travel & Tourism FZC LLC"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#D97757] sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -67,7 +67,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="company_address"
                   defaultValue={initialData?.company_address || "Office No 4B, 3rd Floor IBIS Hotel Business Center, Al Rigga, Deira Dubai, United Arab Emirates"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#D97757] sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -75,7 +75,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-       <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-sm dark:border-[#1e293b] dark:bg-[#0f172a] overflow-hidden">
+       <div className="rounded-xl card-anthropic overflow-hidden">
          <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
             <h3 className="text-base font-semibold leading-6 text-slate-900 dark:text-white">Default Payment/Bank configuration</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Your bank details for customers to pay via transfer.</p>
@@ -89,7 +89,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_name"
                   defaultValue={initialData?.bank_name || "Mashreq Bank"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#D97757] sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -101,7 +101,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_branch"
                   defaultValue={initialData?.bank_branch || "Deira, Dubai"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#D97757] sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_iban"
                   defaultValue={initialData?.bank_iban || "AE300330000019101789314"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#D97757] sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -125,7 +125,7 @@ export default function SettingsPage() {
                   type="text" 
                   name="bank_account_no"
                   defaultValue={initialData?.bank_account_no || "019101789314"} 
-                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-emerald-700 sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
+                  className="block w-full rounded-lg border-0 py-2.5 px-3 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#D97757] sm:text-sm sm:leading-6 dark:bg-slate-800 dark:ring-slate-700 dark:text-white transition-all" 
                 />
               </div>
             </div>
@@ -135,7 +135,7 @@ export default function SettingsPage() {
              <button 
                type="submit" 
                disabled={pending}
-               className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-600 disabled:opacity-50"
+               className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] hover:opacity-90 text-[#F5F4EF] px-4 py-2.5 text-sm font-semibold shadow-sm transition-all disabled:opacity-50"
              >
                 {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Settings

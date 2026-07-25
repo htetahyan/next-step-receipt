@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { getSettings } from '@/app/actions/settings';
 import CustomerAutocomplete from '@/components/CustomerAutocomplete';
+import { toast } from 'sonner';
 
 export default function NewInvoicePage() {
   const invoiceRef = useRef<HTMLDivElement>(null);
@@ -136,7 +137,7 @@ export default function NewInvoicePage() {
       pdf.save(`${sanitizedNo}.pdf`);
     } catch (e) {
       console.error(e);
-      alert('Error generating PDF');
+      toast.error('Error generating PDF');
     } finally {
       setIsGenerating(false);
     }
@@ -162,7 +163,7 @@ export default function NewInvoicePage() {
       link.click();
     } catch (e) {
       console.error(e);
-      alert('Error generating Image');
+      toast.error('Error generating Image');
     } finally {
       setIsGenerating(false);
     }
@@ -221,11 +222,11 @@ export default function NewInvoicePage() {
 
        if (itemsError) throw itemsError;
 
-       alert('Invoice saved successfully!');
+       toast.success('Invoice saved successfully!');
        router.push('/dashboard/invoices');
     } catch (e: any) {
        console.error(e);
-       alert(e.message || 'Error saving invoice');
+       toast.error(e.message || 'Error saving invoice');
     } finally {
        setIsSaving(false);
     }

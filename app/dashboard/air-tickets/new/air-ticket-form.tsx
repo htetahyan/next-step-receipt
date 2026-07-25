@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Plane, Save, Loader2, FileText } from 'lucide-react';
@@ -19,11 +19,15 @@ import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 interface Props {
   customers: any[];
+  suppliers?: any[];
   initialData?: any;
+  duplicateData?: any;
 }
 
-export default function AirTicketForm({ customers, initialData }: Props) {
+export default function AirTicketForm({ customers, suppliers = [], initialData, duplicateData }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedCustomerId = searchParams.get('customerId') || '';
   const [saving, setSaving] = useState(false);
   const [refId, setRefId] = useState(initialData?.reference_id || '');
   const [showDocs, setShowDocs] = useState(false);
@@ -35,27 +39,27 @@ export default function AirTicketForm({ customers, initialData }: Props) {
   const methods = useForm<AirTicketFormValues>({
     resolver: zodResolver(airTicketSchema) as any,
     defaultValues: {
-      customerId: initialData?.customer_id || '',
+      customerId: initialData?.customer_id || duplicateData?.customer_id || preselectedCustomerId || '',
       isNewCustomer: false,
       status: initialData?.status || 'Open',
-      category: initialData?.category || 'One Way',
+      category: initialData?.category || duplicateData?.category || 'One Way',
       details: {
         travel_date: initialData?.details?.travel_date || '',
         return_date: initialData?.details?.return_date || '',
-        airline: initialData?.details?.airline || '',
-        pnr: initialData?.details?.pnr || '',
-        ticket_no: initialData?.details?.ticket_no || '',
-        sector: initialData?.details?.sector || '',
-        referred_by: initialData?.details?.referred_by || '',
-        comments: initialData?.details?.comments || '',
-        remark: initialData?.details?.remark || '',
+        airline: initialData?.details?.airline || duplicateData?.details?.airline || '',
+        pnr: initialData?.details?.pnr || duplicateData?.details?.pnr || '',
+        ticket_no: initialData?.details?.ticket_no || duplicateData?.details?.ticket_no || '',
+        sector: initialData?.details?.sector || duplicateData?.details?.sector || '',
+        referred_by: initialData?.details?.referred_by || duplicateData?.details?.referred_by || '',
+        comments: initialData?.details?.comments || duplicateData?.details?.comments || '',
+        remark: initialData?.details?.remark || duplicateData?.details?.remark || '',
       },
       financials: {
-        amount: initialData?.financials?.amount || 0,
-        discount: initialData?.financials?.discount || 0,
-        supplier_cost: initialData?.financials?.supplier_cost || 0,
+        amount: initialData?.financials?.amount || duplicateData?.financials?.amount || 0,
+        discount: initialData?.financials?.discount || duplicateData?.financials?.discount || 0,
+        supplier_cost: initialData?.financials?.supplier_cost || duplicateData?.financials?.supplier_cost || 0,
         refund: initialData?.financials?.refund || 0,
-        payment_method: initialData?.financials?.payment_method || 'Bank Transfer',
+        payment_method: initialData?.financials?.payment_method || duplicateData?.financials?.payment_method || 'Bank Transfer',
       }
     }
   });
@@ -117,6 +121,34 @@ export default function AirTicketForm({ customers, initialData }: Props) {
   };
 
   const tripType = methods.watch('category');
+  const airlineWatch = methods.watch('details.airline');
+
+  useEffect(() => {
+    if (!initialData && airlineWatch && tripType && suppliers.length > 0) {
+      const supplier = suppliers.find(s => s.name === airlineWatch);
+      if (supplier && Array.isArray(supplier.services)) {
+        const service = supplier.services.find((s: any) => s.name === tripType);
+        if (service) {
+          const currentCost = Number(methods.getValues('financials.supplier_cost')) || 0;
+          const currentAmount = Number(methods.getValues('financials.amount')) || 0;
+          
+          let updated = false;
+          if (currentCost === 0 && service.defaultCost) {
+            methods.setValue('financials.supplier_cost', service.defaultCost, { shouldDirty: true });
+            updated = true;
+          }
+          if (currentAmount === 0 && service.defaultPrice) {
+            methods.setValue('financials.amount', service.defaultPrice, { shouldDirty: true });
+            updated = true;
+          }
+          
+          if (updated) {
+            toast.info(`Rates auto-filled from ${airlineWatch}`);
+          }
+        }
+      }
+    }
+  }, [airlineWatch, tripType, suppliers, initialData, methods]);
 
   return (
     <div className="max-w-3xl mx-auto pb-24">
@@ -153,7 +185,7 @@ export default function AirTicketForm({ customers, initialData }: Props) {
             <CustomerSelector 
               customers={customers} 
               readOnly={!!initialData} 
-              defaultCustomerName={initialData?.customers?.name} 
+              defaultCustomerName={initialData?.customers?.name || customers.find(c => c.id === methods.watch('customerId'))?.name} 
             />
           </div>
 

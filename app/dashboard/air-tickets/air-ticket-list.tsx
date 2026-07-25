@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Plane, X, Eye, Trash2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Search, Plus, Plane, X, Eye, Trash2, Loader2, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService } from '@/app/actions/services';
 
@@ -56,8 +57,12 @@ export default function AirTicketList({ initialServices, customers }: { initialS
     if (!confirm('Delete this ticket record?')) return;
     setDeletingId(id);
     const res = await deleteCustomerService(id);
-    if (res.success) setServices(services.filter(s => s.id !== id));
-    else alert(res.error);
+    if (res.success) {
+      setServices(services.filter(s => s.id !== id));
+      toast.success("Deleted successfully");
+    } else {
+      toast.error(res.error);
+    }
     setDeletingId(null);
   };
 
@@ -167,6 +172,7 @@ export default function AirTicketList({ initialServices, customers }: { initialS
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Link href={`/dashboard/air-tickets/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`} className="p-1.5 rounded hover:bg-[var(--card-border)]" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Link>
                         <Link href={`/dashboard/air-tickets/${service.id}`} className="p-1.5 rounded hover:bg-[var(--card-border)]" title="View"><Eye className="w-3.5 h-3.5" /></Link>
                         <button onClick={() => handleDelete(service.id)} disabled={deletingId === service.id} className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500" title="Delete">
                           {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}

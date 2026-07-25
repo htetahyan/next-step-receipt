@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService, quickUpdateService } from '@/app/actions/services';
 import { useRouter } from 'next/navigation';
@@ -947,6 +947,13 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
                           </button>
                         )}
 
+                        <Link
+                          href={`/dashboard/uae-visa/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`}
+                          className="p-1.5 rounded hover:bg-[var(--card-border)] transition-colors"
+                          title="Duplicate"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Link>
                         <Link
                           href={`/dashboard/uae-visa/${service.id}`}
                           className="p-1.5 rounded hover:bg-[var(--card-border)] transition-colors"

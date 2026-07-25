@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Globe, Save, Loader2, FileText } from 'lucide-react';
@@ -20,10 +20,13 @@ import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 interface Props {
   customers: any[];
   initialData?: any;
+  duplicateData?: any;
 }
 
-export default function OtherVisaForm({ customers, initialData }: Props) {
+export default function OtherVisaForm({ customers, initialData, duplicateData }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedCustomerId = searchParams.get('customerId') || '';
   const [saving, setSaving] = useState(false);
   const [refId, setRefId] = useState(initialData?.reference_id || '');
   const [showDocs, setShowDocs] = useState(false);
@@ -35,24 +38,24 @@ export default function OtherVisaForm({ customers, initialData }: Props) {
   const methods = useForm<OtherVisaFormValues>({
     resolver: zodResolver(otherVisaSchema) as any,
     defaultValues: {
-      customerId: initialData?.customer_id || '',
+      customerId: initialData?.customer_id || duplicateData?.customer_id || preselectedCustomerId || '',
       isNewCustomer: false,
       status: initialData?.status || 'Open',
-      category: initialData?.category || '',
+      category: initialData?.category || duplicateData?.category || '',
       details: {
         travel_date: initialData?.details?.travel_date || '',
-        visa_type: initialData?.details?.visa_type || 'Tourist',
+        visa_type: initialData?.details?.visa_type || duplicateData?.details?.visa_type || 'Tourist',
         appointment_date: initialData?.details?.appointment_date || '',
-        referred_by: initialData?.details?.referred_by || '',
-        comments: initialData?.details?.comments || '',
-        remark: initialData?.details?.remark || '',
+        referred_by: initialData?.details?.referred_by || duplicateData?.details?.referred_by || '',
+        comments: initialData?.details?.comments || duplicateData?.details?.comments || '',
+        remark: initialData?.details?.remark || duplicateData?.details?.remark || '',
       },
       financials: {
-        amount: initialData?.financials?.amount || 0,
-        discount: initialData?.financials?.discount || 0,
-        supplier_cost: initialData?.financials?.supplier_cost || 0,
+        amount: initialData?.financials?.amount || duplicateData?.financials?.amount || 0,
+        discount: initialData?.financials?.discount || duplicateData?.financials?.discount || 0,
+        supplier_cost: initialData?.financials?.supplier_cost || duplicateData?.financials?.supplier_cost || 0,
         refund: initialData?.financials?.refund || 0,
-        payment_method: initialData?.financials?.payment_method || 'Bank Transfer',
+        payment_method: initialData?.financials?.payment_method || duplicateData?.financials?.payment_method || 'Bank Transfer',
       }
     }
   });
@@ -148,7 +151,7 @@ export default function OtherVisaForm({ customers, initialData }: Props) {
             <CustomerSelector 
               customers={customers} 
               readOnly={!!initialData} 
-              defaultCustomerName={initialData?.customers?.name} 
+              defaultCustomerName={initialData?.customers?.name || customers.find(c => c.id === methods.watch('customerId'))?.name} 
             />
           </div>
 

@@ -20,9 +20,10 @@ import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 interface Props {
   customers: any[];
   initialData?: any;
+  duplicateData?: any;
 }
 
-export default function UAEVisaForm({ customers, initialData }: Props) {
+export default function UAEVisaForm({ customers, initialData, duplicateData }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
@@ -38,33 +39,61 @@ export default function UAEVisaForm({ customers, initialData }: Props) {
   const methods = useForm<UAEVisaFormValues>({
     resolver: zodResolver(uaeVisaSchema) as any,
     defaultValues: {
-      customerId: initialData?.customer_id || preselectedCustomerId || '',
+      customerId: initialData?.customer_id || duplicateData?.customer_id || preselectedCustomerId || '',
       isNewCustomer: false,
       status: initialData?.status || 'Open',
-      category: initialData?.category || UAE_VISA_CATEGORIES[1], // 60 days
+      category: initialData?.category || duplicateData?.category || UAE_VISA_CATEGORIES[1], // 60 days
       details: {
         visa_issued_date: initialData?.details?.visa_issued_date || '',
         travel_date: initialData?.details?.travel_date || '',
         visa_expiry_date: initialData?.details?.visa_expiry_date || '',
-        visa_supplier: initialData?.details?.visa_supplier || 'DAHR',
-        visa_duration: initialData?.details?.visa_duration || '60 Days',
-        payment_method: initialData?.details?.payment_method || 'Bank Transfer',
-        referred_by: initialData?.details?.referred_by || '',
-        comments: initialData?.details?.comments || '',
-        remark: initialData?.details?.remark || '',
+        visa_supplier: initialData?.details?.visa_supplier || duplicateData?.details?.visa_supplier || 'DAHR',
+        visa_duration: initialData?.details?.visa_duration || duplicateData?.details?.visa_duration || '60 Days',
+        payment_method: initialData?.details?.payment_method || duplicateData?.details?.payment_method || 'Bank Transfer',
+        referred_by: initialData?.details?.referred_by || duplicateData?.details?.referred_by || '',
+        comments: initialData?.details?.comments || duplicateData?.details?.comments || '',
+        remark: initialData?.details?.remark || duplicateData?.details?.remark || '',
       },
       financials: {
-        amount: initialData?.financials?.amount || 0,
-        discount: initialData?.financials?.discount || 0,
-        supplier_cost: initialData?.financials?.supplier_cost || 0,
+        amount: initialData?.financials?.amount || duplicateData?.financials?.amount || 0,
+        discount: initialData?.financials?.discount || duplicateData?.financials?.discount || 0,
+        supplier_cost: initialData?.financials?.supplier_cost || duplicateData?.financials?.supplier_cost || 0,
         refund: initialData?.financials?.refund || 0,
-        payment_method: initialData?.financials?.payment_method || 'Bank Transfer',
+        payment_method: initialData?.financials?.payment_method || duplicateData?.financials?.payment_method || 'Bank Transfer',
       }
     }
   });
 
   const categoryWatch = methods.watch('category');
   const travelDateWatch = methods.watch('details.travel_date');
+  const supplierWatch = methods.watch('details.visa_supplier');
+
+  useEffect(() => {
+    if (!initialData && supplierWatch && categoryWatch && suppliers.length > 0) {
+      const supplier = suppliers.find(s => s.name === supplierWatch);
+      if (supplier && Array.isArray(supplier.services)) {
+        const service = supplier.services.find((s: any) => s.name === categoryWatch);
+        if (service) {
+          const currentCost = Number(methods.getValues('financials.supplier_cost')) || 0;
+          const currentAmount = Number(methods.getValues('financials.amount')) || 0;
+          
+          let updated = false;
+          if (currentCost === 0 && service.defaultCost) {
+            methods.setValue('financials.supplier_cost', service.defaultCost, { shouldDirty: true });
+            updated = true;
+          }
+          if (currentAmount === 0 && service.defaultPrice) {
+            methods.setValue('financials.amount', service.defaultPrice, { shouldDirty: true });
+            updated = true;
+          }
+          
+          if (updated) {
+            toast.info(`Rates auto-filled from ${supplierWatch}`);
+          }
+        }
+      }
+    }
+  }, [supplierWatch, categoryWatch, suppliers, initialData, methods]);
 
   useEffect(() => {
     if ((categoryWatch === 'Visa Change by Bus' || categoryWatch === 'Visa Change by Air') && travelDateWatch) {

@@ -2,6 +2,7 @@
 
 import React, { useRef } from 'react'
 import { Printer, Download, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import InvoiceTemplate, { InvoiceData } from '@/components/InvoiceTemplate'
 
 export default function InvoiceActions({ data }: { data: InvoiceData }) {
@@ -42,7 +43,7 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
       pdf.save(`${sanitizedInvoiceNo}.pdf`);
     } catch (e: any) {
       console.error('PDF Generation Error:', e);
-      alert(`Error generating PDF: ${e.message || 'Please try again'}`);
+      toast.error(`Error generating PDF: ${e.message || 'Please try again'}`);
     } finally {
       setIsGenerating(false);
     }

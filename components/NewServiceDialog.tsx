@@ -8,6 +8,7 @@ import { addDocument } from '@/app/actions/documents';
 import { createClient } from '@/utils/supabase/client';
 import { getSuppliers } from '@/app/actions/suppliers';
 import { Loader2, UploadCloud, File, X, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 const CATEGORIES = [
   'Passport Renew',
@@ -176,11 +177,11 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
         onClose();
         router.refresh(); // Refresh the page to show the new service
       } else {
-        alert(res.error);
+        toast.error(res.error);
         setLoading(false);
       }
     } catch (err: any) {
-      alert("Error: " + err.message);
+      toast.error("Error: " + err.message);
       setLoading(false);
     }
   }

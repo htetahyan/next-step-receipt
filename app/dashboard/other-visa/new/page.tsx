@@ -1,7 +1,9 @@
 import { createClient } from '@/utils/supabase/server';
 import OtherVisaForm from './other-visa-form';
 
-export default async function NewOtherVisaPage() {
+export default async function NewOtherVisaPage(props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const searchParams = await props.searchParams;
+  const duplicateId = searchParams?.duplicate as string | undefined;
   const supabase = await createClient();
 
   let customers: any[] = [];
@@ -15,5 +17,19 @@ export default async function NewOtherVisaPage() {
     console.error('Failed to fetch customers:', e);
   }
 
-  return <OtherVisaForm customers={customers} />;
+  let duplicateData = null;
+  if (duplicateId) {
+    try {
+      const { data } = await supabase
+        .from('customer_services')
+        .select('*, customers(*)')
+        .eq('id', duplicateId)
+        .single();
+      if (data) duplicateData = data;
+    } catch (e) {
+      console.error('Failed to fetch duplicate service:', e);
+    }
+  }
+
+  return <OtherVisaForm customers={customers} duplicateData={duplicateData} />;
 }

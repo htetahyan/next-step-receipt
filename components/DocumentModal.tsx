@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { X, FileText, Loader2, Trash2, Download, ExternalLink, Plus, UploadCloud } from 'lucide-react'
 import { getDocuments, addDocument, deleteDocument } from '@/app/actions/documents'
 import { getPresignedUrl } from '@/app/actions/r2'
+import { toast } from 'sonner'
 
 interface DocumentModalProps {
   isOpen: boolean;
@@ -45,7 +46,7 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
     if (!res.error) {
       setDocuments(docs => docs.filter(d => d.id !== id))
     } else {
-      alert(res.error)
+      toast.error(res.error)
     }
     setIsDeleting(null)
   }
@@ -119,14 +120,15 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
                               if (!r.error) {
                                 setTitle('');
                                 fetchDocuments();
+                                toast.success("Document uploaded successfully");
                               } else {
-                                alert(r.error);
+                                toast.error(r.error);
                               }
                             } else {
-                              alert("Failed to upload to R2");
+                              toast.error("Failed to upload to R2");
                             }
                           } else {
-                            alert("Failed to get presigned URL");
+                            toast.error("Failed to get presigned URL");
                           }
                           setIsUploading(false);
                           // Reset input

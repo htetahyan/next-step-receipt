@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { addCustomerService } from '@/app/actions/services';
 import { uploadFiles } from '@/utils/uploadthing';
 import { Loader2, UploadCloud, File, X, Plane, Building, Stamp } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { SERVICE_CATEGORIES } from '@/lib/service-constants';
 
@@ -107,11 +108,11 @@ export default function NewServiceForm() {
       if (res.success) {
         router.push(`/dashboard/customers/${customerId}`);
       } else {
-        alert(res.error);
+        toast.error(res.error);
         setLoading(false);
       }
     } catch (err: any) {
-      alert("Error: " + err.message);
+      toast.error("Error: " + err.message);
       setLoading(false);
     }
   }

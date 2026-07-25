@@ -1,19 +1,43 @@
 import { createClient } from '@/utils/supabase/server';
 import AirTicketForm from './air-ticket-form';
 
-export default async function NewAirTicketPage() {
+export default async function NewAirTicketPage(props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const searchParams = await props.searchParams;
+  const duplicateId = searchParams?.duplicate as string | undefined;
   const supabase = await createClient();
 
   let customers: any[] = [];
+  let suppliers: any[] = [];
+
   try {
-    const { data } = await supabase
+    const { data: customerData } = await supabase
       .from('customers')
       .select('id, name, phone, passport_no, email')
       .order('name', { ascending: true });
-    if (data) customers = data;
+    if (customerData) customers = customerData;
+
+    const { data: supplierData } = await supabase
+      .from('suppliers')
+      .select('id, name, services')
+      .order('name', { ascending: true });
+    if (supplierData) suppliers = supplierData;
   } catch (e) {
-    console.error('Failed to fetch customers:', e);
+    console.error('Failed to fetch data:', e);
   }
 
-  return <AirTicketForm customers={customers} />;
+  let duplicateData = null;
+  if (duplicateId) {
+    try {
+      const { data } = await supabase
+        .from('customer_services')
+        .select('*, customers(*)')
+        .eq('id', duplicateId)
+        .single();
+      if (data) duplicateData = data;
+    } catch (e) {
+      console.error('Failed to fetch duplicate service:', e);
+    }
+  }
+
+  return <AirTicketForm customers={customers} suppliers={suppliers} duplicateData={duplicateData} />;
 }
