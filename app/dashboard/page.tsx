@@ -79,7 +79,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       let filteredServices = (range === 'all' 
         ? allServices 
         : allServices.filter((srv: any) => {
-            const date = parseISO(srv.created_at);
+            // Use travel_date for filtering, fall back to created_at
+            const details = (srv.details as any) || {};
+            const dateStr = details.travel_date || srv.created_at;
+            const date = parseISO(dateStr);
+            if (isNaN(date.getTime())) return true; // keep records with unparseable dates
             const isAfterStart = isAfter(date, startDate) || format(date, 'yyyy-MM-dd') === format(startDate, 'yyyy-MM-dd');
             const isBeforeEnd = endDate ? (isBefore(date, endDate) || format(date, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')) : true;
             return isAfterStart && isBeforeEnd;
@@ -280,15 +284,24 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         recentInvoices: filteredInvoices.slice(0, 10)
       };
 
-      // ── TIMELINE GRAPH AGGREGATION ───────────────────────────────
+      // Helper: get the effective date for a service (travel_date or created_at)
+      const getServiceDate = (srv: any): string => {
+        const details = (srv.details as any) || {};
+        const travelDate = details.travel_date;
+        if (travelDate) {
+          try { return format(parseISO(travelDate), 'yyyy-MM-dd'); } catch { /* fall through */ }
+        }
+        return format(parseISO(srv.created_at), 'yyyy-MM-dd');
+      };
+
       const intervalDays = eachDayOfInterval({
-        start: range === 'all' ? (filteredServices.length ? parseISO(filteredServices[filteredServices.length-1].created_at) : subDays(now, 7)) : startDate,
+        start: range === 'all' ? (filteredServices.length ? parseISO(getServiceDate(filteredServices[filteredServices.length-1])) : subDays(now, 7)) : startDate,
         end: now
       });
 
       const salesMap: Record<string, number> = {};
       filteredServices.forEach(srv => {
-        const d = format(parseISO(srv.created_at), 'yyyy-MM-dd');
+        const d = getServiceDate(srv);
         salesMap[d] = (salesMap[d] || 0) + Number((srv.financials as any)?.amount || 0);
       });
 
