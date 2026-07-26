@@ -12,12 +12,18 @@ export default function DashboardFilters() {
   const currentCategory = searchParams.get('category') || 'all'
   const currentStatus = searchParams.get('status') || 'all'
 
+  const currentFrom = searchParams.get('from') || ''
+  const currentTo = searchParams.get('to') || ''
+
   const ranges = [
     { label: 'Today', value: 'today' },
     { label: 'Last 7 Days', value: '7d' },
     { label: 'Last 30 Days', value: '30d' },
+    { label: 'This Month', value: 'this-month' },
     { label: 'Last 90 Days', value: '90d' },
+    { label: 'This Year', value: 'this-year' },
     { label: 'All Time', value: 'all' },
+    { label: 'Custom Range', value: 'custom' },
   ]
 
   const categories = [
@@ -43,6 +49,20 @@ export default function DashboardFilters() {
     } else {
       params.set(key, value)
     }
+    // Clean up from/to if not custom
+    if (key === 'range' && value !== 'custom') {
+      params.delete('from')
+      params.delete('to')
+    }
+    router.push(`?${params.toString()}`)
+  }
+
+  const handleDateChange = (type: 'from' | 'to', value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set(type, value)
+    if (!params.has('range') || params.get('range') !== 'custom') {
+      params.set('range', 'custom')
+    }
     router.push(`?${params.toString()}`)
   }
 
@@ -64,6 +84,24 @@ export default function DashboardFilters() {
           <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-[#D97757] pointer-events-none" />
         </div>
       </div>
+
+      {currentRange === 'custom' && (
+        <div className="flex items-center gap-2 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 flex-1 sm:flex-none">
+           <input 
+             type="date" 
+             value={currentFrom} 
+             onChange={(e) => handleDateChange('from', e.target.value)}
+             className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none w-full"
+           />
+           <span className="text-slate-400">-</span>
+           <input 
+             type="date" 
+             value={currentTo} 
+             onChange={(e) => handleDateChange('to', e.target.value)}
+             className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none w-full"
+           />
+        </div>
+      )}
 
       {/* Category Filter */}
       <div className="flex items-center gap-3 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 flex-1 sm:flex-none">

@@ -234,8 +234,10 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
     let totalAmount = 0, totalReceiving = 0, totalSupplierCost = 0, totalProfit = 0;
     filtered.forEach(s => {
       const fin = s.financials as any;
-      totalAmount += Number(fin?.amount) || 0;
-      totalReceiving += Number(fin?.receiving_amount) || 0;
+      const amt = Number(fin?.amount) || 0;
+      const recAmt = Number(fin?.receiving_amount !== undefined ? fin?.receiving_amount : (amt - Number(fin?.discount || 0)));
+      totalAmount += amt;
+      totalReceiving += recAmt;
       totalSupplierCost += Number(fin?.supplier_cost) || 0;
     });
     totalProfit = totalReceiving - totalSupplierCost;
