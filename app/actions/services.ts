@@ -41,13 +41,29 @@ export async function generateReferenceId(prefix: string): Promise<string> {
   }
 }
 
+function parseDateToISO(dateVal: any): string | null {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal.toISOString();
+  const str = String(dateVal).trim();
+  if (!str) return null;
+  if (/^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}/.test(str)) {
+    const parts = str.split(/[\/-]/);
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 import { safeAction } from '@/lib/safeAction';
 
 // ── Add Service ─────────────────────────────────────────────
 export async function addCustomerService(data: any) {
   return safeAction(async (data: any) => {
     // 1. Authenticate user
-    const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -74,17 +90,23 @@ export async function addCustomerService(data: any) {
       otherVisaSchema.parse(validationData);
     }
 
+    const effectiveDateISO = parseDateToISO(details?.travel_date || details?.visa_issued_date);
+    const serviceInsertPayload: any = {
+      customer_id: customerId,
+      reference_id: referenceId || null,
+      category,
+      status,
+      details: details || {},
+      financials: financials || {},
+    };
+    if (effectiveDateISO) {
+      serviceInsertPayload.created_at = effectiveDateISO;
+    }
+
     // Insert the service
     const { data: service, error: insertErr } = await supabase
       .from('customer_services')
-      .insert({
-        customer_id: customerId,
-        reference_id: referenceId || null,
-        category,
-        status,
-        details: details || {},
-        financials: financials || {},
-      })
+      .insert(serviceInsertPayload)
       .select()
       .single();
 
@@ -98,17 +120,22 @@ export async function addCustomerService(data: any) {
       const randomSuffix = Math.floor(100 + Math.random() * 900); // 3-digit random
       const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}${randomSuffix}`;
       
+      const invoiceInsertPayload: any = {
+        customer_id: customerId,
+        invoice_number: invoiceNumber,
+        date: effectiveDateISO ? effectiveDateISO.split('T')[0] : new Date().toISOString().split('T')[0],
+        subtotal: amount.toString(),
+        vat_amount: '0',
+        total_amount: amount.toString(),
+        payment_method: financials?.payment_method || 'cash',
+      };
+      if (effectiveDateISO) {
+        invoiceInsertPayload.created_at = effectiveDateISO;
+      }
+
       const { data: newInvoice, error: invErr } = await supabase
         .from('invoices')
-        .insert({
-          customer_id: customerId,
-          invoice_number: invoiceNumber,
-          date: new Date().toISOString().split('T')[0],
-          subtotal: amount.toString(),
-          vat_amount: '0',
-          total_amount: amount.toString(),
-          payment_method: financials?.payment_method || 'cash',
-        })
+        .insert(invoiceInsertPayload)
         .select()
         .single();
 
@@ -204,7 +231,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         createdCount++;
       }
 
-      // 2. Insert Service
+      // 2. Insert Service (use travel_date / visa_issued_date for created_at if available)
       let referenceId = service.referenceId || null;
       if (!referenceId) {
         const cat = String(service.category || '').toLowerCase();
@@ -212,16 +239,23 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         referenceId = await generateReferenceId(prefix);
       }
 
+      const effectiveDateISO = parseDateToISO(service.details?.travel_date || service.details?.visa_issued_date);
+
+      const servicePayload: any = {
+        customer_id: customerId,
+        reference_id: referenceId,
+        category: service.category,
+        status: service.status || 'Open',
+        details: service.details || {},
+        financials: service.financials || {},
+      };
+      if (effectiveDateISO) {
+        servicePayload.created_at = effectiveDateISO;
+      }
+
       const { error: svcErr } = await supabase
         .from('customer_services')
-        .insert({
-          customer_id: customerId,
-          reference_id: referenceId,
-          category: service.category,
-          status: service.status || 'Open',
-          details: service.details || {},
-          financials: service.financials || {},
-        });
+        .insert(servicePayload);
       if (svcErr) {
         throw new Error(svcErr.message);
       }
@@ -251,17 +285,22 @@ export async function bulkMigrateCustomerServices(records: any[]) {
       const amount = service.financials?.amount || 0;
       if (amount > 0) {
         const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+        const invoicePayload: any = {
+          customer_id: customerId,
+          invoice_number: invoiceNumber,
+          date: effectiveDateISO ? effectiveDateISO.split('T')[0] : new Date().toISOString().split('T')[0],
+          subtotal: amount,
+          vat_amount: 0,
+          total_amount: amount,
+          payment_method: service.financials?.payment_method || 'cash',
+        };
+        if (effectiveDateISO) {
+          invoicePayload.created_at = effectiveDateISO;
+        }
+
         const { data: newInvoice } = await supabase
           .from('invoices')
-          .insert({
-            customer_id: customerId,
-            invoice_number: invoiceNumber,
-            date: new Date().toISOString().split('T')[0],
-            subtotal: amount,
-            vat_amount: 0,
-            total_amount: amount,
-            payment_method: service.financials?.payment_method || 'cash',
-          })
+          .insert(invoicePayload)
           .select('id')
           .single();
 

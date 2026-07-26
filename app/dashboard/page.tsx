@@ -74,16 +74,41 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         default: startDate = subDays(now, 7);
       }
 
+      const parseDateToTimestamp = (dateVal: any): number => {
+        if (!dateVal) return 0;
+        if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? 0 : dateVal.getTime();
+        const str = String(dateVal).trim();
+        if (!str) return 0;
+        if (/^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}/.test(str)) {
+          const parts = str.split(/[\/-]/);
+          const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+        }
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? 0 : d.getTime();
+      };
+
+      // Helper: get the effective date for a service (travel_date prioritized over created_at)
+      const getServiceDate = (srv: any): string => {
+        const details = (srv.details as any) || {};
+        const travelDate = details.travel_date;
+        if (travelDate) {
+          const ts = parseDateToTimestamp(travelDate);
+          if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
+        }
+        const createdTs = parseDateToTimestamp(srv.created_at);
+        if (createdTs > 0) return format(new Date(createdTs), 'yyyy-MM-dd');
+        return format(now, 'yyyy-MM-dd');
+      };
+
       // ── MEMORY FILTERING SERVICES & INVOICES ───────────────────────
-      // 1. Date filter
+      // 1. Date filter (prioritizes travel_date)
       let filteredServices = (range === 'all' 
         ? allServices 
         : allServices.filter((srv: any) => {
-            // Use travel_date for filtering, fall back to created_at
-            const details = (srv.details as any) || {};
-            const dateStr = details.travel_date || srv.created_at;
+            const dateStr = getServiceDate(srv);
             const date = parseISO(dateStr);
-            if (isNaN(date.getTime())) return true; // keep records with unparseable dates
+            if (isNaN(date.getTime())) return true;
             const isAfterStart = isAfter(date, startDate) || format(date, 'yyyy-MM-dd') === format(startDate, 'yyyy-MM-dd');
             const isBeforeEnd = endDate ? (isBefore(date, endDate) || format(date, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')) : true;
             return isAfterStart && isBeforeEnd;
@@ -199,20 +224,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         uaeServicesByPerson.get(key)!.push(srv);
       });
 
-      const parseDateToTimestamp = (dateVal: any): number => {
-        if (!dateVal) return 0;
-        if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? 0 : dateVal.getTime();
-        const str = String(dateVal).trim();
-        if (!str) return 0;
-        if (/^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}/.test(str)) {
-          const parts = str.split(/[\/-]/);
-          const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
-          return isNaN(d.getTime()) ? 0 : d.getTime();
-        }
-        const d = new Date(str);
-        return isNaN(d.getTime()) ? 0 : d.getTime();
-      };
-
       const getServiceLatestTimestamp = (s: any): number => {
         const d = (s.details as any) || {};
         return Math.max(
@@ -283,16 +294,6 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         invoicesCount: filteredInvoices.length,
         activeCustomers: custCount || 0,
         recentInvoices: filteredInvoices.slice(0, 10)
-      };
-
-      // Helper: get the effective date for a service (travel_date or created_at)
-      const getServiceDate = (srv: any): string => {
-        const details = (srv.details as any) || {};
-        const travelDate = details.travel_date;
-        if (travelDate) {
-          try { return format(parseISO(travelDate), 'yyyy-MM-dd'); } catch { /* fall through */ }
-        }
-        return format(parseISO(srv.created_at), 'yyyy-MM-dd');
       };
 
       const intervalDays = eachDayOfInterval({
