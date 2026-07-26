@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
           const contentType = s3Res.ContentType || 'application/octet-stream';
           const safeFilename = filename.replace(/["'\r\n]/g, '_');
 
-          return new NextResponse(byteArray, {
+          return new NextResponse(Buffer.from(byteArray), {
             status: 200,
             headers: {
               'Content-Type': contentType,
