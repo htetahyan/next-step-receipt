@@ -47,12 +47,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   try {
     const { data: allInvoices, error: invError } = await supabase
       .from('invoices')
-      .select('*, customer:customers(name)')
+      .select('id, customer_id, invoice_number, total_amount, payment_method, created_at, customer:customers(name)')
       .order('created_at', { ascending: false });
 
     const { data: allServices, error: servError } = await supabase
       .from('customer_services')
-      .select('*, customer:customers(id, name, passport_no)')
+      .select('id, customer_id, reference_id, category, status, details, financials, created_at, customer:customers(id, name, passport_no)')
       .order('created_at', { ascending: false });
 
     if (!invError && allInvoices && !servError && allServices) {
@@ -170,6 +170,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             cost: cst
           });
         }
+      });
 
 
 

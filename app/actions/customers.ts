@@ -2,10 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { customerSchema } from '@/lib/validations/serviceSchemas'
+import { createClient } from '@/utils/supabase/server'
 
 export async function addCustomer(formData: FormData) {
   // 1. Authenticate user
-  const { createClient } = await import('@/utils/supabase/server')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -56,7 +56,6 @@ export async function addCustomer(formData: FormData) {
 
 export async function updateCustomer(id: string, formData: FormData) {
   // 1. Authenticate user
-  const { createClient } = await import('@/utils/supabase/server')
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -110,7 +109,6 @@ export async function updateCustomer(id: string, formData: FormData) {
 
 export async function deleteCustomer(id: string) {
   try {
-    const { createClient } = await import('@/utils/supabase/server')
     const supabase = await createClient()
 
     // 1. Delete associated invoices first
@@ -130,14 +128,16 @@ export async function deleteCustomer(id: string) {
 
 export async function searchCustomers(query: string) {
   try {
-    const { createClient } = await import('@/utils/supabase/server')
-    const supabase = await createClient()
+    const q = query.trim();
+    if (!q) return [];
 
+    const supabase = await createClient()
     const { data } = await supabase
       .from('customers')
-      .select('*')
-      .ilike('name', `%${query}%`)
-      .limit(10);
+      .select('id, name, email, phone, passport_no, metadata')
+      .or(`name.ilike.%${q}%,passport_no.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
+      .order('created_at', { ascending: false })
+      .limit(15);
 
     return data || [];
   } catch (error) {

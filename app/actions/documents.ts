@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { deleteFromR2 } from './r2';
+import { createClient } from '@/utils/supabase/server';
 
 function safeRevalidate(path: string) {
   try {
@@ -20,7 +21,6 @@ export async function addDocument(data: {
   tag?: string;
 }) {
   try {
-    const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
     const { error } = await supabase
@@ -51,7 +51,6 @@ export async function addDocument(data: {
 
 export async function getDocuments(customerId: string, serviceId?: string) {
   try {
-    const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
     let query = supabase
@@ -76,7 +75,6 @@ export async function getDocuments(customerId: string, serviceId?: string) {
 
 export async function deleteDocument(id: string, fileKey: string) {
   try {
-    const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
     // 1. Delete from R2 storage if key exists

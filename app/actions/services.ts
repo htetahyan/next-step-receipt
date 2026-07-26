@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 
 import { uaeVisaSchema, airTicketSchema, otherVisaSchema } from '@/lib/validations/serviceSchemas';
+import { createClient } from '@/utils/supabase/server';
 
 // ── Schema ──────────────────────────────────────────────────
 // We will now use the shared schemas directly to ensure frontend/backend parity.
@@ -18,7 +19,6 @@ import { uaeVisaSchema, airTicketSchema, otherVisaSchema } from '@/lib/validatio
 // ── Generate Reference ID ───────────────────────────────────
 export async function generateReferenceId(prefix: string): Promise<string> {
   try {
-    const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('customer_services')

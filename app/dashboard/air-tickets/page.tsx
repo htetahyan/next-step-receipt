@@ -23,7 +23,8 @@ export default async function AirTicketsPage() {
     const { data } = await supabase
       .from('customers')
       .select('id, name, phone, passport_no')
-      .order('name', { ascending: true });
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (data) customers = data;
   } catch (e) {
     console.error('Failed to fetch customers:', e);
