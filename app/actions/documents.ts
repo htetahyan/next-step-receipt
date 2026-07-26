@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { deleteFromR2 } from './r2';
+import { deleteFromR2, getPresignedReadUrl } from './r2';
 import { createClient } from '@/utils/supabase/server';
 
 function safeRevalidate(path: string) {
@@ -66,7 +66,20 @@ export async function getDocuments(customerId: string, serviceId?: string) {
 
     if (error) throw error;
 
-    return { documents: data || [] };
+    // Attach signed read URLs for Cloudflare R2 files
+    const docs = data || [];
+    const signedDocs = await Promise.all(
+      docs.map(async (doc) => {
+        const signedUrl = await getPresignedReadUrl(doc.file_key || doc.file_url);
+        return {
+          ...doc,
+          file_url: signedUrl,
+          fileUrl: signedUrl,
+        };
+      })
+    );
+
+    return { documents: signedDocs };
   } catch (error: any) {
     console.error('Fetch documents error:', error);
     return { error: error.message || 'Failed to fetch documents' };

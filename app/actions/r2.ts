@@ -1,9 +1,9 @@
 'use server';
 
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-function getS3Client() {
+export async function getS3Client() {
   return new S3Client({
     region: 'auto',
     endpoint: process.env.CLOUDFLARE_R2_ENDPOINT!,
@@ -27,7 +27,7 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
       ContentType: contentType,
     });
 
-    const s3Client = getS3Client();
+    const s3Client = await getS3Client();
     const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
     
     const publicDomain = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '').replace(/\/$/, '');
@@ -37,6 +37,37 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
   } catch (error: any) {
     console.error("Presigned URL error:", error);
     return { success: false, error: error.message };
+  }
+}
+
+export async function getPresignedReadUrl(fileKeyOrUrl: string) {
+  try {
+    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    if (!bucketName) return fileKeyOrUrl;
+
+    // Extract key if a full URL was provided
+    let fileKey = fileKeyOrUrl;
+    if (fileKeyOrUrl.startsWith('http://') || fileKeyOrUrl.startsWith('https://')) {
+      const parts = fileKeyOrUrl.split('/');
+      fileKey = parts[parts.length - 1];
+      // Strip any existing query params
+      fileKey = fileKey.split('?')[0];
+    }
+
+    if (!fileKey) return fileKeyOrUrl;
+
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: fileKey,
+    });
+
+    const s3Client = await getS3Client();
+    // Signed read URL valid for 24 hours (86400 seconds)
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 86400 });
+    return signedUrl;
+  } catch (error: any) {
+    console.error("Get presigned read URL error:", error);
+    return fileKeyOrUrl;
   }
 }
 
@@ -50,7 +81,7 @@ export async function deleteFromR2(fileKey: string) {
       Key: fileKey,
     });
 
-    const s3Client = getS3Client();
+    const s3Client = await getS3Client();
     await s3Client.send(command);
     return { success: true };
   } catch (error: any) {
@@ -58,3 +89,4 @@ export async function deleteFromR2(fileKey: string) {
     return { success: false, error: error.message };
   }
 }
+
