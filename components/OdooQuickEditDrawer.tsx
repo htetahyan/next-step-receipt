@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, Save, Shield, User, DollarSign, Calendar, FileText, CheckCircle, PlusCircle, Copy, Trash2, Loader2, Phone, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Save, Shield, User, DollarSign, Calendar, FileText, CheckCircle, PlusCircle, Copy, Trash2, Loader2, Phone, ExternalLink, Eye, Download, Image as ImageIcon, Paperclip } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { quickUpdateService, deleteCustomerService } from '@/app/actions/services';
 import { STATUS_COLORS } from '@/lib/statusColors';
+import DocumentModal from '@/components/DocumentModal';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
+import { getDocuments } from '@/app/actions/documents';
+import { downloadDocumentFile, isImageFile } from '@/lib/downloadHelper';
 
 interface Props {
   service: any | null;
@@ -53,6 +57,21 @@ export default function OdooQuickEditDrawer({
   const [supplierCost, setSupplierCost] = useState<number | string>(0);
   const [paymentMethod, setPaymentMethod] = useState('cash');
 
+  // Documents
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  const fetchServiceDocs = useCallback(async () => {
+    if (service?.customer_id) {
+      const res = await getDocuments(service.customer_id, service.id);
+      if (!res.error && res.documents) {
+        setDocuments(res.documents);
+      }
+    }
+  }, [service?.customer_id, service?.id]);
+
   // Populate state when service changes
   useEffect(() => {
     if (service) {
@@ -80,6 +99,12 @@ export default function OdooQuickEditDrawer({
       setPaymentMethod(fin.payment_method || det.payment_method || 'cash');
     }
   }, [service]);
+
+  useEffect(() => {
+    if (isOpen && service?.customer_id) {
+      fetchServiceDocs();
+    }
+  }, [isOpen, service?.customer_id, fetchServiceDocs]);
 
   // Handle ESC key to close
   useEffect(() => {
@@ -484,6 +509,79 @@ export default function OdooQuickEditDrawer({
               className="w-full input-anthropic p-3 text-sm"
             />
           </div>
+
+          {/* Section 5: Documents & Attachments */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-1.5">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757]">
+                <Paperclip className="w-4 h-4" />
+                <span>Documents & Attachments ({documents.length})</span>
+              </div>
+              {service?.customer_id && (
+                <button
+                  type="button"
+                  onClick={() => setIsDocModalOpen(true)}
+                  className="text-xs font-semibold text-[#D97757] hover:underline flex items-center gap-1"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" /> Manage / Upload
+                </button>
+              )}
+            </div>
+
+            {documents.length === 0 ? (
+              <div className="text-xs opacity-50 py-3 text-center border border-dashed border-[var(--card-border)] rounded-lg">
+                No files attached to this service record.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {documents.map((doc, idx) => {
+                  const url = doc.file_url || doc.fileUrl;
+                  const isImg = url ? isImageFile(url, doc.title) : false;
+                  return (
+                    <div
+                      key={doc.id || idx}
+                      onClick={() => {
+                        setViewerIndex(idx);
+                        setIsViewerOpen(true);
+                      }}
+                      className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)] transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {isImg ? <ImageIcon className="w-4 h-4 text-[#D97757] shrink-0" /> : <FileText className="w-4 h-4 text-[#D97757] shrink-0" />}
+                        <span className="text-xs font-medium truncate group-hover:text-[#D97757] transition-colors">{doc.title}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewerIndex(idx);
+                            setIsViewerOpen(true);
+                          }}
+                          className="p-1 rounded hover:bg-[#D97757]/10 text-[#D97757]"
+                          title="Preview Document"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        {url && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              downloadDocumentFile(url, doc.title);
+                            }}
+                            className="p-1 rounded hover:bg-[var(--card-bg)] opacity-70 hover:opacity-100"
+                            title="Direct Download"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Action Footer */}
@@ -531,6 +629,28 @@ export default function OdooQuickEditDrawer({
             </button>
           </div>
         </div>
+
+        {/* Upload & Manager Modal */}
+        {service?.customer_id && (
+          <DocumentModal
+            isOpen={isDocModalOpen}
+            onClose={() => {
+              setIsDocModalOpen(false);
+              fetchServiceDocs();
+            }}
+            customerId={service.customer_id}
+            serviceId={service.id}
+            customerName={customerName || 'Customer'}
+          />
+        )}
+
+        {/* Interactive Lightbox Document Viewer */}
+        <DocumentViewerModal
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+          documents={documents}
+          initialIndex={viewerIndex}
+        />
       </div>
     </div>
   );

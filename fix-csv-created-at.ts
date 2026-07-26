@@ -1,17 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error("Missing Supabase env vars");
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const sql = postgres(process.env.DATABASE_URL!);
 
 function parseDateToISO(dateVal: any): string | null {
   if (!dateVal) return null;
@@ -31,45 +23,55 @@ function parseDateToISO(dateVal: any): string | null {
 }
 
 async function run() {
-  console.log("Fixing created_at for historical customer_services using details.travel_date...");
+  console.log("Fixing created_at for all historical customer_services using travel_date || visa_issued_date...");
 
-  const { data: services, error } = await supabase
-    .from('customer_services')
-    .select('id, details, created_at');
-
-  if (error || !services) {
-    console.error("Error fetching services:", error);
-    return;
-  }
+  const services = await sql`
+    SELECT id, details, created_at FROM customer_services;
+  `;
 
   let updatedCount = 0;
 
   for (const srv of services) {
-    const travelDate = (srv.details as any)?.travel_date || (srv.details as any)?.visa_issued_date;
-    if (!travelDate) continue;
+    const d = srv.details || {};
+    const dateVal = d.travel_date || d.visa_issued_date || d.visa_expiry_date;
+    if (!dateVal) continue;
 
-    const parsedISO = parseDateToISO(travelDate);
+    const parsedISO = parseDateToISO(dateVal);
     if (!parsedISO) continue;
 
-    // Check if created_at differs significantly (more than 1 day difference)
-    const currentCreatedTs = new Date(srv.created_at).getTime();
-    const travelTs = new Date(parsedISO).getTime();
+    await sql`
+      UPDATE customer_services
+      SET created_at = ${parsedISO}
+      WHERE id = ${srv.id};
+    `;
+    updatedCount++;
+  }
 
-    if (Math.abs(currentCreatedTs - travelTs) > 24 * 60 * 60 * 1000) {
-      const { error: updateErr } = await supabase
-        .from('customer_services')
-        .update({ created_at: parsedISO })
-        .eq('id', srv.id);
+  console.log(`Successfully updated created_at to match operational date for ${updatedCount} services!`);
 
-      if (!updateErr) {
-        updatedCount++;
-      } else {
-        console.error(`Failed to update service ${srv.id}:`, updateErr.message);
-      }
+  // Also update associated invoices date and created_at if matching customer_id
+  const invoices = await sql`
+    SELECT i.id, i.customer_id, s.created_at as service_created_at
+    FROM invoices i
+    JOIN customer_services s ON s.customer_id = i.customer_id;
+  `;
+
+  let invUpdated = 0;
+  for (const inv of invoices) {
+    if (inv.service_created_at) {
+      const dateOnly = new Date(inv.service_created_at).toISOString().split('T')[0];
+      await sql`
+        UPDATE invoices
+        SET created_at = ${inv.service_created_at}, date = ${dateOnly}
+        WHERE id = ${inv.id};
+      `;
+      invUpdated++;
     }
   }
 
-  console.log(`Successfully updated created_at to match travel_date for ${updatedCount} services!`);
+  console.log(`Successfully updated ${invUpdated} invoices!`);
+
+  await sql.end();
 }
 
 run();
