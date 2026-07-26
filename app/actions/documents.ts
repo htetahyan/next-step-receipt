@@ -69,7 +69,7 @@ export async function getDocuments(customerId: string, serviceId?: string) {
     // Attach signed read URLs for Cloudflare R2 files
     const docs = data || [];
     const signedDocs = await Promise.all(
-      docs.map(async (doc) => {
+      docs.map(async (doc: any) => {
         const signedUrl = await getPresignedReadUrl(doc.file_key || doc.file_url);
         return {
           ...doc,
