@@ -33,9 +33,18 @@ export async function processAutoCloseVisas() {
 
     for (const service of services) {
       const category = (service.category || '').toLowerCase();
+      const ref = (service.reference_id || '').toLowerCase();
+      const isTicketOrHotel = 
+        category.includes('ticket') || 
+        category.includes('flight') || 
+        category.includes('way') || 
+        category.includes('trip') || 
+        category.includes('hotel') || 
+        ref.startsWith('at') || 
+        ref.startsWith('tk') || 
+        ref.startsWith('hb');
       
-      // Check if category is visa-related
-      const isVisa = category.includes('visa') || category.includes('extension') || category.includes('inside visa');
+      const isVisa = !isTicketOrHotel;
       if (!isVisa) {
         continue;
       }

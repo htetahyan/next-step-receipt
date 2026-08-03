@@ -32,14 +32,24 @@ export async function autoCloseExpiredVisas(): Promise<{ closed: number; error?:
     const toCloseIds: string[] = [];
 
     for (const service of services) {
-      const category = (service.category || '').toLowerCase();
-
-      // Only process visa-related records
-      const isVisa = category.includes('visa') || category.includes('extension') || category.includes('inside visa');
-      if (!isVisa) continue;
-
       const details = (service.details as any) || {};
       let isExpired = false;
+
+      // Determine if this is a visa service (not ticket or hotel)
+      const category = (service.category || '').toLowerCase();
+      const ref = (service.reference_id || '').toLowerCase();
+      const isTicketOrHotel = 
+        category.includes('ticket') || 
+        category.includes('flight') || 
+        category.includes('way') || 
+        category.includes('trip') || 
+        category.includes('hotel') || 
+        ref.startsWith('at') || 
+        ref.startsWith('tk') || 
+        ref.startsWith('hb');
+      
+      const isVisa = !isTicketOrHotel;
+      if (!isVisa) continue;
 
       // Parse created_at
       const createdDate = new Date(service.created_at);
