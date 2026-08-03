@@ -1,11 +1,15 @@
 'use client';
 
-import { User, Phone, Mail, FileText, ArrowLeft, Receipt, Plus } from 'lucide-react';
+import { User, Phone, Mail, FileText, ArrowLeft, Receipt, Plus, Pencil, X, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import NewServiceDialog from '@/components/NewServiceDialog';
 import DocumentModal from '@/components/DocumentModal';
 import CustomerDocumentsSection from '@/components/CustomerDocumentsSection';
+import { quickUpdateService } from '@/app/actions/services';
+import { updateCustomer } from '@/app/actions/customers';
 
 export default function CustomerHubClient({ customer, services, pastInvoices, documents }: {
   customer: any;
@@ -13,8 +17,99 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
   pastInvoices: any[];
   documents: any[];
 }) {
+  const router = useRouter();
   const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
+
+  // Customer Edit State
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [customerName, setCustomerName] = useState(customer?.name || '');
+  const [customerPhone, setCustomerPhone] = useState(customer?.phone || '');
+  const [customerEmail, setCustomerEmail] = useState(customer?.email || '');
+  const [customerPassport, setCustomerPassport] = useState(customer?.passportNo || customer?.passport_no || '');
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+
+  const handleSaveCustomer = async () => {
+    setIsSavingCustomer(true);
+    try {
+      const formData = new FormData();
+      formData.append('name', customerName);
+      formData.append('phone', customerPhone);
+      formData.append('email', customerEmail);
+      formData.append('passport_no', customerPassport);
+      
+      const res = await updateCustomer(customer.id, formData);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success('Customer profile updated');
+        setIsEditingCustomer(false);
+        router.refresh();
+      }
+    } catch (e: any) {
+      toast.error('Failed to update customer');
+    } finally {
+      setIsSavingCustomer(false);
+    }
+  };
+
+  // Service Edit State
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [serviceEditData, setServiceEditData] = useState<any>({});
+  const [isSavingService, setIsSavingService] = useState(false);
+
+  const handleEditService = (service: any) => {
+    setEditingServiceId(service.id);
+    const details = service.details || {};
+    const fin = service.financials || {};
+    setServiceEditData({
+      status: service.status || 'Open',
+      travel_date: details.travel_date || '',
+      visa_expiry_date: details.visa_expiry_date || '',
+      visa_issued_date: details.visa_issued_date || '',
+      comments: details.comments || '',
+      remark: details.remark || '',
+      amount: fin.amount || 0,
+      discount: fin.discount || 0,
+      supplier_cost: fin.supplier_cost || 0,
+      refund: fin.refund || 0,
+    });
+  };
+
+  const handleSaveService = async () => {
+    if (!editingServiceId) return;
+    setIsSavingService(true);
+    try {
+      const payload = {
+        status: serviceEditData.status,
+        details: {
+          travel_date: serviceEditData.travel_date,
+          visa_expiry_date: serviceEditData.visa_expiry_date,
+          visa_issued_date: serviceEditData.visa_issued_date,
+          comments: serviceEditData.comments,
+          remark: serviceEditData.remark,
+        },
+        financials: {
+          amount: Number(serviceEditData.amount),
+          discount: Number(serviceEditData.discount),
+          supplier_cost: Number(serviceEditData.supplier_cost),
+          refund: Number(serviceEditData.refund),
+        }
+      };
+      const res = await quickUpdateService(editingServiceId, payload);
+      if (res.success) {
+        toast.success('Service updated successfully');
+        setEditingServiceId(null);
+        router.refresh();
+      } else {
+        toast.error(res.error || 'Failed to update service');
+      }
+    } catch (e: any) {
+      toast.error('Failed to update service');
+    } finally {
+      setIsSavingService(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-12 pb-24">
@@ -30,27 +125,102 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* LEFT COLUMN - Identity */}
         <div className="md:col-span-1 space-y-6">
-          <div className="card-anthropic p-8">
-            <div className="w-16 h-16 rounded-full bg-[var(--anthropic-surface)] flex items-center justify-center mb-6">
-              <User className="w-6 h-6 opacity-60" />
-            </div>
-            <h2 className="text-xl font-serif mb-6 leading-tight">{customer.name}</h2>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-sm">
-                <Phone className="w-4 h-4 opacity-50" />
-                <span className="opacity-80">{customer.phone || 'No phone'}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Mail className="w-4 h-4 opacity-50" />
-                <span className="opacity-80">{customer.email || 'No email'}</span>
-              </div>
-              {customer.passportNo && (
-                <div className="flex items-center gap-3 text-sm pt-4 border-t border-[var(--card-border)]">
-                  <FileText className="w-4 h-4 opacity-50" />
-                  <span className="opacity-80 font-mono text-xs tracking-wider">{customer.passportNo}</span>
+          <div className="card-anthropic p-8 relative">
+            <div className="absolute top-6 right-6">
+              {!isEditingCustomer ? (
+                <button
+                  onClick={() => setIsEditingCustomer(true)}
+                  className="p-1.5 rounded-md hover:bg-[var(--anthropic-surface)] text-gray-500 hover:text-[#D97757] transition-colors"
+                  title="Edit Customer"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveCustomer}
+                    disabled={isSavingCustomer}
+                    className="p-1.5 rounded-md bg-[#D97757]/10 text-[#D97757] hover:bg-[#D97757]/20 transition-colors"
+                    title="Save"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsEditingCustomer(false)}
+                    disabled={isSavingCustomer}
+                    className="p-1.5 rounded-md bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    title="Cancel"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>
+
+            <div className="w-16 h-16 rounded-full bg-[var(--anthropic-surface)] flex items-center justify-center mb-6">
+              <User className="w-6 h-6 opacity-60" />
+            </div>
+            
+            {isEditingCustomer ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs opacity-70 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="input-anthropic w-full text-sm py-1.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-70 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="input-anthropic w-full text-sm py-1.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-70 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="input-anthropic w-full text-sm py-1.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs opacity-70 mb-1">Passport No.</label>
+                  <input
+                    type="text"
+                    value={customerPassport}
+                    onChange={(e) => setCustomerPassport(e.target.value)}
+                    className="input-anthropic w-full text-sm py-1.5"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-xl font-serif mb-6 leading-tight">{customer.name}</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-sm">
+                    <Phone className="w-4 h-4 opacity-50" />
+                    <span className="opacity-80">{customer.phone || 'No phone'}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="w-4 h-4 opacity-50" />
+                    <span className="opacity-80">{customer.email || 'No email'}</span>
+                  </div>
+                  {(customer.passportNo || customer.passport_no) && (
+                    <div className="flex items-center gap-3 text-sm pt-4 border-t border-[var(--card-border)]">
+                      <FileText className="w-4 h-4 opacity-50" />
+                      <span className="opacity-80 font-mono text-xs tracking-wider">{customer.passportNo || customer.passport_no}</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -84,8 +254,10 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                   const profit = receiving - supplierCost - refund;
                   const balance = Number(fin.balance) || 0;
 
+                  const isEditing = editingServiceId === service.id;
+
                   return (
-                    <div key={service.id} className="p-6 rounded-xl bg-[var(--anthropic-surface)] border border-[var(--card-border)] space-y-4">
+                    <div key={service.id} className="p-6 rounded-xl bg-[var(--anthropic-surface)] border border-[var(--card-border)] space-y-4 relative">
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="font-serif text-lg flex items-center gap-2">
@@ -97,47 +269,184 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                             )}
                           </div>
                         </div>
-                        <div className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded bg-[var(--background)] opacity-80 border border-[var(--card-border)] font-bold">
-                          {service.status}
+                        <div className="flex items-center gap-3">
+                          {!isEditing && (
+                            <div className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded bg-[var(--background)] opacity-80 border border-[var(--card-border)] font-bold">
+                              {service.status}
+                            </div>
+                          )}
+                          {!isEditing && (
+                            <button
+                              onClick={() => handleEditService(service)}
+                              className="p-1.5 rounded-md hover:bg-[var(--background)] text-gray-500 hover:text-[#D97757] transition-colors"
+                              title="Edit Service"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      {/* Service Details Grid */}
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs opacity-80 border-t border-[var(--card-border)] pt-3">
-                        {details.visa_issued_date && <div><span className="opacity-50">Issued:</span> <span className="font-medium">{details.visa_issued_date}</span></div>}
-                        {details.travel_date && <div><span className="opacity-50">Travel:</span> <span className="font-medium">{details.travel_date}</span></div>}
-                        {details.visa_expiry_date && <div><span className="opacity-50">Expiry:</span> <span className="font-medium font-mono text-[#D97757]">{details.visa_expiry_date}</span></div>}
-                        {details.visa_duration && <div><span className="opacity-50">Duration:</span> <span className="font-medium">{details.visa_duration}</span></div>}
-                        {details.visa_supplier && <div><span className="opacity-50">Supplier:</span> <span className="font-medium">{details.visa_supplier}</span></div>}
-                        {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
-                        {details.comments && <div className="col-span-2"><span className="opacity-50">Comments:</span> <span className="font-medium">{details.comments}</span></div>}
-                        {details.remark && <div className="col-span-2"><span className="opacity-50">Remark:</span> <span className="font-medium text-amber-600">{details.remark}</span></div>}
-                      </div>
+                      {isEditing ? (
+                        <div className="space-y-4 pt-2 border-t border-[var(--card-border)]">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Status</label>
+                              <select
+                                value={serviceEditData.status}
+                                onChange={(e) => setServiceEditData({...serviceEditData, status: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              >
+                                <option value="Open">Open</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Closed">Closed</option>
+                                <option value="Cancelled">Cancelled</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Travel Date</label>
+                              <input
+                                type="date"
+                                value={serviceEditData.travel_date}
+                                onChange={(e) => setServiceEditData({...serviceEditData, travel_date: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Visa Issued Date</label>
+                              <input
+                                type="date"
+                                value={serviceEditData.visa_issued_date}
+                                onChange={(e) => setServiceEditData({...serviceEditData, visa_issued_date: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Visa Expiry Date</label>
+                              <input
+                                type="date"
+                                value={serviceEditData.visa_expiry_date}
+                                onChange={(e) => setServiceEditData({...serviceEditData, visa_expiry_date: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--card-border)]">
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Amount</label>
+                              <input
+                                type="number"
+                                value={serviceEditData.amount}
+                                onChange={(e) => setServiceEditData({...serviceEditData, amount: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Discount</label>
+                              <input
+                                type="number"
+                                value={serviceEditData.discount}
+                                onChange={(e) => setServiceEditData({...serviceEditData, discount: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Supplier Cost</label>
+                              <input
+                                type="number"
+                                value={serviceEditData.supplier_cost}
+                                onChange={(e) => setServiceEditData({...serviceEditData, supplier_cost: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Refund</label>
+                              <input
+                                type="number"
+                                value={serviceEditData.refund}
+                                onChange={(e) => setServiceEditData({...serviceEditData, refund: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5"
+                              />
+                            </div>
+                          </div>
 
-                      {/* Financials Summary */}
-                      <div className="mt-4 pt-4 border-t border-[var(--card-border)] bg-[var(--background)] p-3 rounded-lg text-xs space-y-1.5 font-mono">
-                        <div className="flex justify-between"><span className="opacity-60">Amount / Rate:</span><span>{amount.toLocaleString()} AED</span></div>
-                        {discount > 0 && <div className="flex justify-between text-red-500"><span className="opacity-60">Discount / Agent Fee:</span><span>-{discount.toLocaleString()} AED</span></div>}
-                        <div className="flex justify-between font-bold text-blue-600"><span className="opacity-70">Receiving Amount:</span><span>{receiving.toLocaleString()} AED</span></div>
-                        <div className="flex justify-between text-amber-600"><span className="opacity-70">Supplier Cost:</span><span>{supplierCost.toLocaleString()} AED</span></div>
-                        {refund > 0 && <div className="flex justify-between text-red-500"><span className="opacity-70">Refund:</span><span>-{refund.toLocaleString()} AED</span></div>}
-                        <div className="flex justify-between font-bold border-t border-black/10 dark:border-white/10 pt-1.5 text-green-600">
-                          <span>Gross Profit (GP):</span>
-                          <span>{profit.toLocaleString()} AED</span>
+                          <div className="grid grid-cols-1 gap-4 pt-2 border-t border-[var(--card-border)]">
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Comments</label>
+                              <textarea
+                                value={serviceEditData.comments}
+                                onChange={(e) => setServiceEditData({...serviceEditData, comments: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5 min-h-[60px]"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs opacity-70 mb-1">Remark</label>
+                              <textarea
+                                value={serviceEditData.remark}
+                                onChange={(e) => setServiceEditData({...serviceEditData, remark: e.target.value})}
+                                className="input-anthropic w-full text-sm py-1.5 min-h-[60px]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-3 pt-4">
+                            <button
+                              onClick={() => setEditingServiceId(null)}
+                              disabled={isSavingService}
+                              className="px-4 py-2 text-sm rounded-md bg-[var(--background)] hover:bg-[var(--card-border)] transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSaveService}
+                              disabled={isSavingService}
+                              className="px-4 py-2 text-sm rounded-md bg-[#D97757] text-white hover:bg-[#c66446] transition-colors flex items-center gap-2"
+                            >
+                              {isSavingService ? 'Saving...' : 'Save Changes'}
+                            </button>
+                          </div>
                         </div>
-                        {(fin.payment_method || details.payment_method) && (
-                          <div className="flex justify-between text-[11px] opacity-60 pt-1">
-                            <span>Payment Method:</span>
-                            <span>{fin.payment_method || details.payment_method}</span>
+                      ) : (
+                        <>
+                          {/* Service Details Grid */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs opacity-80 border-t border-[var(--card-border)] pt-3">
+                            {details.visa_issued_date && <div><span className="opacity-50">Issued:</span> <span className="font-medium">{details.visa_issued_date}</span></div>}
+                            {details.travel_date && <div><span className="opacity-50">Travel:</span> <span className="font-medium">{details.travel_date}</span></div>}
+                            {details.visa_expiry_date && <div><span className="opacity-50">Expiry:</span> <span className="font-medium font-mono text-[#D97757]">{details.visa_expiry_date}</span></div>}
+                            {details.visa_duration && <div><span className="opacity-50">Duration:</span> <span className="font-medium">{details.visa_duration}</span></div>}
+                            {details.visa_supplier && <div><span className="opacity-50">Supplier:</span> <span className="font-medium">{details.visa_supplier}</span></div>}
+                            {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
+                            {details.comments && <div className="col-span-2"><span className="opacity-50">Comments:</span> <span className="font-medium">{details.comments}</span></div>}
+                            {details.remark && <div className="col-span-2"><span className="opacity-50">Remark:</span> <span className="font-medium text-amber-600">{details.remark}</span></div>}
                           </div>
-                        )}
-                        {balance !== 0 && (
-                          <div className="flex justify-between text-[11px] opacity-60">
-                            <span>Balance:</span>
-                            <span>{balance.toLocaleString()} AED</span>
+
+                          {/* Financials Summary */}
+                          <div className="mt-4 pt-4 border-t border-[var(--card-border)] bg-[var(--background)] p-3 rounded-lg text-xs space-y-1.5 font-mono">
+                            <div className="flex justify-between"><span className="opacity-60">Amount / Rate:</span><span>{amount.toLocaleString()} AED</span></div>
+                            {discount > 0 && <div className="flex justify-between text-red-500"><span className="opacity-60">Discount / Agent Fee:</span><span>-{discount.toLocaleString()} AED</span></div>}
+                            <div className="flex justify-between font-bold text-blue-600"><span className="opacity-70">Receiving Amount:</span><span>{receiving.toLocaleString()} AED</span></div>
+                            <div className="flex justify-between text-amber-600"><span className="opacity-70">Supplier Cost:</span><span>{supplierCost.toLocaleString()} AED</span></div>
+                            {refund > 0 && <div className="flex justify-between text-red-500"><span className="opacity-70">Refund:</span><span>-{refund.toLocaleString()} AED</span></div>}
+                            <div className="flex justify-between font-bold border-t border-black/10 dark:border-white/10 pt-1.5 text-green-600">
+                              <span>Gross Profit (GP):</span>
+                              <span>{profit.toLocaleString()} AED</span>
+                            </div>
+                            {(fin.payment_method || details.payment_method) && (
+                              <div className="flex justify-between text-[11px] opacity-60 pt-1">
+                                <span>Payment Method:</span>
+                                <span>{fin.payment_method || details.payment_method}</span>
+                              </div>
+                            )}
+                            {balance !== 0 && (
+                              <div className="flex justify-between text-[11px] opacity-60">
+                                <span>Balance:</span>
+                                <span>{balance.toLocaleString()} AED</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                   );
                 })

@@ -88,27 +88,27 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         return isNaN(d.getTime()) ? 0 : d.getTime();
       };
 
-      // Helper: get the effective date for a service (travel_date prioritized over created_at)
-      const getServiceDate = (srv: any): string => {
+      // Helper: get the effective date for a service (only travel_date)
+      const getServiceDate = (srv: any): string | null => {
         const details = (srv.details as any) || {};
         const travelDate = details.travel_date;
         if (travelDate) {
           const ts = parseDateToTimestamp(travelDate);
           if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
         }
-        const createdTs = parseDateToTimestamp(srv.created_at);
-        if (createdTs > 0) return format(new Date(createdTs), 'yyyy-MM-dd');
-        return format(now, 'yyyy-MM-dd');
+        return null;
       };
 
       // ── MEMORY FILTERING SERVICES & INVOICES ───────────────────────
-      // 1. Date filter (prioritizes travel_date)
+      // 1. Date filter
+      // Records without travel_date are excluded from date-filtered views
       let filteredServices = (range === 'all' 
         ? allServices 
         : allServices.filter((srv: any) => {
             const dateStr = getServiceDate(srv);
+            if (!dateStr) return false;
             const date = parseISO(dateStr);
-            if (isNaN(date.getTime())) return true;
+            if (isNaN(date.getTime())) return false;
             const isAfterStart = isAfter(date, startDate) || format(date, 'yyyy-MM-dd') === format(startDate, 'yyyy-MM-dd');
             const isBeforeEnd = endDate ? (isBefore(date, endDate) || format(date, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')) : true;
             return isAfterStart && isBeforeEnd;
@@ -297,14 +297,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       };
 
       const intervalDays = eachDayOfInterval({
-        start: range === 'all' ? (filteredServices.length ? parseISO(getServiceDate(filteredServices[filteredServices.length-1])) : subDays(now, 7)) : startDate,
+        start: range === 'all' ? (filteredServices.length ? parseISO(getServiceDate(filteredServices[filteredServices.length-1]) || format(subDays(now, 7), 'yyyy-MM-dd')) : subDays(now, 7)) : startDate,
         end: now
       });
 
       const salesMap: Record<string, number> = {};
       filteredServices.forEach(srv => {
         const d = getServiceDate(srv);
-        salesMap[d] = (salesMap[d] || 0) + Number((srv.financials as any)?.amount || 0);
+        if (d) {
+          salesMap[d] = (salesMap[d] || 0) + Number((srv.financials as any)?.amount || 0);
+        }
       });
 
       chartData = intervalDays.map(day => {
