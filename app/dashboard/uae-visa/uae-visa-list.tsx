@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy, LayoutGrid, List, Layers, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService, quickUpdateService } from '@/app/actions/services';
+import { autoCloseExpiredVisas } from '@/app/actions/auto-close-visas';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -38,6 +39,26 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
   const [groupBy, setGroupBy] = useState<'none' | 'status' | 'supplier' | 'category'>('none');
   const [selectedService, setSelectedService] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [autoClosing, setAutoClosing] = useState(false);
+
+  const handleAutoClose = async () => {
+    setAutoClosing(true);
+    try {
+      const result = await autoCloseExpiredVisas();
+      if (result.error) {
+        toast.error(`Auto-close failed: ${result.error}`);
+      } else if (result.closed === 0) {
+        toast.info('No expired visas found to close.');
+      } else {
+        toast.success(`✅ Closed ${result.closed} expired visa${result.closed !== 1 ? 's' : ''} successfully!`);
+        router.refresh();
+      }
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setAutoClosing(false);
+    }
+  };
 
   // Extract unique suppliers from data
   const suppliers = useMemo(() => {
@@ -500,6 +521,16 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
               </div>
             )}
           </div>
+
+          <button
+            onClick={handleAutoClose}
+            disabled={autoClosing}
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--card-border)] px-4 py-2.5 text-sm font-medium transition-all hover:bg-[var(--sidebar-bg)] disabled:opacity-50"
+            title="Close all visas where expiry date has passed"
+          >
+            {autoClosing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 opacity-70" />}
+            {autoClosing ? 'Closing...' : 'Auto-Close Expired'}
+          </button>
 
           <Link
             href="/dashboard/uae-visa/new"
