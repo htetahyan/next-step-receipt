@@ -20,7 +20,7 @@ export async function autoCloseExpiredVisas(): Promise<{ closed: number; error?:
     // Fetch all open visa services
     const { data: services, error } = await supabase
       .from('customer_services')
-      .select('id, category, status, details')
+      .select('id, category, status, details, created_at')
       .not('status', 'in', '(Closed,Cancelled)');
 
     if (error) return { closed: 0, error: error.message };
@@ -41,7 +41,12 @@ export async function autoCloseExpiredVisas(): Promise<{ closed: number; error?:
       const details = (service.details as any) || {};
       let isExpired = false;
 
-      // Method 1: explicit visa_expiry_date
+      // Parse created_at
+      const createdDate = new Date(service.created_at);
+      const isCreatedOver30Days = !isNaN(createdDate.getTime()) && 
+        (today.getTime() - createdDate.getTime()) > 30 * 24 * 60 * 60 * 1000;
+
+      // Method 1: explicit visa_expiry_date in the past
       if (details.visa_expiry_date) {
         const expDate = new Date(details.visa_expiry_date);
         if (!isNaN(expDate.getTime())) {
@@ -50,18 +55,22 @@ export async function autoCloseExpiredVisas(): Promise<{ closed: number; error?:
         }
       }
 
-      // Method 2: travel_date + visa_duration (fallback)
+      // Method 2: travel_date is more than 30 days in the past
       if (!isExpired && details.travel_date) {
         const travelDate = new Date(details.travel_date);
         if (!isNaN(travelDate.getTime())) {
-          // visa_duration may be "60 Days", "30 Days", or a number
-          const durationRaw = details.visa_duration_days || details.visa_duration || '60';
-          const duration = parseInt(String(durationRaw)) || 60;
-          const expDate = new Date(travelDate);
-          expDate.setDate(expDate.getDate() + duration);
-          expDate.setHours(0, 0, 0, 0);
-          if (expDate < today) isExpired = true;
+          travelDate.setHours(0, 0, 0, 0);
+          const thirtyDaysAfterTravel = new Date(travelDate);
+          thirtyDaysAfterTravel.setDate(thirtyDaysAfterTravel.getDate() + 30);
+          if (thirtyDaysAfterTravel < today) {
+            isExpired = true;
+          }
         }
+      }
+
+      // Method 3: No travel_date but created_at is more than 30 days in the past
+      if (!isExpired && !details.travel_date && isCreatedOver30Days) {
+        isExpired = true;
       }
 
       if (isExpired) toCloseIds.push(service.id);

@@ -1,100 +1,105 @@
-import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
 import * as dotenv from 'dotenv';
 
-// Load env vars if running locally (e.g. npx tsx)
+// Load env vars if running locally
 dotenv.config({ path: '.env.local' });
 
 export async function processAutoCloseVisas() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Use service role key if available, fall back to anon key
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('Missing DATABASE_URL environment variable');
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const sql = postgres(dbUrl);
 
-  console.log('Fetching open services...');
-  
-  const { data: services, error } = await supabase
-    .from('customer_services')
-    .select('id, category, status, details')
-    .not('status', 'in', '("Closed","Cancelled")');
-
-  if (error) {
-    throw new Error(`Failed to fetch services: ${error.message}`);
-  }
-
-  if (!services || services.length === 0) {
-    console.log('No open services found.');
-    return 0;
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const toCloseIds: string[] = [];
-
-  for (const service of services) {
-    const category = (service.category || '').toLowerCase();
+  try {
+    console.log('Fetching open services via direct DB connection (bypassing RLS)...');
     
-    // Check if category is visa-related
-    if (!category.includes('visa')) {
-      continue;
+    const services = await sql`
+      SELECT id, category, status, details, created_at
+      FROM customer_services
+      WHERE status NOT IN ('Closed', 'Cancelled')
+    `;
+
+    if (!services || services.length === 0) {
+      console.log('No open services found.');
+      return 0;
     }
 
-    const details = (service.details as any) || {};
-    let isExpired = false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    if (details.visa_expiry_date) {
-      const expDate = new Date(details.visa_expiry_date);
-      if (!isNaN(expDate.getTime())) {
-        expDate.setHours(0, 0, 0, 0);
-        if (expDate < today) {
-          isExpired = true;
+    const toCloseIds: string[] = [];
+
+    for (const service of services) {
+      const category = (service.category || '').toLowerCase();
+      
+      // Check if category is visa-related
+      const isVisa = category.includes('visa') || category.includes('extension') || category.includes('inside visa');
+      if (!isVisa) {
+        continue;
+      }
+
+      const details = service.details || {};
+      let isExpired = false;
+
+      // Parse created_at
+      const createdDate = new Date(service.created_at || '');
+      const isCreatedOver30Days = !isNaN(createdDate.getTime()) && 
+        (today.getTime() - createdDate.getTime()) > 30 * 24 * 60 * 60 * 1000;
+
+      // Method 1: explicit visa_expiry_date in the past
+      if (details.visa_expiry_date) {
+        const expDate = new Date(details.visa_expiry_date);
+        if (!isNaN(expDate.getTime())) {
+          expDate.setHours(0, 0, 0, 0);
+          if (expDate < today) {
+            isExpired = true;
+          }
         }
       }
-    } else if (details.travel_date) {
-      const travelDate = new Date(details.travel_date);
-      if (!isNaN(travelDate.getTime())) {
-        // visa_duration may be stored as "60 Days", "30 Days", etc. or as a number
-        const durationRaw = details.visa_duration_days || details.visa_duration || '60';
-        const duration = parseInt(String(durationRaw)) || 60;
-        const expDate = new Date(travelDate);
-        expDate.setDate(expDate.getDate() + duration);
-        expDate.setHours(0, 0, 0, 0);
-        
-        // Check if the calculated expiry date is in the past
-        if (expDate < today) {
-          isExpired = true;
+
+      // Method 2: travel_date is more than 30 days in the past
+      if (!isExpired && details.travel_date) {
+        const travelDate = new Date(details.travel_date);
+        if (!isNaN(travelDate.getTime())) {
+          travelDate.setHours(0, 0, 0, 0);
+          const thirtyDaysAfterTravel = new Date(travelDate);
+          thirtyDaysAfterTravel.setDate(thirtyDaysAfterTravel.getDate() + 30);
+          if (thirtyDaysAfterTravel < today) {
+            isExpired = true;
+          }
         }
+      }
+
+      // Method 3: No travel_date but created_at is more than 30 days in the past
+      if (!isExpired && !details.travel_date && isCreatedOver30Days) {
+        isExpired = true;
+      }
+
+      if (isExpired) {
+        toCloseIds.push(service.id);
       }
     }
 
-    if (isExpired) {
-      toCloseIds.push(service.id);
+    if (toCloseIds.length > 0) {
+      console.log(`Found ${toCloseIds.length} expired visa records. Updating status to 'Closed'...`);
+      
+      await sql`
+        UPDATE customer_services
+        SET status = 'Closed'
+        WHERE id IN ${sql(toCloseIds)}
+      `;
+      
+      console.log(`Successfully closed ${toCloseIds.length} records.`);
+    } else {
+      console.log('No expired visa records found to close.');
     }
+
+    return toCloseIds.length;
+  } finally {
+    await sql.end();
   }
-
-  if (toCloseIds.length > 0) {
-    console.log(`Found ${toCloseIds.length} expired visa records. Updating status to 'Closed'...`);
-    
-    const { error: updateError } = await supabase
-      .from('customer_services')
-      .update({ status: 'Closed' })
-      .in('id', toCloseIds);
-
-    if (updateError) {
-      throw new Error(`Failed to update records: ${updateError.message}`);
-    }
-    
-    console.log(`Successfully closed ${toCloseIds.length} records.`);
-  } else {
-    console.log('No expired visa records found to close.');
-  }
-
-  return toCloseIds.length;
 }
 
 // If run directly via npx tsx
