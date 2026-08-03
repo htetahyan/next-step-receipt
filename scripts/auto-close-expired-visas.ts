@@ -52,11 +52,6 @@ export async function processAutoCloseVisas() {
       const details = service.details || {};
       let isExpired = false;
 
-      // Parse created_at
-      const createdDate = new Date(service.created_at || '');
-      const isCreatedOver30Days = !isNaN(createdDate.getTime()) && 
-        (today.getTime() - createdDate.getTime()) > 30 * 24 * 60 * 60 * 1000;
-
       // Method 1: explicit visa_expiry_date in the past
       if (details.visa_expiry_date) {
         const expDate = new Date(details.visa_expiry_date);
@@ -68,22 +63,19 @@ export async function processAutoCloseVisas() {
         }
       }
 
-      // Method 2: travel_date is more than 30 days in the past
-      if (!isExpired && details.travel_date) {
+      // Method 2: No expiry date but has travel_date → calculate expiry using visa_duration
+      if (!isExpired && !details.visa_expiry_date && details.travel_date) {
         const travelDate = new Date(details.travel_date);
         if (!isNaN(travelDate.getTime())) {
-          travelDate.setHours(0, 0, 0, 0);
-          const thirtyDaysAfterTravel = new Date(travelDate);
-          thirtyDaysAfterTravel.setDate(thirtyDaysAfterTravel.getDate() + 30);
-          if (thirtyDaysAfterTravel < today) {
+          const durationRaw = details.visa_duration || '60';
+          const duration = parseInt(String(durationRaw)) || 60;
+          const calculatedExpiry = new Date(travelDate);
+          calculatedExpiry.setDate(calculatedExpiry.getDate() + duration);
+          calculatedExpiry.setHours(0, 0, 0, 0);
+          if (calculatedExpiry < today) {
             isExpired = true;
           }
         }
-      }
-
-      // Method 3: No travel_date but created_at is more than 30 days in the past
-      if (!isExpired && !details.travel_date && isCreatedOver30Days) {
-        isExpired = true;
       }
 
       if (isExpired) {
