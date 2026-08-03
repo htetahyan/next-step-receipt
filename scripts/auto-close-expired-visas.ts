@@ -6,7 +6,8 @@ dotenv.config({ path: '.env.local' });
 
 export async function processAutoCloseVisas() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Use service role key if available, fall back to anon key
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
@@ -57,7 +58,9 @@ export async function processAutoCloseVisas() {
     } else if (details.travel_date) {
       const travelDate = new Date(details.travel_date);
       if (!isNaN(travelDate.getTime())) {
-        const duration = parseInt(details.visa_duration_days) || 60;
+        // visa_duration may be stored as "60 Days", "30 Days", etc. or as a number
+        const durationRaw = details.visa_duration_days || details.visa_duration || '60';
+        const duration = parseInt(String(durationRaw)) || 60;
         const expDate = new Date(travelDate);
         expDate.setDate(expDate.getDate() + duration);
         expDate.setHours(0, 0, 0, 0);
