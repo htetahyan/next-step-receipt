@@ -63,17 +63,18 @@ export async function processAutoCloseVisas() {
         }
       }
 
-      // Method 2: No expiry date but has travel_date → calculate expiry using visa_duration
-      if (!isExpired && !details.visa_expiry_date && details.travel_date) {
-        const travelDate = new Date(details.travel_date);
-        if (!isNaN(travelDate.getTime())) {
-          const durationRaw = details.visa_duration || '60';
-          const duration = parseInt(String(durationRaw)) || 60;
-          const calculatedExpiry = new Date(travelDate);
-          calculatedExpiry.setDate(calculatedExpiry.getDate() + duration);
-          calculatedExpiry.setHours(0, 0, 0, 0);
-          if (calculatedExpiry < today) {
-            isExpired = true;
+      // Method 2: No expiry date but has travel_date or visa_issued_date → guess expiry date by adding 2 months (60 days)
+      if (!isExpired && !details.visa_expiry_date) {
+        const baseDateStr = details.travel_date || details.visa_issued_date;
+        if (baseDateStr) {
+          const baseDate = new Date(baseDateStr);
+          if (!isNaN(baseDate.getTime())) {
+            const calculatedExpiry = new Date(baseDate);
+            calculatedExpiry.setDate(calculatedExpiry.getDate() + 60); // 2 months = 60 days
+            calculatedExpiry.setHours(0, 0, 0, 0);
+            if (calculatedExpiry < today) {
+              isExpired = true;
+            }
           }
         }
       }

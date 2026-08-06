@@ -126,7 +126,7 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
     return isNaN(d.getTime()) ? 0 : d.getTime();
   };
 
-  // Helper to extract effective expiry date string (prefers visa_expiry_date, falls back to travel_date + duration)
+  // Helper to extract effective expiry date string (prefers visa_expiry_date, falls back to travel_date + 60 days, then visa_issued_date + 60 days)
   const getExpiryStr = (s: any): string => {
     const details = (s.details as any) || {};
 
@@ -134,18 +134,18 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
       return details.visa_expiry_date;
     }
 
-    if (details.travel_date) {
-      const travelTs = parseDateToTimestamp(details.travel_date);
-      if (travelTs > 0) {
-        const durationDays = parseInt(String(details.visa_duration || '60'), 10) || 60;
-        const expDate = new Date(travelTs);
-        expDate.setDate(expDate.getDate() + durationDays);
+    const baseDateStr = details.travel_date || details.visa_issued_date;
+    if (baseDateStr) {
+      const baseTs = parseDateToTimestamp(baseDateStr);
+      if (baseTs > 0) {
+        const expDate = new Date(baseTs);
+        expDate.setDate(expDate.getDate() + 60); // 2 months = 60 days
         const yyyy = expDate.getFullYear();
         const mm = String(expDate.getMonth() + 1).padStart(2, '0');
         const dd = String(expDate.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
       }
-      return details.travel_date;
+      return baseDateStr;
     }
 
     return '';
