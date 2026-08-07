@@ -9,7 +9,8 @@ export default async function UAEVisaPage() {
   const nonUAECategories = [
     'Air Ticket', 'Dummy Ticket', 'Ticket + Hotel Package', 'Flight Booking',
     'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
-    'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only'
+    'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
+    'Tour Package'
   ];
 
   let services: any[] = [];

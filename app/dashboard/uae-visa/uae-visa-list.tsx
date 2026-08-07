@@ -204,6 +204,8 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
   // Filter logic
   const filtered = useMemo(() => {
     return services.filter(s => {
+      if (s.category === 'Tour Package' || String(s.category).toLowerCase().includes('tour package')) return false;
+
       const customer = s.customers;
       const details = s.details as any;
 
@@ -269,6 +271,8 @@ export default function UAEVisaList({ initialServices, customers }: Props) {
   const expiryAlertData = useMemo(() => {
     const byPerson = new Map<string, any[]>();
     services.forEach(s => {
+      if (s.category === 'Tour Package' || String(s.category).toLowerCase().includes('tour package')) return;
+
       const cust = s.customers;
       const details = s.details as any;
 

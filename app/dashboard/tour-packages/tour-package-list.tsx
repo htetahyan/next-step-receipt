@@ -153,8 +153,8 @@ export default function TourPackageList({ initialServices, customers }: Props) {
   };
 
   return (
-    <div className="space-y-6 pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-6">
+    <div className="space-y-5 pb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-4">
         <div>
           <h1 className="text-3xl font-serif font-normal tracking-tight flex items-center gap-3">
             <Map className="w-7 h-7 text-[#D97757] opacity-80" />
