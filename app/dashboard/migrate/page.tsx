@@ -113,7 +113,12 @@ export default function MigratePage() {
 
         // Find the header row dynamically
         let headerRowIndex = -1;
-        const targetHeaders = ['customer name', 'customer id', 'mode of visa', 'visa supplier', 'amount', 'passport no', 'ref id'];
+        const targetHeaders = [
+          'customer name', 'customer id', 'customer', 'client name', 'name',
+          'mode of visa', 'visa supplier', 'supplier name', 'supplier',
+          'amount', 'total payment', 'payment to the suppliets', 'payment to the suppliers',
+          'passport no', 'ref id', 'tour plans', 'plans', 'destination', 'route'
+        ];
         
         for (let r = 0; r < Math.min(rawRows.length, 10); r++) {
           const row = rawRows[r];
@@ -121,8 +126,12 @@ export default function MigratePage() {
           
           const matchCount = row.filter(cell => {
             if (!cell) return false;
-            const normalized = String(cell).toLowerCase().trim();
-            return targetHeaders.some(th => normalized.includes(th));
+            const normalized = String(cell).toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+            if (!normalized) return false;
+            return targetHeaders.some(th => {
+              const cleanTh = th.toLowerCase().replace(/[^a-z0-9]/g, '');
+              return normalized.includes(cleanTh) || cleanTh.includes(normalized);
+            });
           }).length;
           
           if (matchCount >= 2) {
@@ -163,7 +172,7 @@ export default function MigratePage() {
           const row = rows[i];
           try {
             // Extract core customer details
-            const nameValue = getCSVValue(row, ['Customer Name', 'Name', 'Client Name']);
+            const nameValue = getCSVValue(row, ['Customer Name', 'Name', 'Client Name', 'Customer']);
             const name = (nameValue && String(nameValue).trim() !== '-' && String(nameValue).trim().toLowerCase() !== 'unknown' && String(nameValue).trim().toLowerCase() !== 'null') ? String(nameValue).trim() : '';
 
             let cleanName = name;
@@ -176,15 +185,17 @@ export default function MigratePage() {
             
             // Skip rows without a customer name, or merge if they are sub-rows
             if (!cleanName) {
-              if (lastRecord) {
-                const subDest = getCSVValue(row, ['Destination', 'Route', 'To', 'Mode of Visa/ Extension', 'Mode/Category', 'Category', 'Visa Type']);
-                const subAmount = parseCSVNumber(getCSVValue(row, ['Amount', 'Amount Charged'])) ?? 0;
-                const subCost = parseCSVNumber(getCSVValue(row, ['Payment amount to airline', 'Airline Cost', 'Supplier Cost', 'Visa fees to Supplier'])) ?? 0;
-                const subNotes = getCSVValue(row, ['Note', 'Notes', 'Comments', 'Remark']) || '';
+              const subDest = getCSVValue(row, ['Tour Plans', 'Plans', 'Description', 'Destination', 'Route', 'To', 'Mode of Visa/ Extension', 'Mode/Category', 'Category', 'Visa Type']) || '';
+              const subAmount = parseCSVNumber(getCSVValue(row, ['Amount', 'Amount Charged', 'Total Payment'])) ?? 0;
+              const subCost = parseCSVNumber(getCSVValue(row, ['Payment to the suppliets', 'Payment to the suppliers', 'Payment amount to airline', 'Airline Cost', 'Supplier Cost', 'Visa fees to Supplier'])) ?? 0;
+              const subNotes = getCSVValue(row, ['Remark', 'Note', 'Notes', 'Comments']) || '';
 
+              const hasSubContent = !!subDest || subAmount > 0 || subCost > 0 || !!subNotes;
+
+              if (hasSubContent && lastRecord) {
+                const targetField = type === 'uae-visa' ? 'visa_duration' : type === 'tour-package' ? 'tour_plans' : 'destination';
+                const existingDest = lastRecord.service.details[targetField] || '';
                 if (subDest) {
-                  const targetField = type === 'uae-visa' ? 'visa_duration' : 'destination';
-                  const existingDest = lastRecord.service.details[targetField] || lastRecord.service.details.destination || '';
                   lastRecord.service.details[targetField] = existingDest ? `${existingDest} + ${subDest}` : subDest;
                 }
 
@@ -195,9 +206,9 @@ export default function MigratePage() {
                   lastRecord.service.financials.supplier_cost = (lastRecord.service.financials.supplier_cost || 0) + subCost;
                 }
                 if (subNotes) {
-                  const targetField = type === 'air-ticket' ? 'notes' : 'comments';
-                  const existingNotes = lastRecord.service.details[targetField] || '';
-                  lastRecord.service.details[targetField] = existingNotes ? `${existingNotes} | ${subNotes}` : subNotes;
+                  const targetNotesField = type === 'air-ticket' ? 'notes' : 'comments';
+                  const existingNotes = lastRecord.service.details[targetNotesField] || '';
+                  lastRecord.service.details[targetNotesField] = existingNotes ? `${existingNotes} | ${subNotes}` : subNotes;
                 }
 
                 // Recalculate financials
@@ -205,12 +216,6 @@ export default function MigratePage() {
                 lastRecord.service.financials.balance = (lastRecord.service.financials.receiving_amount || 0) - (lastRecord.service.financials.supplier_cost || 0);
 
                 addLog(`Merged sub-row ${i+1} into customer "${lastRecord.customer.name}" (Add-on: "${subDest || 'Services'}", +${subAmount} AMT, +${subCost} Cost)`, 'info');
-              } else {
-                if (i < 5) {
-                  addLog(`Row ${i+1}: Skipped - No active customer profile to merge sub-row: ${JSON.stringify(row).slice(0, 150)}...`, 'error');
-                } else if (i === 5) {
-                  addLog(`... additional unnamed rows skipped without active parent profile.`, 'error');
-                }
               }
               continue;
             }
