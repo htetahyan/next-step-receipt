@@ -14,9 +14,10 @@ interface FormFieldProps {
   component?: 'input' | 'select' | 'textarea';
   className?: string;
   readOnly?: boolean;
+  list?: string;
 }
 
-export function FormField({ name, label, type = 'text', placeholder, options, component = 'input', className = '', readOnly = false }: FormFieldProps) {
+export function FormField({ name, label, type = 'text', placeholder, options, component = 'input', className = '', readOnly = false, list }: FormFieldProps) {
   const { register, formState: { errors } } = useFormContext();
   
   // Handle nested error paths like newCustomer.name
@@ -37,6 +38,7 @@ export function FormField({ name, label, type = 'text', placeholder, options, co
           placeholder={placeholder}
           className={inputCls}
           readOnly={readOnly}
+          list={list}
         />
       )}
 

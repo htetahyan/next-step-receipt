@@ -67,6 +67,21 @@ export const otherVisaSchema = baseServiceSchema.extend({
   financials: baseFinancialsSchema,
 });
 
+export const tourPackageSchema = baseServiceSchema.extend({
+  category: z.string(),
+  details: z.object({
+    travel_date: z.string().optional(),
+    supplier_name: z.string().optional(),
+    tour_plans: z.string().optional(),
+    referred_by: z.string().optional(),
+    comments: z.string().optional(),
+    remark: z.string().optional(),
+  }),
+  financials: baseFinancialsSchema,
+});
+
 export type UAEVisaFormValues = z.infer<typeof uaeVisaSchema>;
 export type AirTicketFormValues = z.infer<typeof airTicketSchema>;
 export type OtherVisaFormValues = z.infer<typeof otherVisaSchema>;
+
+export type TourPackageFormValues = z.infer<typeof tourPackageSchema>;

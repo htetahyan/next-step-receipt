@@ -165,9 +165,17 @@ export default function MigratePage() {
             // Extract core customer details
             const nameValue = getCSVValue(row, ['Customer Name', 'Name', 'Client Name']);
             const name = (nameValue && String(nameValue).trim() !== '-' && String(nameValue).trim().toLowerCase() !== 'unknown' && String(nameValue).trim().toLowerCase() !== 'null') ? String(nameValue).trim() : '';
+
+            let cleanName = name;
+            let partySuffix = '';
+            const partyMatch = name.match(/^(.*?)\s*\+\s*(\d+)$/);
+            if (partyMatch) {
+              cleanName = partyMatch[1].trim();
+              partySuffix = `+${partyMatch[2]}`;
+            }
             
             // Skip rows without a customer name, or merge if they are sub-rows
-            if (!name) {
+            if (!cleanName) {
               if (lastRecord) {
                 const subDest = getCSVValue(row, ['Destination', 'Route', 'To', 'Mode of Visa/ Extension', 'Mode/Category', 'Category', 'Visa Type']);
                 const subAmount = parseCSVNumber(getCSVValue(row, ['Amount', 'Amount Charged'])) ?? 0;
@@ -339,6 +347,38 @@ export default function MigratePage() {
                 balance: rawAmount - rawCost,
                 payment_method: paymentMethod,
               };
+            } else if (type === 'tour-package') {
+              const refIdValue = getCSVValue(row, ['Customer ID', 'Ref ID', 'ID', 'Reference ID', 'NO']);
+              serviceData.referenceId = (refIdValue && String(refIdValue).trim() !== '-' && String(refIdValue).trim().toLowerCase() !== 'unknown') ? `TP-${String(refIdValue).trim()}` : null;
+              serviceData.category = 'Tour Package';
+              
+              serviceData.details = {
+                travel_date: parseDateToISO(getCSVValue(row, ['Date', 'Travel Date'])),
+                supplier_name: getCSVValue(row, ['Supplier Name', 'Supplier']) || '',
+                tour_plans: getCSVValue(row, ['Tour Plans', 'Plans', 'Description']) || '',
+                referred_by: getCSVValue(row, ['Referred By', 'Agent']) || '',
+                comments: getCSVValue(row, ['Remark', 'Notes']) || '',
+                remark: getCSVValue(row, ['Remark']) || '',
+                legacy_row: row,
+              };
+
+              const rawAmount = parseCSVNumber(getCSVValue(row, ['Amount', 'Amount Charged'])) ?? 0;
+              const rawDiscount = parseCSVNumber(getCSVValue(row, ['Discount'])) ?? 0;
+              const rawReceivingVal = parseCSVNumber(getCSVValue(row, ['Total Payment', 'Receiving']));
+              const rawReceiving = rawReceivingVal !== null ? rawReceivingVal : (rawAmount - rawDiscount);
+              const rawCost = parseCSVNumber(getCSVValue(row, ['Payment to the suppliets', 'Payment to the suppliers', 'Supplier Cost'])) ?? 0;
+              const rawGP = parseCSVNumber(getCSVValue(row, ['GP', 'Gross Profit']));
+              const rawBalance = rawGP !== null ? rawGP : (rawReceiving - rawCost);
+
+              serviceData.financials = {
+                amount: rawAmount,
+                discount: rawDiscount,
+                receiving_amount: rawReceiving,
+                supplier_cost: rawCost,
+                refund: 0,
+                balance: rawBalance,
+                payment_method: paymentMethod,
+              };
             } else {
               const refIdValue = getCSVValue(row, ['Customer ID', 'Ref ID', 'ID', 'Reference ID']);
               serviceData.referenceId = (refIdValue && String(refIdValue).trim() !== '-' && String(refIdValue).trim().toLowerCase() !== 'unknown') ? String(refIdValue).trim() : null;
@@ -369,9 +409,13 @@ export default function MigratePage() {
               };
             }
 
+            if (partySuffix && serviceData.details) {
+              serviceData.details.remark = serviceData.details.remark ? `${serviceData.details.remark} (${partySuffix})` : partySuffix;
+            }
+
             recordsToMigrate.push({
               customer: {
-                name,
+                name: cleanName,
                 passportNo,
                 phone,
                 email
@@ -460,6 +504,7 @@ export default function MigratePage() {
                 >
                   <option value="uae-visa">UAE Visa Tracker</option>
                   <option value="air-ticket">Air Tickets</option>
+                  <option value="tour-package">Tour Packages</option>
                   <option value="other-visa">Other Visas</option>
                 </select>
               </div>

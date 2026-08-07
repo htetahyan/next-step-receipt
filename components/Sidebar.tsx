@@ -42,6 +42,7 @@ export default function Sidebar() {
     { name: "UAE Visa Tracker", href: "/dashboard/uae-visa", icon: Shield },
     { name: "Air Tickets", href: "/dashboard/air-tickets", icon: Plane },
     { name: "Other Visa", href: "/dashboard/other-visa", icon: Globe },
+    { name: "Tour Packages", href: "/dashboard/tour-packages", icon: Briefcase },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
     { name: "Suppliers", href: "/dashboard/suppliers", icon: Briefcase },
     { name: "Data Migration", href: "/dashboard/migrate", icon: Database },
@@ -85,6 +86,13 @@ export default function Sidebar() {
             >
               <Globe className="h-4 w-4 opacity-70" />
               New Other Visa
+            </Link>
+            <Link
+              href="/dashboard/tour-packages/new"
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+            >
+              <Briefcase className="h-4 w-4 opacity-70" />
+              New Tour Package
             </Link>
             <Link
               href="/dashboard/customers?new=true"

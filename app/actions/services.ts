@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 
 
-import { uaeVisaSchema, airTicketSchema, otherVisaSchema } from '@/lib/validations/serviceSchemas';
+import { uaeVisaSchema, airTicketSchema, otherVisaSchema, tourPackageSchema } from '@/lib/validations/serviceSchemas';
 import { createClient } from '@/utils/supabase/server';
 
 // ── Schema ──────────────────────────────────────────────────
@@ -86,6 +86,8 @@ export async function addCustomerService(data: any) {
       uaeVisaSchema.parse(validationData);
     } else if (category === 'Air Ticket' || category === 'Flight Booking') {
       airTicketSchema.parse(validationData);
+    } else if (category === 'Tour Package') {
+      tourPackageSchema.parse(validationData);
     } else {
       otherVisaSchema.parse(validationData);
     }
