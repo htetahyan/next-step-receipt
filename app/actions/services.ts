@@ -233,8 +233,26 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         createdCount++;
       }
 
-      // 2. Insert Service (use travel_date / visa_issued_date for created_at if available)
+      // 2. Service Reference ID Deduplication: Check if reference_id already exists in database
       let referenceId = service.referenceId || null;
+      if (referenceId) {
+        const cleanRef = String(referenceId).trim();
+        const { data: existingSvc } = await supabase
+          .from('customer_services')
+          .select('id')
+          .ilike('reference_id', cleanRef)
+          .maybeSingle();
+
+        if (existingSvc) {
+          matchedCount++;
+          results.push({
+            success: true,
+            message: `Skipped duplicate: Reference ID "${cleanRef}" for customer "${name}" already exists in database.`
+          });
+          continue;
+        }
+      }
+
       if (!referenceId) {
         const cat = String(service.category || '').toLowerCase();
         const prefix = cat.includes('ticket') ? 'TK' : cat.includes('uae') ? 'AE' : 'OT';
