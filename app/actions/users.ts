@@ -203,7 +203,7 @@ export async function createStaffMember(payload: {
 
     // 1c. If user ID still needs resolution (e.g. from existing auth.users) or to auto-confirm
     if (process.env.DATABASE_URL) {
-      const sql = postgres(process.env.DATABASE_URL);
+      const sql = postgres(process.env.DATABASE_URL, { prepare: false });
       try {
         if (!userId) {
           const rows = await sql`SELECT id FROM auth.users WHERE lower(email) = ${email} LIMIT 1`;
@@ -213,7 +213,7 @@ export async function createStaffMember(payload: {
         }
 
         if (userId) {
-          // Auto-confirm user so they can log in immediately
+          // Auto-confirm user so they can log in immediately without confirmation email delay
           await sql`
             UPDATE auth.users
             SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
@@ -253,7 +253,7 @@ export async function createStaffMember(payload: {
     if (profileErr) {
       // Direct SQL fallback if RLS or client issues
       if (process.env.DATABASE_URL) {
-        const sql = postgres(process.env.DATABASE_URL);
+        const sql = postgres(process.env.DATABASE_URL, { prepare: false });
         try {
           await sql`
             INSERT INTO public.user_profiles (id, email, full_name, role, permissions, updated_at)
@@ -347,7 +347,7 @@ export async function deleteStaffMember(userId: string): Promise<{ success: bool
 
     // 2. Delete from auth.users via database or Admin API
     if (process.env.DATABASE_URL) {
-      const sql = postgres(process.env.DATABASE_URL);
+      const sql = postgres(process.env.DATABASE_URL, { prepare: false });
       try {
         await sql`DELETE FROM public.user_profiles WHERE id = ${userId}`;
         await sql`DELETE FROM auth.users WHERE id = ${userId}`;
