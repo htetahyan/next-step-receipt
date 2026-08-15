@@ -10,6 +10,8 @@ import { z } from 'zod';
 
 import { uaeVisaSchema, airTicketSchema, otherVisaSchema, tourPackageSchema } from '@/lib/validations/serviceSchemas';
 import { createClient } from '@/utils/supabase/server';
+import { requirePermission } from '@/app/actions/users';
+import { mapCategoryToModule } from '@/lib/auth-permissions';
 
 // ── Schema ──────────────────────────────────────────────────
 // We will now use the shared schemas directly to ensure frontend/backend parity.
@@ -63,14 +65,13 @@ import { safeAction } from '@/lib/safeAction';
 // ── Add Service ─────────────────────────────────────────────
 export async function addCustomerService(data: any) {
   return safeAction(async (data: any) => {
-    // 1. Authenticate user
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error('Unauthorized');
-    }
-
     const { customerId, referenceId, category, status, details, financials } = data;
+
+    // Check RBAC permission for this specific service module
+    const moduleKey = mapCategoryToModule(category);
+    await requirePermission(moduleKey, 'create');
+
+    const supabase = await createClient();
 
     // 2. Validate input using Zod schemas based on category
     const validationData = {
@@ -370,12 +371,11 @@ export async function bulkMigrateCustomerServices(records: any[]) {
 
 export async function updateCustomerService(serviceId: string, data: any) {
   try {
+    const moduleKey = mapCategoryToModule(data.category);
+    await requirePermission(moduleKey, 'edit');
+
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return { success: false, error: 'Unauthorized' };
-    }
 
     const { data: updated, error } = await supabase
       .from('customer_services')
@@ -394,6 +394,7 @@ export async function updateCustomerService(serviceId: string, data: any) {
     revalidatePath('/dashboard/uae-visa');
     revalidatePath('/dashboard/air-tickets');
     revalidatePath('/dashboard/other-visa');
+    revalidatePath('/dashboard/tour-packages');
 
     return { success: true, service: updated };
   } catch (err: any) {
@@ -406,12 +407,24 @@ export async function deleteCustomerService(serviceId: string) {
   try {
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
+
+    // Fetch existing category to check permission for that specific module
+    const { data: existing } = await supabase
+      .from('customer_services')
+      .select('category')
+      .eq('id', serviceId)
+      .maybeSingle();
+
+    const moduleKey = mapCategoryToModule(existing?.category);
+    await requirePermission(moduleKey, 'delete');
+
     const { error } = await supabase.from('customer_services').delete().eq('id', serviceId);
     if (error) throw error;
 
     revalidatePath('/dashboard/uae-visa');
     revalidatePath('/dashboard/air-tickets');
     revalidatePath('/dashboard/other-visa');
+    revalidatePath('/dashboard/tour-packages');
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -453,8 +466,6 @@ export async function quickUpdateService(
   try {
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'Unauthorized' };
 
     // Get current record to merge details and financials
     const { data: existing, error: fetchErr } = await supabase
@@ -464,6 +475,9 @@ export async function quickUpdateService(
       .single();
 
     if (fetchErr || !existing) return { success: false, error: 'Service record not found' };
+
+    const moduleKey = mapCategoryToModule(payload.category || existing.category);
+    await requirePermission(moduleKey, 'edit');
 
     const updateData: any = {};
     if (payload.status) updateData.status = payload.status;

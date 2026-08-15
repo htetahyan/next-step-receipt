@@ -1,7 +1,15 @@
 import { createClient } from '@/utils/supabase/server';
 import TourPackageList from './tour-package-list';
+import { getCurrentUserProfile } from '@/app/actions/users';
+import { checkPermission } from '@/lib/auth-permissions';
+import { redirect } from 'next/navigation';
 
 export default async function TourPackagesPage() {
+  const profile = await getCurrentUserProfile();
+  if (!checkPermission(profile, 'tour_packages', 'read')) {
+    redirect('/dashboard');
+  }
+
   const supabase = await createClient();
 
   let services: any[] = [];
@@ -28,5 +36,5 @@ export default async function TourPackagesPage() {
     console.error('Failed to fetch customers:', e);
   }
 
-  return <TourPackageList initialServices={services} customers={customers} />;
+  return <TourPackageList initialServices={services} customers={customers} profile={profile} />;
 }

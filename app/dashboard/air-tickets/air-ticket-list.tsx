@@ -9,8 +9,21 @@ import { deleteCustomerService } from '@/app/actions/services';
 
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
+import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
-export default function AirTicketList({ initialServices, customers }: { initialServices: any[]; customers: any[] }) {
+export default function AirTicketList({
+  initialServices,
+  customers,
+  profile,
+}: {
+  initialServices: any[];
+  customers: any[];
+  profile?: UserProfile | null;
+}) {
+  const canCreate = checkPermission(profile || null, 'air_tickets', 'create');
+  const canEdit = checkPermission(profile || null, 'air_tickets', 'edit');
+  const canDelete = checkPermission(profile || null, 'air_tickets', 'delete');
+
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -197,9 +210,11 @@ export default function AirTicketList({ initialServices, customers }: { initialS
             )}
           </div>
 
-          <Link href="/dashboard/air-tickets/new" className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] hover:opacity-90 shadow-sm">
-            <Plus className="h-4 w-4" /> New Ticket Record
-          </Link>
+          {canCreate && (
+            <Link href="/dashboard/air-tickets/new" className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] hover:opacity-90 shadow-sm cursor-pointer">
+              <Plus className="h-4 w-4" /> New Ticket Record
+            </Link>
+          )}
         </div>
       </div>
 
@@ -295,11 +310,20 @@ export default function AirTicketList({ initialServices, customers }: { initialS
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link href={`/dashboard/air-tickets/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`} className="p-1.5 rounded hover:bg-[var(--card-border)]" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Link>
-                        <Link href={`/dashboard/air-tickets/${service.id}`} className="p-1.5 rounded hover:bg-[var(--card-border)]" title="View"><Eye className="w-3.5 h-3.5" /></Link>
-                        <button onClick={() => handleDelete(service.id)} disabled={deletingId === service.id} className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500" title="Delete">
-                          {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
+                        {canCreate && (
+                          <Link href={`/dashboard/air-tickets/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`} className="p-1.5 rounded hover:bg-[var(--card-border)] cursor-pointer" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Link>
+                        )}
+                        {canEdit && (
+                          <Link href={`/dashboard/air-tickets/${service.id}`} className="p-1.5 rounded hover:bg-[var(--card-border)] cursor-pointer" title="View / Edit"><Eye className="w-3.5 h-3.5" /></Link>
+                        )}
+                        {canDelete && (
+                          <button onClick={() => handleDelete(service.id)} disabled={deletingId === service.id} className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 cursor-pointer" title="Delete">
+                            {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                        {!canCreate && !canEdit && !canDelete && (
+                          <span className="text-[10px] opacity-40 font-mono">View Only</span>
+                        )}
                       </div>
                     </td>
                   </tr>

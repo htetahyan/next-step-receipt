@@ -3,10 +3,15 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, UserCheck } from "lucide-react";
 import { logout } from "@/app/actions/auth";
+import { UserProfile, checkPermission, ModuleKey } from "@/lib/auth-permissions";
 
-export default function Sidebar() {
+interface SidebarProps {
+  profile?: UserProfile | null;
+}
+
+export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname();
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -36,81 +41,116 @@ export default function Sidebar() {
     setIsQuickAddOpen(false);
   }, [pathname]);
 
-  const navItems = [
+  const allNavItems: { name: string; href: string; icon: any; moduleKey?: ModuleKey }[] = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Directory & Services", href: "/dashboard/customers", icon: Users },
-    { name: "UAE Visa Tracker", href: "/dashboard/uae-visa", icon: Shield },
-    { name: "Air Tickets", href: "/dashboard/air-tickets", icon: Plane },
-    { name: "Other Visa", href: "/dashboard/other-visa", icon: Globe },
-    { name: "Tour Packages", href: "/dashboard/tour-packages", icon: Briefcase },
-    { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
-    { name: "Suppliers", href: "/dashboard/suppliers", icon: Briefcase },
-    { name: "Data Migration", href: "/dashboard/migrate", icon: Database },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    { name: "Directory & Services", href: "/dashboard/customers", icon: Users, moduleKey: "customers" },
+    { name: "UAE Visa Tracker", href: "/dashboard/uae-visa", icon: Shield, moduleKey: "uae_visa" },
+    { name: "Air Tickets", href: "/dashboard/air-tickets", icon: Plane, moduleKey: "air_tickets" },
+    { name: "Other Visa", href: "/dashboard/other-visa", icon: Globe, moduleKey: "other_visa" },
+    { name: "Tour Packages", href: "/dashboard/tour-packages", icon: Briefcase, moduleKey: "tour_packages" },
+    { name: "Invoices", href: "/dashboard/invoices", icon: FileText, moduleKey: "invoices" },
+    { name: "Suppliers", href: "/dashboard/suppliers", icon: Briefcase, moduleKey: "suppliers" },
+    { name: "Data Migration", href: "/dashboard/migrate", icon: Database, moduleKey: "migration" },
+    { name: "Settings", href: "/dashboard/settings", icon: Settings, moduleKey: "settings" },
   ];
+
+  const navItems = allNavItems.filter(item => {
+    if (!item.moduleKey) return true;
+    return checkPermission(profile || null, item.moduleKey, 'read');
+  });
+
+  const canCreateUAE = checkPermission(profile || null, 'uae_visa', 'create');
+  const canCreateAir = checkPermission(profile || null, 'air_tickets', 'create');
+  const canCreateOther = checkPermission(profile || null, 'other_visa', 'create');
+  const canCreateTour = checkPermission(profile || null, 'tour_packages', 'create');
+  const canCreateCustomer = checkPermission(profile || null, 'customers', 'create');
+  const canCreateInvoice = checkPermission(profile || null, 'invoices', 'create');
+
+  const hasAnyCreate = canCreateUAE || canCreateAir || canCreateOther || canCreateTour || canCreateCustomer || canCreateInvoice;
 
   return (
     <div className="flex h-screen w-64 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm">
-      <div className="flex h-16 items-center border-b border-[var(--card-border)] px-6 justify-center bg-[var(--sidebar-bg)]">
+      <div className="flex h-16 items-center border-b border-[var(--card-border)] px-6 justify-between bg-[var(--sidebar-bg)]">
         <h1 className="font-serif font-black text-xl tracking-tight text-[#D97757]">NextStep.</h1>
-      </div>
-
-      <div className="px-3 pt-4 relative" ref={dropdownRef}>
-        <button
-          onClick={() => setIsQuickAddOpen(!isQuickAddOpen)}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#D97757] text-[#F5F4EF] px-3 py-2 text-sm font-medium transition-opacity hover:opacity-90 shadow-sm"
-        >
-          <Plus className="h-4 w-4" />
-          Quick Add
-        </button>
-        
-        {isQuickAddOpen && (
-          <div className="absolute left-3 right-3 top-[calc(100%+0.5rem)] z-50 rounded-lg border border-[var(--card-border)] bg-[var(--sidebar-bg)] p-1 shadow-lg">
-            <Link
-              href="/dashboard/uae-visa/new"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
-            >
-              <Shield className="h-4 w-4 opacity-70" />
-              New UAE Visa
-            </Link>
-            <Link
-              href="/dashboard/air-tickets/new"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
-            >
-              <Plane className="h-4 w-4 opacity-70" />
-              New Air Ticket
-            </Link>
-            <Link
-              href="/dashboard/other-visa/new"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
-            >
-              <Globe className="h-4 w-4 opacity-70" />
-              New Other Visa
-            </Link>
-            <Link
-              href="/dashboard/tour-packages/new"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
-            >
-              <Briefcase className="h-4 w-4 opacity-70" />
-              New Tour Package
-            </Link>
-            <Link
-              href="/dashboard/customers?new=true"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
-            >
-              <Users className="h-4 w-4 opacity-70" />
-              New Customer
-            </Link>
-            <Link
-              href="/dashboard/invoices/new"
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
-            >
-              <FileText className="h-4 w-4 opacity-70" />
-              New Invoice
-            </Link>
-          </div>
+        {profile && (
+          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+            profile.role === 'admin' ? 'bg-[#D97757]/15 text-[#D97757]' : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+          }`}>
+            {profile.role}
+          </span>
         )}
       </div>
+
+      {hasAnyCreate && (
+        <div className="px-3 pt-4 relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsQuickAddOpen(!isQuickAddOpen)}
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#D97757] text-[#F5F4EF] px-3 py-2 text-sm font-medium transition-opacity hover:opacity-90 shadow-sm cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            Quick Add
+          </button>
+          
+          {isQuickAddOpen && (
+            <div className="absolute left-3 right-3 top-[calc(100%+0.5rem)] z-50 rounded-lg border border-[var(--card-border)] bg-[var(--sidebar-bg)] p-1 shadow-lg">
+              {canCreateUAE && (
+                <Link
+                  href="/dashboard/uae-visa/new"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+                >
+                  <Shield className="h-4 w-4 opacity-70" />
+                  New UAE Visa
+                </Link>
+              )}
+              {canCreateAir && (
+                <Link
+                  href="/dashboard/air-tickets/new"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+                >
+                  <Plane className="h-4 w-4 opacity-70" />
+                  New Air Ticket
+                </Link>
+              )}
+              {canCreateOther && (
+                <Link
+                  href="/dashboard/other-visa/new"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+                >
+                  <Globe className="h-4 w-4 opacity-70" />
+                  New Other Visa
+                </Link>
+              )}
+              {canCreateTour && (
+                <Link
+                  href="/dashboard/tour-packages/new"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+                >
+                  <Briefcase className="h-4 w-4 opacity-70" />
+                  New Tour Package
+                </Link>
+              )}
+              {canCreateCustomer && (
+                <Link
+                  href="/dashboard/customers?new=true"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+                >
+                  <Users className="h-4 w-4 opacity-70" />
+                  New Customer
+                </Link>
+              )}
+              {canCreateInvoice && (
+                <Link
+                  href="/dashboard/invoices/new"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+                >
+                  <FileText className="h-4 w-4 opacity-70" />
+                  New Invoice
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <nav className="flex-1 space-y-0.5 px-3 py-2 overflow-y-auto">
         {navItems.map((item) => {
@@ -133,10 +173,16 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-t border-[var(--card-border)]">
+      <div className="p-3 border-t border-[var(--card-border)] space-y-2">
+        {profile && (
+          <div className="px-3 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--card-border)] text-xs flex flex-col">
+            <span className="font-semibold truncate">{profile.fullName || profile.email.split('@')[0]}</span>
+            <span className="opacity-60 text-[10px] truncate">{profile.email}</span>
+          </div>
+        )}
         <button
           onClick={() => logout()}
-          className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-all hover:bg-[var(--card-border)]"
+          className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-all hover:bg-[var(--card-border)] cursor-pointer"
         >
           <LogOut className="h-4 w-4 opacity-60" />
           Sign Out

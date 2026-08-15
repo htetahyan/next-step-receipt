@@ -15,9 +15,9 @@ async function main() {
   const sqlClient = postgres(connectionString);
 
   try {
-    const sql = fs.readFileSync('sql/migrations/004_service_reference_id.sql', 'utf8');
+    const sql = fs.readFileSync('sql/migrations/008_user_profiles_and_rbac.sql', 'utf8');
     await sqlClient.unsafe(sql);
-    console.log('Migration 004 successful');
+    console.log('Migration 008 (User Profiles & RBAC) successful');
   } catch (err) {
     console.error('Migration failed:', err);
   } finally {

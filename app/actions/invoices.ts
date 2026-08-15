@@ -2,8 +2,15 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requirePermission } from '@/app/actions/users'
 
 export async function deleteInvoice(id: string) {
+  try {
+    await requirePermission('invoices', 'delete');
+  } catch (err: any) {
+    return { error: err.message };
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase

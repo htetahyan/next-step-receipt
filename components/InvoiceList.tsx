@@ -6,8 +6,16 @@ import Link from 'next/link'
 import { deleteInvoice } from '@/app/actions/invoices'
 import { toast } from 'sonner'
 import Pagination from './Pagination'
+import { UserProfile, checkPermission } from '@/lib/auth-permissions'
 
-export default function InvoiceList({ initialInvoices }: { initialInvoices: any[] }) {
+export default function InvoiceList({
+  initialInvoices,
+  profile,
+}: {
+  initialInvoices: any[];
+  profile?: UserProfile | null;
+}) {
+  const canDelete = checkPermission(profile || null, 'invoices', 'delete');
   const [invoices, setInvoices] = useState(initialInvoices)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -159,14 +167,16 @@ export default function InvoiceList({ initialInvoices }: { initialInvoices: any[
                       >
                         <Eye className="h-5 w-5" />
                       </Link>
-                      <button 
-                        disabled={isDeleting === invoice.id}
-                        onClick={() => handleDelete(invoice.id, invoice.invoice_number)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50"
-                        title="Delete Permanently"
-                      >
-                        {isDeleting === invoice.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-                      </button>
+                      {canDelete && (
+                        <button 
+                          disabled={isDeleting === invoice.id}
+                          onClick={() => handleDelete(invoice.id, invoice.invoice_number)}
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50 cursor-pointer"
+                          title="Delete Permanently"
+                        >
+                          {isDeleting === invoice.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

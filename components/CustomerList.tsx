@@ -9,8 +9,19 @@ import { getPresignedUrl } from '@/app/actions/r2'
 import DocumentModal from './DocumentModal'
 import Link from 'next/link'
 import Pagination from './Pagination'
+import { UserProfile, checkPermission } from '@/lib/auth-permissions'
 
-export default function CustomerList({ initialCustomers }: { initialCustomers: any[] }) {
+export default function CustomerList({
+  initialCustomers,
+  profile,
+}: {
+  initialCustomers: any[];
+  profile?: UserProfile | null;
+}) {
+  const canCreate = checkPermission(profile || null, 'customers', 'create');
+  const canEdit = checkPermission(profile || null, 'customers', 'edit');
+  const canDelete = checkPermission(profile || null, 'customers', 'delete');
+
   const [customers, setCustomers] = useState(initialCustomers)
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)

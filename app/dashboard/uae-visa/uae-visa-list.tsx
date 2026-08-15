@@ -17,10 +17,17 @@ import OdooKanbanView from '@/components/OdooKanbanView';
 interface Props {
   initialServices: any[];
   customers: any[];
+  profile?: UserProfile | null;
 }
 
-export default function UAEVisaList({ initialServices, customers }: Props) {
+import { UserProfile, checkPermission } from '@/lib/auth-permissions';
+
+export default function UAEVisaList({ initialServices, customers, profile }: Props) {
   const router = useRouter();
+  const canCreate = checkPermission(profile || null, 'uae_visa', 'create');
+  const canEdit = checkPermission(profile || null, 'uae_visa', 'edit');
+  const canDelete = checkPermission(profile || null, 'uae_visa', 'delete');
+
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');

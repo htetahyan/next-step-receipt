@@ -3,14 +3,16 @@
 import { revalidatePath } from 'next/cache'
 import { customerSchema } from '@/lib/validations/serviceSchemas'
 import { createClient } from '@/utils/supabase/server'
+import { requirePermission } from '@/app/actions/users'
 
 export async function addCustomer(formData: FormData) {
-  // 1. Authenticate user
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Unauthorized' }
+  try {
+    await requirePermission('customers', 'create');
+  } catch (err: any) {
+    return { error: err.message };
   }
+
+  const supabase = await createClient()
 
   const name = formData.get('name') as string
   const email = formData.get('email') as string
@@ -55,12 +57,13 @@ export async function addCustomer(formData: FormData) {
 }
 
 export async function updateCustomer(id: string, formData: FormData) {
-  // 1. Authenticate user
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Unauthorized' }
+  try {
+    await requirePermission('customers', 'edit');
+  } catch (err: any) {
+    return { error: err.message };
   }
+
+  const supabase = await createClient()
 
   const name = formData.get('name') as string
   const email = formData.get('email') as string
@@ -109,6 +112,8 @@ export async function updateCustomer(id: string, formData: FormData) {
 
 export async function deleteCustomer(id: string) {
   try {
+    await requirePermission('customers', 'delete');
+
     const supabase = await createClient()
 
     // 1. Delete associated invoices first

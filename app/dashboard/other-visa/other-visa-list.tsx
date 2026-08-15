@@ -9,6 +9,7 @@ import { deleteCustomerService } from '@/app/actions/services';
 
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
+import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
 const COUNTRY_EMOJI: Record<string, string> = {
   'Japan Visa': '🇯🇵',
@@ -21,7 +22,19 @@ const COUNTRY_EMOJI: Record<string, string> = {
   'Consultation Only': '💬',
 };
 
-export default function OtherVisaList({ initialServices, customers }: { initialServices: any[]; customers: any[] }) {
+export default function OtherVisaList({
+  initialServices,
+  customers,
+  profile,
+}: {
+  initialServices: any[];
+  customers: any[];
+  profile?: UserProfile | null;
+}) {
+  const canCreate = checkPermission(profile || null, 'other_visa', 'create');
+  const canEdit = checkPermission(profile || null, 'other_visa', 'edit');
+  const canDelete = checkPermission(profile || null, 'other_visa', 'delete');
+
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -205,9 +218,11 @@ export default function OtherVisaList({ initialServices, customers }: { initialS
             )}
           </div>
 
-          <Link href="/dashboard/other-visa/new" className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] hover:opacity-90 shadow-sm">
-            <Plus className="h-4 w-4" /> New Application
-          </Link>
+          {canCreate && (
+            <Link href="/dashboard/other-visa/new" className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] hover:opacity-90 shadow-sm cursor-pointer">
+              <Plus className="h-4 w-4" /> New Application
+            </Link>
+          )}
         </div>
       </div>
 
@@ -228,24 +243,25 @@ export default function OtherVisaList({ initialServices, customers }: { initialS
         ))}
       </div>
 
-      {/* Category Chips */}
-      <div className="flex flex-wrap gap-2">
-        <button onClick={() => setCategoryFilter('all')} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${categoryFilter === 'all' ? 'bg-[#D97757] text-white' : 'bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)]'}`}>
-          All ({services.length})
-        </button>
-        {Object.entries(categoryCounts).map(([cat, count]) => (
-          <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${categoryFilter === cat ? 'bg-[#D97757] text-white' : 'bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)]'}`}>
-            <span>{COUNTRY_EMOJI[cat] || '🌍'}</span> {cat} ({count})
-          </button>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div className="card-anthropic p-4">
-        <div className="relative">
+      {/* Search and Filters */}
+      <div className="card-anthropic p-4 flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, passport, email, destination..." className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]" />
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, passport, country, ref ID..." className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]" />
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80"><X className="w-4 h-4" /></button>}
+        </div>
+        
+        <div className="flex gap-2">
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
+          >
+            <option value="all">All Countries</option>
+            {Object.keys(COUNTRY_EMOJI).map(c => (
+              <option key={c} value={c}>{COUNTRY_EMOJI[c]} {c}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -257,7 +273,7 @@ export default function OtherVisaList({ initialServices, customers }: { initialS
               <tr>
                 <th className="px-4 py-3 font-medium">Ref ID</th>
                 <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Destination</th>
+                <th className="px-4 py-3 font-medium">Country / Type</th>
                 <th className="px-4 py-3 font-medium">Category</th>
                 <th className="px-4 py-3 font-medium">Application Date</th>
                 <th className="px-4 py-3 font-medium">Travel Period</th>
@@ -290,11 +306,20 @@ export default function OtherVisaList({ initialServices, customers }: { initialS
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Link href={`/dashboard/other-visa/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`} className="p-1.5 rounded hover:bg-[var(--card-border)]" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Link>
-                        <Link href={`/dashboard/other-visa/${service.id}`} className="p-1.5 rounded hover:bg-[var(--card-border)]"><Eye className="w-3.5 h-3.5" /></Link>
-                        <button onClick={() => handleDelete(service.id)} disabled={deletingId === service.id} className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500">
-                          {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        </button>
+                        {canCreate && (
+                          <Link href={`/dashboard/other-visa/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`} className="p-1.5 rounded hover:bg-[var(--card-border)] cursor-pointer" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Link>
+                        )}
+                        {canEdit && (
+                          <Link href={`/dashboard/other-visa/${service.id}`} className="p-1.5 rounded hover:bg-[var(--card-border)] cursor-pointer" title="View / Edit"><Eye className="w-3.5 h-3.5" /></Link>
+                        )}
+                        {canDelete && (
+                          <button onClick={() => handleDelete(service.id)} disabled={deletingId === service.id} className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 cursor-pointer" title="Delete">
+                            {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                        {!canCreate && !canEdit && !canDelete && (
+                          <span className="text-[10px] opacity-40 font-mono">View Only</span>
+                        )}
                       </div>
                     </td>
                   </tr>

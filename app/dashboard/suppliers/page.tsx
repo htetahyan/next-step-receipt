@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Pagination from '@/components/Pagination';
+import { getCurrentUserProfile } from '@/app/actions/users';
+import { checkPermission, UserProfile } from '@/lib/auth-permissions';
 
 const DEFAULT_CATEGORIES = [
   'UAE Visit Visa 30 Days',
@@ -48,6 +50,7 @@ interface Supplier {
 }
 
 export default function SuppliersPage() {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,8 +78,17 @@ export default function SuppliersPage() {
   const [newDefaultPrice, setNewDefaultPrice] = useState('0');
 
   useEffect(() => {
-    loadSuppliers();
+    async function init() {
+      const p = await getCurrentUserProfile();
+      setProfile(p);
+      loadSuppliers();
+    }
+    init();
   }, []);
+
+  const canCreate = checkPermission(profile, 'suppliers', 'create');
+  const canEdit = checkPermission(profile, 'suppliers', 'edit');
+  const canDelete = checkPermission(profile, 'suppliers', 'delete');
 
   useEffect(() => {
     setCurrentPage(1);
@@ -224,13 +236,15 @@ export default function SuppliersPage() {
           <p className="text-sm opacity-60 mt-1.5 ml-1">Manage external suppliers, default services, and prefilled costs/prices</p>
         </div>
 
-        <button 
-          onClick={openAddModal}
-          className="flex items-center gap-2 px-5 py-3 bg-[#D97757] hover:opacity-90 text-[#F5F4EF] font-medium rounded-lg shadow-sm transition-all md:self-end"
-        >
-          <Plus className="h-5 w-5" />
-          Add New Supplier
-        </button>
+        {canCreate && (
+          <button 
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-5 py-3 bg-[#D97757] hover:opacity-90 text-[#F5F4EF] font-medium rounded-lg shadow-sm transition-all md:self-end cursor-pointer"
+          >
+            <Plus className="h-5 w-5" />
+            Add New Supplier
+          </button>
+        )}
       </div>
 
       {/* Filter and search bar */}
@@ -278,22 +292,28 @@ export default function SuppliersPage() {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 bg-[var(--background)] p-1 rounded-lg border border-[var(--card-border)]">
-                      <button 
-                        onClick={() => openEditModal(supplier)}
-                        className="p-1.5 text-blue-500 hover:bg-[var(--card-border)] rounded-md transition-all"
-                        title="Edit Supplier"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(supplier.id, supplier.name)}
-                        className="p-1.5 text-red-500 hover:bg-[var(--card-border)] rounded-md transition-all"
-                        title="Delete Supplier"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {(canEdit || canDelete) && (
+                      <div className="flex items-center gap-1.5 bg-[var(--background)] p-1 rounded-lg border border-[var(--card-border)]">
+                        {canEdit && (
+                          <button 
+                            onClick={() => openEditModal(supplier)}
+                            className="p-1.5 text-blue-500 hover:bg-[var(--card-border)] rounded-md transition-all cursor-pointer"
+                            title="Edit Supplier"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button 
+                            onClick={() => handleDelete(supplier.id, supplier.name)}
+                            className="p-1.5 text-red-500 hover:bg-[var(--card-border)] rounded-md transition-all cursor-pointer"
+                            title="Delete Supplier"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Contact details */}

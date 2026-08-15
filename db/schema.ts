@@ -108,3 +108,15 @@ export const suppliers = pgTable('suppliers', {
   services: jsonb('services').notNull().default('[]'), // array of: { serviceName: string, defaultCost: number, defaultPrice: number }
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// User Profiles & Permissions Table (RBAC)
+export const userProfiles = pgTable('user_profiles', {
+  id: uuid('id').primaryKey(), // references auth.users.id
+  email: text('email').notNull(),
+  fullName: text('full_name'),
+  role: text('role').notNull().default('staff'), // 'admin' or 'staff'
+  permissions: jsonb('permissions').notNull().default('{}'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+

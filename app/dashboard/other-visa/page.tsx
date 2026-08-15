@@ -1,7 +1,15 @@
 import { createClient } from '@/utils/supabase/server';
 import OtherVisaList from './other-visa-list';
+import { getCurrentUserProfile } from '@/app/actions/users';
+import { checkPermission } from '@/lib/auth-permissions';
+import { redirect } from 'next/navigation';
 
 export default async function OtherVisaPage() {
+  const profile = await getCurrentUserProfile();
+  if (!checkPermission(profile, 'other_visa', 'read')) {
+    redirect('/dashboard');
+  }
+
   const supabase = await createClient();
 
   const categories = [
@@ -33,5 +41,5 @@ export default async function OtherVisaPage() {
     console.error('Failed to fetch customers:', e);
   }
 
-  return <OtherVisaList initialServices={services} customers={customers} />;
+  return <OtherVisaList initialServices={services} customers={customers} profile={profile} />;
 }

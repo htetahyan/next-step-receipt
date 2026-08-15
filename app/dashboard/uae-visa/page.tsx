@@ -1,7 +1,15 @@
 import { createClient } from '@/utils/supabase/server';
 import UAEVisaList from './uae-visa-list';
+import { getCurrentUserProfile } from '@/app/actions/users';
+import { checkPermission } from '@/lib/auth-permissions';
+import { redirect } from 'next/navigation';
 
 export default async function UAEVisaPage() {
+  const profile = await getCurrentUserProfile();
+  if (!checkPermission(profile, 'uae_visa', 'read')) {
+    redirect('/dashboard');
+  }
+
   const supabase = await createClient();
 
   // Exclude non-UAE categories (air tickets and other country visas)
@@ -39,6 +47,6 @@ export default async function UAEVisaPage() {
     console.error('Failed to fetch customers:', e);
   }
 
-  return <UAEVisaList initialServices={services} customers={customers} />;
+  return <UAEVisaList initialServices={services} customers={customers} profile={profile} />;
 }
 

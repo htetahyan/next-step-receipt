@@ -1,7 +1,15 @@
 import { createClient } from '@/utils/supabase/server';
 import AirTicketList from './air-ticket-list';
+import { getCurrentUserProfile } from '@/app/actions/users';
+import { checkPermission } from '@/lib/auth-permissions';
+import { redirect } from 'next/navigation';
 
 export default async function AirTicketsPage() {
+  const profile = await getCurrentUserProfile();
+  if (!checkPermission(profile, 'air_tickets', 'read')) {
+    redirect('/dashboard');
+  }
+
   const supabase = await createClient();
 
   const ticketCategories = ['Air Ticket', 'Dummy Ticket', 'Ticket + Hotel Package'];
@@ -30,5 +38,5 @@ export default async function AirTicketsPage() {
     console.error('Failed to fetch customers:', e);
   }
 
-  return <AirTicketList initialServices={services} customers={customers} />;
+  return <AirTicketList initialServices={services} customers={customers} profile={profile} />;
 }

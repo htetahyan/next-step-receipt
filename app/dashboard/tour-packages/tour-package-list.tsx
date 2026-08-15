@@ -10,14 +10,20 @@ import * as XLSX from 'xlsx';
 
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
+import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
 interface Props {
   initialServices: any[];
   customers: any[];
+  profile?: UserProfile | null;
 }
 
-export default function TourPackageList({ initialServices, customers }: Props) {
+export default function TourPackageList({ initialServices, customers, profile }: Props) {
   const router = useRouter();
+  const canCreate = checkPermission(profile || null, 'tour_packages', 'create');
+  const canEdit = checkPermission(profile || null, 'tour_packages', 'edit');
+  const canDelete = checkPermission(profile || null, 'tour_packages', 'delete');
+
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -192,13 +198,15 @@ export default function TourPackageList({ initialServices, customers }: Props) {
             )}
           </div>
 
-          <Link
-            href="/dashboard/tour-packages/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] transition-all hover:opacity-90 shadow-sm"
-          >
-            <Plus className="h-4 w-4" />
-            New Tour Package
-          </Link>
+          {canCreate && (
+            <Link
+              href="/dashboard/tour-packages/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] transition-all hover:opacity-90 shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Tour Package
+            </Link>
+          )}
         </div>
       </div>
 
@@ -289,26 +297,37 @@ export default function TourPackageList({ initialServices, customers }: Props) {
                     <td className="px-4 py-3 max-w-[150px] truncate" title={details?.remark}>{details?.remark || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/dashboard/tour-packages/new?duplicate=${s.id}`}
-                          className="p-1.5 opacity-60 hover:opacity-100 hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50 dark:hover:bg-blue-950"
-                          title="Duplicate"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Link>
-                        <Link
-                          href={`/dashboard/tour-packages/${s.id}`}
-                          className="p-1.5 opacity-60 hover:opacity-100 hover:text-[#D97757] transition-colors rounded-md hover:bg-[#D97757]/10"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(s.id)}
-                          disabled={deletingId === s.id}
-                          className="p-1.5 opacity-60 hover:opacity-100 hover:text-red-500 transition-colors rounded-md hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-30"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {canCreate && (
+                          <Link
+                            href={`/dashboard/tour-packages/new?duplicate=${s.id}`}
+                            className="p-1.5 opacity-60 hover:opacity-100 hover:text-blue-500 transition-colors rounded-md hover:bg-blue-50 dark:hover:bg-blue-950 cursor-pointer"
+                            title="Duplicate"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Link>
+                        )}
+                        {canEdit && (
+                          <Link
+                            href={`/dashboard/tour-packages/${s.id}`}
+                            className="p-1.5 opacity-60 hover:opacity-100 hover:text-[#D97757] transition-colors rounded-md hover:bg-[#D97757]/10 cursor-pointer"
+                            title="Edit"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Link>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(s.id)}
+                            disabled={deletingId === s.id}
+                            className="p-1.5 opacity-60 hover:opacity-100 hover:text-red-500 transition-colors rounded-md hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-30 cursor-pointer"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!canEdit && !canDelete && !canCreate && (
+                          <span className="text-[11px] opacity-40 font-mono">View Only</span>
+                        )}
                       </div>
                     </td>
                   </tr>
