@@ -4,6 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
+import { getSiteUrl } from '@/lib/site-url'
+
 export type AuthState = {
   error?: string;
   message?: string;
@@ -40,8 +42,7 @@ export async function signup(prevState: AuthState, formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'https://next-step-receipt.vercel.app');
+  const siteUrl = getSiteUrl();
 
   const { error } = await supabase.auth.signUp({
     email,

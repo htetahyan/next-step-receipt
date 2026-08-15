@@ -13,6 +13,7 @@ import {
   DEFAULT_STAFF_PERMISSIONS,
   DEFAULT_ADMIN_PERMISSIONS,
 } from '@/lib/auth-permissions';
+import { getSiteUrl } from '@/lib/site-url';
 
 /**
  * Get current authenticated user and their RBAC profile (Server Action).
@@ -184,8 +185,7 @@ export async function createStaffMember(payload: {
         },
       });
 
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-        (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'https://next-step-receipt.vercel.app');
+      const siteUrl = getSiteUrl();
 
       const { data: signUpData, error: signUpErr } = await isolatedClient.auth.signUp({
         email,
