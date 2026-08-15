@@ -184,11 +184,15 @@ export async function createStaffMember(payload: {
         },
       });
 
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+        (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'https://next-step-receipt.vercel.app');
+
       const { data: signUpData, error: signUpErr } = await isolatedClient.auth.signUp({
         email,
         password,
         options: {
           data: { full_name: fullName },
+          emailRedirectTo: `${siteUrl}/auth/callback`,
         },
       });
 

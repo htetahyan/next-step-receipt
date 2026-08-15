@@ -40,9 +40,15 @@ export async function signup(prevState: AuthState, formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'https://next-step-receipt.vercel.app');
+
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/callback`,
+    },
   })
 
   if (error) {
