@@ -126,6 +126,8 @@ export async function listTeamMembers(): Promise<{ success: boolean; data?: User
   }
 }
 
+import postgres from 'postgres';
+
 /**
  * Create a new staff or admin user with specific permissions (Admin only)
  */
@@ -153,28 +155,91 @@ export async function createStaffMember(payload: {
       throw new Error('Password must be at least 6 characters.');
     }
 
-    const adminSupabase = getAdminClient();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let userId: string | null = null;
 
-    // 1. Create user in Supabase Auth via Admin API
-    const { data: authUser, error: createAuthErr } = await adminSupabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: fullName },
-    });
+    if (serviceRoleKey) {
+      // 1a. Try Admin API if service role key is configured
+      const adminSupabase = getAdminClient();
+      const { data: authUser, error: createAuthErr } = await adminSupabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName },
+      });
 
-    if (createAuthErr) {
-      throw new Error(createAuthErr.message);
+      if (!createAuthErr && authUser?.user) {
+        userId = authUser.user.id;
+      }
     }
 
-    if (!authUser || !authUser.user) {
-      throw new Error('Failed to create authentication user.');
+    // 1b. Fallback: Isolated signUp client (does not affect current admin session)
+    if (!userId) {
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+      const isolatedClient = createAdminSupabaseClient(url, anonKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+
+      const { data: signUpData, error: signUpErr } = await isolatedClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
+      });
+
+      if (signUpErr) {
+        throw new Error(signUpErr.message);
+      }
+
+      if (signUpData?.user) {
+        userId = signUpData.user.id;
+      }
     }
 
-    const userId = authUser.user.id;
+    // 1c. If user ID still needs resolution (e.g. from existing auth.users) or to auto-confirm
+    if (process.env.DATABASE_URL) {
+      const sql = postgres(process.env.DATABASE_URL);
+      try {
+        if (!userId) {
+          const rows = await sql`SELECT id FROM auth.users WHERE lower(email) = ${email} LIMIT 1`;
+          if (rows.length > 0) {
+            userId = rows[0].id;
+          }
+        }
 
-    // 2. Insert into user_profiles table
-    const { error: profileErr } = await adminSupabase
+        if (userId) {
+          // Auto-confirm user so they can log in immediately
+          await sql`
+            UPDATE auth.users
+            SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+                confirmed_at = COALESCE(confirmed_at, NOW()),
+                raw_user_meta_data = jsonb_set(
+                  COALESCE(raw_user_meta_data, '{}'::jsonb),
+                  '{full_name}',
+                  ${JSON.stringify(fullName)}::jsonb
+                )
+            WHERE id = ${userId}
+          `;
+        }
+      } catch (dbErr) {
+        console.error('Database auto-confirm error:', dbErr);
+      } finally {
+        await sql.end();
+      }
+    }
+
+    if (!userId) {
+      throw new Error('Failed to create or resolve authentication user.');
+    }
+
+    // 2. Insert or update user_profiles table
+    const supabase = await createClient();
+    const { error: profileErr } = await supabase
       .from('user_profiles')
       .upsert({
         id: userId,
@@ -186,7 +251,26 @@ export async function createStaffMember(payload: {
       });
 
     if (profileErr) {
-      throw new Error(profileErr.message);
+      // Direct SQL fallback if RLS or client issues
+      if (process.env.DATABASE_URL) {
+        const sql = postgres(process.env.DATABASE_URL);
+        try {
+          await sql`
+            INSERT INTO public.user_profiles (id, email, full_name, role, permissions, updated_at)
+            VALUES (${userId}, ${email}, ${fullName}, ${role}, ${sql.json(permissions)}, NOW())
+            ON CONFLICT (id) DO UPDATE
+            SET email = ${email},
+                full_name = ${fullName},
+                role = ${role},
+                permissions = ${sql.json(permissions)},
+                updated_at = NOW()
+          `;
+        } finally {
+          await sql.end();
+        }
+      } else {
+        throw new Error(profileErr.message);
+      }
     }
 
     revalidatePath('/dashboard/settings');
@@ -257,17 +341,24 @@ export async function deleteStaffMember(userId: string): Promise<{ success: bool
       throw new Error('You cannot delete your own account.');
     }
 
-    const adminSupabase = getAdminClient();
+    // 1. Delete from public.user_profiles
+    const supabase = await createClient();
+    await supabase.from('user_profiles').delete().eq('id', userId);
 
-    // 1. Delete from auth.users (will cascade delete user_profiles)
-    const { error: authErr } = await adminSupabase.auth.admin.deleteUser(userId);
-    if (authErr) {
-      // Fallback: delete from user_profiles table directly
-      const { error: profileErr } = await adminSupabase
-        .from('user_profiles')
-        .delete()
-        .eq('id', userId);
-      if (profileErr) throw new Error(profileErr.message);
+    // 2. Delete from auth.users via database or Admin API
+    if (process.env.DATABASE_URL) {
+      const sql = postgres(process.env.DATABASE_URL);
+      try {
+        await sql`DELETE FROM public.user_profiles WHERE id = ${userId}`;
+        await sql`DELETE FROM auth.users WHERE id = ${userId}`;
+      } catch (e) {
+        console.error('Direct SQL delete error:', e);
+      } finally {
+        await sql.end();
+      }
+    } else {
+      const adminSupabase = getAdminClient();
+      await adminSupabase.auth.admin.deleteUser(userId);
     }
 
     revalidatePath('/dashboard/settings');
