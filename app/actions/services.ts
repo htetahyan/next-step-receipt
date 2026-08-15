@@ -234,29 +234,55 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         createdCount++;
       }
 
-      // 2. Service Reference ID Deduplication: Check if reference_id already exists in database
-      let referenceId = service.referenceId || null;
+      // 2. Strict Service Deduplication
+      let referenceId = service.referenceId ? String(service.referenceId).trim() : null;
       if (referenceId) {
-        const cleanRef = String(referenceId).trim();
         const { data: existingSvc } = await supabase
           .from('customer_services')
-          .select('id')
-          .ilike('reference_id', cleanRef)
+          .select('id, reference_id')
+          .ilike('reference_id', referenceId)
           .maybeSingle();
 
         if (existingSvc) {
           matchedCount++;
           results.push({
             success: true,
-            message: `Skipped duplicate: Reference ID "${cleanRef}" for customer "${name}" already exists in database.`
+            message: `Skipped duplicate: Reference ID "${referenceId}" already exists in database for "${name}".`
           });
           continue;
         }
       }
 
+      // 2b. Check if this customer (by matched ID / name / passport) already has the exact service
+      if (matched && customerId) {
+        const targetDate = service.details?.travel_date || service.details?.application_date || service.details?.visa_issued_date;
+        const { data: existingCustomerServices } = await supabase
+          .from('customer_services')
+          .select('id, reference_id, category, details')
+          .eq('customer_id', customerId)
+          .eq('category', service.category);
+
+        if (existingCustomerServices && existingCustomerServices.length > 0) {
+          const duplicateFound = existingCustomerServices.find((s: any) => {
+            const d = s.details as any;
+            if (!targetDate) return true; // Identical customer & category
+            return d?.travel_date === targetDate || d?.application_date === targetDate || d?.visa_issued_date === targetDate;
+          });
+
+          if (duplicateFound) {
+            matchedCount++;
+            results.push({
+              success: true,
+              message: `Skipped duplicate: Customer "${name}" (Passport: ${passportNo || 'N/A'}) already has a "${service.category}" service (Ref: ${duplicateFound.reference_id || '—'}).`
+            });
+            continue;
+          }
+        }
+      }
+
       if (!referenceId) {
         const cat = String(service.category || '').toLowerCase();
-        const prefix = cat.includes('ticket') ? 'TK' : cat.includes('uae') ? 'AE' : 'OT';
+        const prefix = cat.includes('ticket') ? 'TK' : cat.includes('tour') ? 'TP' : cat.includes('uae') ? 'AE' : 'OT';
         referenceId = await generateReferenceId(prefix);
       }
 
