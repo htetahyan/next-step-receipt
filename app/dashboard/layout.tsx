@@ -1,6 +1,8 @@
 import Sidebar from "@/components/Sidebar";
 import { getCurrentUserProfile } from "@/app/actions/users";
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({
   children,
 }: {
