@@ -1,16 +1,17 @@
 'use client'
 
 import React, { useActionState, useEffect, useState } from 'react'
-import { Save, Loader2, CheckCircle2, Settings, Building2, Users } from 'lucide-react'
+import { Save, Loader2, CheckCircle2, Settings, Building2, Users, Fingerprint } from 'lucide-react'
 import { updateSettings, getSettings, type SettingsState } from '@/app/actions/settings'
 import UserManagement from '@/components/UserManagement'
+import PasskeyManager from '@/components/PasskeyManager'
 import { getCurrentUserProfile } from '@/app/actions/users'
 import { UserProfile } from '@/lib/auth-permissions'
 
 export default function SettingsPage() {
   const [initialData, setInitialData] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [activeTab, setActiveTab] = useState<'business' | 'team'>('business')
+  const [activeTab, setActiveTab] = useState<'business' | 'team' | 'security'>('business')
   const [isLoading, setIsLoading] = useState(true)
   const [state, action, pending] = useActionState<SettingsState, FormData>(updateSettings, undefined)
 
@@ -43,7 +44,7 @@ export default function SettingsPage() {
             <Settings className="w-8 h-8 text-[#D97757]" /> Settings
           </h1>
           <p className="text-slate-500 dark:text-slate-400">
-            Manage your business details, invoice defaults, and staff permissions.
+            Manage your business details, invoice defaults, team permissions, and passkeys.
           </p>
         </div>
         {state?.message && (
@@ -82,10 +83,26 @@ export default function SettingsPage() {
             Team Members & Access
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setActiveTab('security')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'security'
+              ? 'border-[#D97757] text-[#D97757]'
+              : 'border-transparent opacity-60 hover:opacity-100'
+          }`}
+        >
+          <Fingerprint className="w-4 h-4" />
+          Security & Passkeys
+        </button>
       </div>
 
       {activeTab === 'team' && (
         <UserManagement currentUserProfile={userProfile} />
+      )}
+
+      {activeTab === 'security' && (
+        <PasskeyManager />
       )}
 
       {activeTab === 'business' && (
