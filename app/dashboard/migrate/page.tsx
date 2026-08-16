@@ -47,11 +47,25 @@ export default function MigratePage() {
     return undefined;
   };
 
-  // Convert DMY date strings (e.g., "16 / 09/ 2025" or "3/10/2025") to ISO format "YYYY-MM-DD"
+  // Convert DMY date strings (e.g., "16 / 09/ 2025", "3/10/2025", or "7th Aug 2025") to ISO format "YYYY-MM-DD"
   const parseDateToISO = (dateStr: any): string | null => {
     if (!dateStr) return null;
     const cleanStr = String(dateStr).trim();
     if (!cleanStr || cleanStr === '-' || cleanStr === '—' || cleanStr.toLowerCase() === 'null') return null;
+
+    // e.g. "7th Aug 2025" or "8th Nov 2025"
+    const ordinalMatch = cleanStr.match(/^(\d+)(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})$/i);
+    if (ordinalMatch) {
+      const day = ordinalMatch[1].padStart(2, '0');
+      const monthStr = ordinalMatch[2].substring(0, 3).toLowerCase();
+      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const monthIdx = monthNames.indexOf(monthStr);
+      if (monthIdx !== -1) {
+        const month = String(monthIdx + 1).padStart(2, '0');
+        const year = ordinalMatch[3];
+        return `${year}-${month}-${day}`;
+      }
+    }
 
     // e.g. "20 / 8 / 2025" or "16/ 09 /2025"
     const dmyMatch = cleanStr.match(/^(\d+)\s*[\/\-]\s*(\d+)\s*[\/\-]\s*(\d{4})$/);
@@ -76,7 +90,7 @@ export default function MigratePage() {
       return cleanStr;
     }
 
-    return cleanStr; // fallback for non-standard texts (handled gracefully by form/db later)
+    return cleanStr; // fallback for non-standard texts
   };
 
   // Convert any string value to a clean float, handling commas, currencies, hyphens, and empty cells safely
@@ -336,7 +350,8 @@ export default function MigratePage() {
                 departure_time: getCSVValue(row, ['Departure Time', 'Departure time', 'Time']) || null,
                 booking_date: parseDateToISO(getCSVValue(row, ['Booking Date', 'Bookig date', 'Bookig date ', 'Booking date', 'Issued Date'])),
                 handled_by: getCSVValue(row, ['Handled By', 'Agent']) || '',
-                notes: getCSVValue(row, ['Note', 'Notes', 'Comments', 'Remark']) || '',
+                notes: getCSVValue(row, ['Note', 'Notes', 'Comments']) || '',
+                remark: getCSVValue(row, ['Remarks', 'Remark']) || '',
                 legacy_row: row, // Collect ALL row columns as raw backup
               };
 
