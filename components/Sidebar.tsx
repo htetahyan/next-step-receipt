@@ -196,8 +196,8 @@ export default function Sidebar({ profile }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile & Tablet Top Navigation Header (hidden on PC/laptop lg screens) */}
-      <div className="lg:hidden flex h-14 w-full items-center justify-between border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] px-4 shrink-0">
+      {/* Mobile & Tablet Top Navigation Header (hidden on PC/laptop md screens) */}
+      <div className="md:hidden flex h-14 w-full items-center justify-between border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] px-4 shrink-0">
         <div className="flex items-center gap-2">
           <h1 className="font-serif font-black text-lg text-[#D97757]">NextStep.</h1>
           {profile && (
@@ -217,7 +217,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* Mobile Slide-Out Drawer Overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
+        <div className="md:hidden fixed inset-0 z-50 flex">
           <div
             className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
@@ -228,8 +228,8 @@ export default function Sidebar({ profile }: SidebarProps) {
         </div>
       )}
 
-      {/* Desktop & Laptop Persistent Sidebar (Always visible on lg screens >=1024px) */}
-      <div className="hidden lg:flex h-screen w-64 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm shrink-0">
+      {/* Desktop & Laptop Persistent Sidebar (Always visible on md screens >=768px) */}
+      <div className="hidden md:flex h-screen w-64 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm shrink-0">
         {sidebarContent}
       </div>
     </>
