@@ -157,3 +157,29 @@ h1, h2, h3, .font-serif {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* Bulletproof responsive visibility */
+.mobile-header {
+  display: flex !important;
+}
+.desktop-sidebar {
+  display: none !important;
+}
+
+@media (min-width: 1024px) {
+  .mobile-header {
+    display: none !important;
+  }
+  .desktop-sidebar {
+    display: flex !important;
+  }
+  .dashboard-layout {
+    flex-direction: row !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .dashboard-layout {
+    flex-direction: column !important;
+  }
+}
+
