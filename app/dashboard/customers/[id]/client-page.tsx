@@ -64,10 +64,21 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
     const fin = service.financials || {};
     setServiceEditData({
       status: service.status || 'Open',
-      travel_date: details.travel_date || '',
+      category: service.category || '',
+      travel_date: details.travel_date || details.departure_date || '',
+      departure_date: details.departure_date || details.travel_date || '',
+      departure_time: details.departure_time || '',
+      booking_date: details.booking_date || '',
+      destination: details.destination || details.sector || '',
       visa_expiry_date: details.visa_expiry_date || '',
       visa_issued_date: details.visa_issued_date || '',
-      comments: details.comments || '',
+      visa_duration: details.visa_duration || '',
+      visa_supplier: details.visa_supplier || details.supplier_name || '',
+      supplier_name: details.supplier_name || details.visa_supplier || '',
+      tour_plans: details.tour_plans || '',
+      referred_by: details.referred_by || details.handled_by || '',
+      comments: details.comments || details.notes || '',
+      notes: details.notes || details.comments || '',
       remark: details.remark || '',
       amount: fin.amount || 0,
       discount: fin.discount || 0,
@@ -84,9 +95,19 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
         status: serviceEditData.status,
         details: {
           travel_date: serviceEditData.travel_date,
+          departure_date: serviceEditData.departure_date || serviceEditData.travel_date,
+          departure_time: serviceEditData.departure_time,
+          booking_date: serviceEditData.booking_date,
+          destination: serviceEditData.destination,
           visa_expiry_date: serviceEditData.visa_expiry_date,
           visa_issued_date: serviceEditData.visa_issued_date,
+          visa_duration: serviceEditData.visa_duration,
+          visa_supplier: serviceEditData.visa_supplier,
+          supplier_name: serviceEditData.supplier_name,
+          tour_plans: serviceEditData.tour_plans,
+          referred_by: serviceEditData.referred_by,
           comments: serviceEditData.comments,
+          notes: serviceEditData.notes || serviceEditData.comments,
           remark: serviceEditData.remark,
         },
         financials: {
@@ -256,6 +277,11 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
 
                   const isEditing = editingServiceId === service.id;
 
+                  const catStr = String(service.category || '').toLowerCase();
+                  const isAirTicket = catStr.includes('ticket') || catStr.includes('flight') || catStr.includes('airline') || catStr.includes('air');
+                  const isUAEVisa = catStr.includes('uae') || catStr.includes('visit visa') || catStr.includes('inside') || catStr.includes('a2a') || catStr.includes('bus');
+                  const isTourPackage = catStr.includes('tour') || catStr.includes('package') || catStr.includes('hotel') || catStr.includes('safari');
+
                   return (
                     <div key={service.id} className="p-6 rounded-xl bg-[var(--anthropic-surface)] border border-[var(--card-border)] space-y-4 relative">
                       <div className="flex items-center justify-between">
@@ -289,48 +315,220 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
 
                       {isEditing ? (
                         <div className="space-y-4 pt-2 border-t border-[var(--card-border)]">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs opacity-70 mb-1">Status</label>
-                              <select
-                                value={serviceEditData.status}
-                                onChange={(e) => setServiceEditData({...serviceEditData, status: e.target.value})}
-                                className="input-anthropic w-full text-sm py-1.5"
-                              >
-                                <option value="Open">Open</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Closed">Closed</option>
-                                <option value="Cancelled">Cancelled</option>
-                              </select>
+                          {/* Category-Specific Form Fields */}
+                          {isAirTicket ? (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Status</label>
+                                <select
+                                  value={serviceEditData.status}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, status: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                >
+                                  <option value="Open">Open</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Closed">Closed</option>
+                                  <option value="Cancelled">Cancelled</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Departure Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.departure_date || serviceEditData.travel_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, departure_date: e.target.value, travel_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Destination / Route</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.destination}
+                                  placeholder="e.g. RGN-BKK"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, destination: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Departure Time</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.departure_time}
+                                  placeholder="e.g. 14:30"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, departure_time: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Booking Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.booking_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, booking_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Handled / Referred By</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.referred_by}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, referred_by: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
                             </div>
-                            <div>
-                              <label className="block text-xs opacity-70 mb-1">Travel Date</label>
-                              <input
-                                type="date"
-                                value={serviceEditData.travel_date}
-                                onChange={(e) => setServiceEditData({...serviceEditData, travel_date: e.target.value})}
-                                className="input-anthropic w-full text-sm py-1.5"
-                              />
+                          ) : isUAEVisa ? (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Status</label>
+                                <select
+                                  value={serviceEditData.status}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, status: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                >
+                                  <option value="Open">Open</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Closed">Closed</option>
+                                  <option value="Cancelled">Cancelled</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Travel Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.travel_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, travel_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Visa Issued Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.visa_issued_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, visa_issued_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Visa Expiry Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.visa_expiry_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, visa_expiry_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Visa Duration</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.visa_duration}
+                                  placeholder="e.g. 30 Days"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, visa_duration: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Visa Supplier</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.visa_supplier}
+                                  placeholder="e.g. DAHR"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, visa_supplier: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
                             </div>
-                            <div>
-                              <label className="block text-xs opacity-70 mb-1">Visa Issued Date</label>
-                              <input
-                                type="date"
-                                value={serviceEditData.visa_issued_date}
-                                onChange={(e) => setServiceEditData({...serviceEditData, visa_issued_date: e.target.value})}
-                                className="input-anthropic w-full text-sm py-1.5"
-                              />
+                          ) : isTourPackage ? (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Status</label>
+                                <select
+                                  value={serviceEditData.status}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, status: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                >
+                                  <option value="Open">Open</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Closed">Closed</option>
+                                  <option value="Cancelled">Cancelled</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Travel Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.travel_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, travel_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Supplier Name</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.supplier_name}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, supplier_name: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Tour Plans / Details</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.tour_plans}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, tour_plans: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
                             </div>
-                            <div>
-                              <label className="block text-xs opacity-70 mb-1">Visa Expiry Date</label>
-                              <input
-                                type="date"
-                                value={serviceEditData.visa_expiry_date}
-                                onChange={(e) => setServiceEditData({...serviceEditData, visa_expiry_date: e.target.value})}
-                                className="input-anthropic w-full text-sm py-1.5"
-                              />
+                          ) : (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Status</label>
+                                <select
+                                  value={serviceEditData.status}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, status: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                >
+                                  <option value="Open">Open</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Closed">Closed</option>
+                                  <option value="Cancelled">Cancelled</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Travel Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.travel_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, travel_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Destination Country</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.destination}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, destination: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Visa Expiry Date</label>
+                                <input
+                                  type="date"
+                                  value={serviceEditData.visa_expiry_date}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, visa_expiry_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
                             </div>
-                          </div>
+                          )}
                           
                           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--card-border)]">
                             <div>
@@ -373,7 +571,7 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
 
                           <div className="grid grid-cols-1 gap-4 pt-2 border-t border-[var(--card-border)]">
                             <div>
-                              <label className="block text-xs opacity-70 mb-1">Comments</label>
+                              <label className="block text-xs opacity-70 mb-1">Note / Comments</label>
                               <textarea
                                 value={serviceEditData.comments}
                                 onChange={(e) => setServiceEditData({...serviceEditData, comments: e.target.value})}
@@ -409,15 +607,40 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                         </div>
                       ) : (
                         <>
-                          {/* Service Details Grid */}
+                          {/* Service Details Grid - Category Smart */}
                           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs opacity-80 border-t border-[var(--card-border)] pt-3">
-                            {details.visa_issued_date && <div><span className="opacity-50">Issued:</span> <span className="font-medium">{details.visa_issued_date}</span></div>}
-                            {details.travel_date && <div><span className="opacity-50">Travel:</span> <span className="font-medium">{details.travel_date}</span></div>}
-                            {details.visa_expiry_date && <div><span className="opacity-50">Expiry:</span> <span className="font-medium font-mono text-[#D97757]">{details.visa_expiry_date}</span></div>}
-                            {details.visa_duration && <div><span className="opacity-50">Duration:</span> <span className="font-medium">{details.visa_duration}</span></div>}
-                            {details.visa_supplier && <div><span className="opacity-50">Supplier:</span> <span className="font-medium">{details.visa_supplier}</span></div>}
-                            {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
-                            {details.comments && <div className="col-span-2"><span className="opacity-50">Comments:</span> <span className="font-medium">{details.comments}</span></div>}
+                            {isAirTicket ? (
+                              <>
+                                {(details.destination || details.sector) && <div><span className="opacity-50">Destination:</span> <span className="font-medium font-mono text-[#D97757]">{details.destination || details.sector}</span></div>}
+                                {(details.departure_date || details.travel_date) && <div><span className="opacity-50">Departure Date:</span> <span className="font-medium">{details.departure_date || details.travel_date}</span></div>}
+                                {details.departure_time && <div><span className="opacity-50">Departure Time:</span> <span className="font-medium">{details.departure_time}</span></div>}
+                                {details.booking_date && <div><span className="opacity-50">Booking Date:</span> <span className="font-medium">{details.booking_date}</span></div>}
+                                {(details.handled_by || details.referred_by) && <div><span className="opacity-50">Handled By:</span> <span className="font-medium">{details.handled_by || details.referred_by}</span></div>}
+                              </>
+                            ) : isUAEVisa ? (
+                              <>
+                                {details.visa_issued_date && <div><span className="opacity-50">Issued:</span> <span className="font-medium">{details.visa_issued_date}</span></div>}
+                                {details.travel_date && <div><span className="opacity-50">Travel:</span> <span className="font-medium">{details.travel_date}</span></div>}
+                                {details.visa_expiry_date && <div><span className="opacity-50">Expiry:</span> <span className="font-medium font-mono text-[#D97757]">{details.visa_expiry_date}</span></div>}
+                                {details.visa_duration && <div><span className="opacity-50">Duration:</span> <span className="font-medium">{details.visa_duration}</span></div>}
+                                {details.visa_supplier && <div><span className="opacity-50">Supplier:</span> <span className="font-medium">{details.visa_supplier}</span></div>}
+                                {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
+                              </>
+                            ) : isTourPackage ? (
+                              <>
+                                {details.travel_date && <div><span className="opacity-50">Travel Date:</span> <span className="font-medium">{details.travel_date}</span></div>}
+                                {(details.supplier_name || details.visa_supplier) && <div><span className="opacity-50">Supplier:</span> <span className="font-medium">{details.supplier_name || details.visa_supplier}</span></div>}
+                                {(details.tour_plans || details.destination) && <div className="col-span-2"><span className="opacity-50">Plans / Details:</span> <span className="font-medium">{details.tour_plans || details.destination}</span></div>}
+                              </>
+                            ) : (
+                              <>
+                                {details.destination && <div><span className="opacity-50">Destination:</span> <span className="font-medium font-mono text-[#D97757]">{details.destination}</span></div>}
+                                {details.travel_date && <div><span className="opacity-50">Travel:</span> <span className="font-medium">{details.travel_date}</span></div>}
+                                {details.visa_expiry_date && <div><span className="opacity-50">Expiry:</span> <span className="font-medium font-mono text-[#D97757]">{details.visa_expiry_date}</span></div>}
+                              </>
+                            )}
+
+                            {(details.comments || details.notes) && <div className="col-span-2"><span className="opacity-50">Note / Comments:</span> <span className="font-medium">{details.comments || details.notes}</span></div>}
                             {details.remark && <div className="col-span-2"><span className="opacity-50">Remark:</span> <span className="font-medium text-amber-600">{details.remark}</span></div>}
                           </div>
 
