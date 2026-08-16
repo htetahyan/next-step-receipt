@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Database, HelpCircle, FileSpreadsheet, Sparkles } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Database, HelpCircle, FileSpreadsheet, Sparkles, Download } from 'lucide-react';
 import Papa from 'papaparse';
 import { addCustomer, findCustomerByPassportOrName } from '@/app/actions/customers';
 import { addCustomerService, bulkMigrateCustomerServices } from '@/app/actions/services';
+import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 
 export default function MigratePage() {
@@ -497,16 +498,141 @@ export default function MigratePage() {
     });
   };
 
+  const [exportingSql, setExportingSql] = useState(false);
+  const supabase = createClient();
+
+  const exportFullDatabaseSql = async () => {
+    setExportingSql(true);
+    toast.info('Preparing database SQL export...');
+    try {
+      const [customersRes, servicesRes, invoicesRes, itemsRes, suppliersRes] = await Promise.all([
+        supabase.from('customers').select('*').order('created_at', { ascending: true }),
+        supabase.from('customer_services').select('*').order('created_at', { ascending: true }),
+        supabase.from('invoices').select('*').order('created_at', { ascending: true }),
+        supabase.from('invoice_items').select('*'),
+        supabase.from('suppliers').select('*').order('created_at', { ascending: true })
+      ]);
+
+      const sqlLines: string[] = [];
+      const timestamp = new Date().toISOString();
+
+      sqlLines.push(`-- NextStep Database Full SQL Export`);
+      sqlLines.push(`-- Generated: ${timestamp}\n`);
+
+      // 1. Customers
+      if (customersRes.data && customersRes.data.length > 0) {
+        sqlLines.push(`-- 1. Customers (${customersRes.data.length} records)`);
+        customersRes.data.forEach((c: any) => {
+          const name = String(c.name || '').replace(/'/g, "''");
+          const phone = c.phone ? `'${String(c.phone).replace(/'/g, "''")}'` : 'NULL';
+          const email = c.email ? `'${String(c.email).replace(/'/g, "''")}'` : 'NULL';
+          const passport = c.passport_no ? `'${String(c.passport_no).replace(/'/g, "''")}'` : 'NULL';
+          const metadata = JSON.stringify(c.metadata || {}).replace(/'/g, "''");
+          const createdAt = c.created_at ? `'${c.created_at}'` : 'NOW()';
+          sqlLines.push(`INSERT INTO customers (id, name, phone, email, passport_no, metadata, created_at) VALUES ('${c.id}', '${name}', ${phone}, ${email}, ${passport}, '${metadata}', ${createdAt}) ON CONFLICT (id) DO NOTHING;`);
+        });
+        sqlLines.push('');
+      }
+
+      // 2. Suppliers
+      if (suppliersRes.data && suppliersRes.data.length > 0) {
+        sqlLines.push(`-- 2. Suppliers (${suppliersRes.data.length} records)`);
+        suppliersRes.data.forEach((s: any) => {
+          const name = String(s.name || '').replace(/'/g, "''");
+          const services = JSON.stringify(s.services || []).replace(/'/g, "''");
+          const createdAt = s.created_at ? `'${s.created_at}'` : 'NOW()';
+          sqlLines.push(`INSERT INTO suppliers (id, name, services, created_at) VALUES ('${s.id}', '${name}', '${services}', ${createdAt}) ON CONFLICT (id) DO NOTHING;`);
+        });
+        sqlLines.push('');
+      }
+
+      // 3. Customer Services
+      if (servicesRes.data && servicesRes.data.length > 0) {
+        sqlLines.push(`-- 3. Customer Services (${servicesRes.data.length} records)`);
+        servicesRes.data.forEach((s: any) => {
+          const custId = s.customer_id ? `'${s.customer_id}'` : 'NULL';
+          const refId = s.reference_id ? `'${String(s.reference_id).replace(/'/g, "''")}'` : 'NULL';
+          const cat = String(s.category || '').replace(/'/g, "''");
+          const status = String(s.status || '').replace(/'/g, "''");
+          const details = JSON.stringify(s.details || {}).replace(/'/g, "''");
+          const financials = JSON.stringify(s.financials || {}).replace(/'/g, "''");
+          const createdAt = s.created_at ? `'${s.created_at}'` : 'NOW()';
+          sqlLines.push(`INSERT INTO customer_services (id, customer_id, reference_id, category, status, details, financials, created_at) VALUES ('${s.id}', ${custId}, ${refId}, '${cat}', '${status}', '${details}', '${financials}', ${createdAt}) ON CONFLICT (id) DO NOTHING;`);
+        });
+        sqlLines.push('');
+      }
+
+      // 4. Invoices & Items
+      if (invoicesRes.data && invoicesRes.data.length > 0) {
+        sqlLines.push(`-- 4. Invoices (${invoicesRes.data.length} records)`);
+        invoicesRes.data.forEach((inv: any) => {
+          const custId = inv.customer_id ? `'${inv.customer_id}'` : 'NULL';
+          const invNo = String(inv.invoice_number || '').replace(/'/g, "''");
+          const date = inv.date ? `'${inv.date}'` : 'NULL';
+          const subtotal = inv.subtotal ? `'${inv.subtotal}'` : "'0'";
+          const vat = inv.vat_amount ? `'${inv.vat_amount}'` : "'0'";
+          const total = inv.total_amount ? `'${inv.total_amount}'` : "'0'";
+          const payMode = inv.payment_method ? `'${String(inv.payment_method).replace(/'/g, "''")}'` : "'cash'";
+          const createdAt = inv.created_at ? `'${inv.created_at}'` : 'NOW()';
+          sqlLines.push(`INSERT INTO invoices (id, customer_id, invoice_number, date, subtotal, vat_amount, total_amount, payment_method, created_at) VALUES ('${inv.id}', ${custId}, '${invNo}', ${date}, ${subtotal}, ${vat}, ${total}, ${payMode}, ${createdAt}) ON CONFLICT (id) DO NOTHING;`);
+        });
+        sqlLines.push('');
+      }
+
+      if (itemsRes.data && itemsRes.data.length > 0) {
+        sqlLines.push(`-- 5. Invoice Items (${itemsRes.data.length} records)`);
+        itemsRes.data.forEach((item: any) => {
+          const invId = `'${item.invoice_id}'`;
+          const desc = String(item.description || '').replace(/'/g, "''");
+          const qty = item.quantity ? `'${item.quantity}'` : "'1'";
+          const rate = item.rate ? `'${item.rate}'` : "'0'";
+          const amount = item.amount ? `'${item.amount}'` : "'0'";
+          sqlLines.push(`INSERT INTO invoice_items (id, invoice_id, description, quantity, rate, amount) VALUES ('${item.id}', ${invId}, '${desc}', ${qty}, ${rate}, ${amount}) ON CONFLICT (id) DO NOTHING;`);
+        });
+        sqlLines.push('');
+      }
+
+      const sqlContent = sqlLines.join('\n');
+      const blob = new Blob([sqlContent], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `nextstep_database_backup_${dateStr}.sql`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('Downloaded Full Database SQL Backup (.sql)!');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`SQL Export failed: ${e.message}`);
+    } finally {
+      setExportingSql(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-24 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-serif text-[var(--foreground)] flex items-center gap-3">
-          <Database className="h-8 w-8 text-[#D97757]" />
-          Dynamic Data Migration Tool
-        </h1>
-        <p className="text-sm opacity-60 mt-1.5 ml-11">
-          Import and map your legacy spreadsheets directly into your database.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-4">
+        <div>
+          <h1 className="text-3xl font-serif text-[var(--foreground)] flex items-center gap-3">
+            <Database className="h-8 w-8 text-[#D97757]" />
+            Dynamic Data Migration Tool
+          </h1>
+          <p className="text-sm opacity-60 mt-1">
+            Import and map your legacy spreadsheets directly into your database.
+          </p>
+        </div>
+
+        <button
+          onClick={exportFullDatabaseSql}
+          disabled={exportingSql}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--card-border)] bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)] text-sm font-medium transition-all shadow-xs cursor-pointer disabled:opacity-50"
+        >
+          {exportingSql ? <Loader2 className="w-4 h-4 animate-spin text-[#D97757]" /> : <Download className="w-4 h-4 text-[#D97757]" />}
+          <span>Export SQL Backup (.sql)</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

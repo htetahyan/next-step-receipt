@@ -184,7 +184,7 @@ export default function TourPackageForm({ customers, suppliers = [], initialData
                       <option key={s.id} value={s.name} />
                     ))}
                   </datalist>
-                  <FormField name="details.tour_plans" label="Tour Plans" component="textarea" className="col-span-2" />
+                  <FormField name="details.tour_plans" label="Tour Name" component="textarea" className="col-span-2" />
                   <FormField name="status" label="Status" component="select" options={SERVICE_STATUSES.map(s => ({label: s, value: s}))} className="col-span-2" />
                 </div>
               </div>

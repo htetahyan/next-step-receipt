@@ -7,7 +7,7 @@ import InvoiceTemplate, { InvoiceData } from '@/components/InvoiceTemplate';
 import { createClient } from '@/utils/supabase/client';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { getSettings } from '@/app/actions/settings';
 import CustomerAutocomplete from '@/components/CustomerAutocomplete';
@@ -62,10 +62,13 @@ export default function NewInvoicePage() {
     name: 'items'
   });
 
-  // Suggest invoice number
+  const searchParams = useSearchParams();
+  const serviceIdParam = searchParams.get('serviceId');
+  const customerIdParam = searchParams.get('customerId');
+
+  // Suggest invoice number & prefill service details if serviceId is provided
   useEffect(() => {
     const fetchLastInvoice = async () => {
-      // Query for the most recent invoice number explicitly
       const { data } = await supabase
         .from('invoices')
         .select('invoice_number')
@@ -74,7 +77,6 @@ export default function NewInvoicePage() {
 
       if (data && data.length > 0) {
         const lastNo = data[0].invoice_number;
-        // Regex to extract the number and the year (e.g., from 'Next - 01/26')
         const match = lastNo.match(/Next\s*-\s*(\d+)\/(\d+)/) || lastNo.match(/(\d+)\/(\d+)/);
         
         if (match) {
@@ -86,7 +88,60 @@ export default function NewInvoicePage() {
       }
     };
     fetchLastInvoice();
-  }, [supabase, setValue]);
+
+    const prefillFromService = async () => {
+      if (serviceIdParam) {
+        const { data: service } = await supabase
+          .from('customer_services')
+          .select('*, customers(*)')
+          .eq('id', serviceIdParam)
+          .maybeSingle();
+
+        if (service) {
+          if (service.customers) {
+            handleCustomerSelect(service.customers);
+          }
+          const details = service.details || {};
+          const fin = service.financials || {};
+          const category = service.category || '';
+          const isTour = category.toLowerCase().includes('tour') || category.toLowerCase().includes('package');
+
+          const paxMatch = (service.customers?.name || '').match(/\((\d+)\s*(?:pax|tkt|person|people)?\)/i) || (details.tour_plans || '').match(/(\d+)\s*pax/i);
+          const pax = paxMatch ? parseInt(paxMatch[1], 10) : 1;
+
+          let itemDesc = '';
+          if (isTour) {
+            const tourName = details.tour_plans || details.tour_name || category;
+            itemDesc = `${tourName} * ${pax}pax`;
+          } else {
+            itemDesc = `${category} (${service.reference_id || 'Booking'})`;
+          }
+
+          const totalAmount = Number(fin.amount) || Number(fin.receiving_amount) || 0;
+          const rate = pax > 0 ? (totalAmount / pax) : totalAmount;
+
+          setValue('items', [
+            { id: '1', description: itemDesc, quantity: pax, rate: rate, amount: totalAmount }
+          ]);
+
+          if (fin.payment_method || details.payment_method) {
+            const mode = fin.payment_method || details.payment_method;
+            setValue('paymentMethod', mode);
+          }
+        }
+      } else if (customerIdParam) {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', customerIdParam)
+          .maybeSingle();
+        if (customer) {
+          handleCustomerSelect(customer);
+        }
+      }
+    };
+    prefillFromService();
+  }, [serviceIdParam, customerIdParam, supabase, setValue]);
 
   const watchItems = watch('items') || [];
   const watchVatRate = watch('vatRate') || 0;

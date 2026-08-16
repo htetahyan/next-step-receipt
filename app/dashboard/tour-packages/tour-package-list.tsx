@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, FileSpreadsheet, ChevronDown, Map, Trash2, Edit3, Copy } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, ChevronDown, Map, Trash2, Edit3, Copy, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService } from '@/app/actions/services';
 import { useRouter } from 'next/navigation';
@@ -105,7 +105,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
         'Payment to the suppliers': supplierCost,
         'GP': profit,
         'Supplier Name': details?.supplier_name || '',
-        'Tour Plans': details?.tour_plans || '',
+        'Tour Name': details?.tour_plans || '',
         'Remark': details?.remark || '',
       };
     });
@@ -266,7 +266,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
                 <th className="px-4 py-3 font-medium text-right">Supplier Cost</th>
                 <th className="px-4 py-3 font-medium text-right">GP</th>
                 <th className="px-4 py-3 font-medium">Supplier</th>
-                <th className="px-4 py-3 font-medium">Tour Plans</th>
+                <th className="px-4 py-3 font-medium">Tour Name</th>
                 <th className="px-4 py-3 font-medium">Remark</th>
                 <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
@@ -297,6 +297,13 @@ export default function TourPackageList({ initialServices, customers, profile }:
                     <td className="px-4 py-3 max-w-[150px] truncate" title={details?.remark}>{details?.remark || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/dashboard/invoices/new?serviceId=${s.id}`}
+                          className="p-1.5 opacity-60 hover:opacity-100 hover:text-emerald-600 transition-colors rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950 cursor-pointer"
+                          title="Generate Invoice"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </Link>
                         {canCreate && (
                           <Link
                             href={`/dashboard/tour-packages/new?duplicate=${s.id}`}
@@ -324,9 +331,6 @@ export default function TourPackageList({ initialServices, customers, profile }:
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
-                        )}
-                        {!canEdit && !canDelete && !canCreate && (
-                          <span className="text-[11px] opacity-40 font-mono">View Only</span>
                         )}
                       </div>
                     </td>
