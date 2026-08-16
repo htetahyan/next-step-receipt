@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, UserCheck } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { UserProfile, checkPermission, ModuleKey } from "@/lib/auth-permissions";
 
@@ -14,6 +14,7 @@ interface SidebarProps {
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname();
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function Sidebar({ profile }: SidebarProps) {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setIsQuickAddOpen(false);
+        setIsMobileMenuOpen(false);
       }
     }
 
@@ -39,6 +41,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
   useEffect(() => {
     setIsQuickAddOpen(false);
+    setIsMobileMenuOpen(false);
   }, [pathname]);
 
   const allNavItems: { name: string; href: string; icon: any; moduleKey?: ModuleKey }[] = [
@@ -68,8 +71,8 @@ export default function Sidebar({ profile }: SidebarProps) {
 
   const hasAnyCreate = canCreateUAE || canCreateAir || canCreateOther || canCreateTour || canCreateCustomer || canCreateInvoice;
 
-  return (
-    <div className="flex h-screen w-64 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm">
+  const sidebarContent = (
+    <div className="flex h-full w-full flex-col bg-[var(--sidebar-bg)]">
       <div className="flex h-16 items-center border-b border-[var(--card-border)] px-6 justify-between bg-[var(--sidebar-bg)]">
         <h1 className="font-serif font-black text-xl tracking-tight text-[#D97757]">NextStep.</h1>
         {profile && (
@@ -189,5 +192,46 @@ export default function Sidebar({ profile }: SidebarProps) {
         </button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Mobile Top Navigation Header */}
+      <div className="md:hidden flex h-14 w-full items-center justify-between border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] px-4 shrink-0">
+        <div className="flex items-center gap-2">
+          <h1 className="font-serif font-black text-lg text-[#D97757]">NextStep.</h1>
+          {profile && (
+            <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757]">
+              {profile.role}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 text-[var(--foreground)] rounded-lg hover:bg-[var(--card-border)] cursor-pointer"
+          aria-label="Toggle menu"
+        >
+          {isMobileMenuOpen ? <X className="w-6 h-6 text-[#D97757]" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </div>
+
+      {/* Mobile Slide-Out Drawer Overlay */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative flex w-72 max-w-[80vw] flex-1 flex-col bg-[var(--sidebar-bg)] shadow-2xl z-50">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Persistent Sidebar */}
+      <div className="hidden md:flex h-screen w-64 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm shrink-0">
+        {sidebarContent}
+      </div>
+    </>
   );
 }
