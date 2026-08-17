@@ -11,6 +11,7 @@ import CustomerDocumentsSection from '@/components/CustomerDocumentsSection';
 import { CustomerInvoicesSection } from './components/CustomerInvoicesSection';
 import { quickUpdateService } from '@/app/actions/services';
 import { updateCustomer } from '@/app/actions/customers';
+import { parseFinancialNumber } from '@/lib/financialUtils';
 
 export default function CustomerHubClient({ customer, services, pastInvoices, documents }: {
   customer: any;
@@ -270,13 +271,13 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                 services.map(service => {
                   const details = (service.details as any) || {};
                   const fin = (service.financials as any) || {};
-                  const amount = Number(fin.amount) || 0;
-                  const discount = Number(fin.discount) || 0;
-                  const receiving = Number(fin.receiving_amount) || (amount - discount);
-                  const supplierCost = Number(fin.supplier_cost) || 0;
-                  const refund = Number(fin.refund) || 0;
+                  const amount = parseFinancialNumber(fin.amount, 0);
+                  const discount = parseFinancialNumber(fin.discount, 0);
+                  const receiving = parseFinancialNumber(fin.receiving_amount, amount - discount);
+                  const supplierCost = parseFinancialNumber(fin.supplier_cost, 0);
+                  const refund = parseFinancialNumber(fin.refund, 0);
                   const profit = receiving - supplierCost - refund;
-                  const balance = Number(fin.balance) || 0;
+                  const balance = parseFinancialNumber(fin.balance, 0);
 
                   const isEditing = editingServiceId === service.id;
 

@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Receipt } from 'lucide-react';
+import { formatCurrencyAmount } from '@/lib/financialUtils';
 
 interface CustomerInvoicesSectionProps {
   customerId: string;
@@ -35,8 +36,7 @@ export function CustomerInvoicesSection({
               (inv.created_at
                 ? new Date(inv.created_at).toISOString().split('T')[0]
                 : 'N/A');
-            const total = Number(inv.total_amount ?? inv.totalAmount ?? 0);
-            const displayTotal = isNaN(total) ? '0' : total.toLocaleString();
+            const displayTotal = formatCurrencyAmount(inv.total_amount ?? inv.totalAmount);
 
             return (
               <Link
