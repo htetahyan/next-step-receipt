@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useMemo, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,19 +16,31 @@ import { uaeVisaSchema, UAEVisaFormValues } from '@/lib/validations/serviceSchem
 import { FormField } from '@/components/ui/form/FormField';
 import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
+import { UAEVisaDetailsFields } from '../components/UAEVisaDetailsFields';
 
 import { UserProfile } from '@/lib/auth-permissions';
 import { findSupplierRate } from '@/lib/rateAutofill';
+import { RateCard } from '@/app/actions/rate-cards';
 
 interface Props {
   customers: any[];
   suppliers?: any[];
+  rateCards?: RateCard[];
+  uaeVisaTypes?: string[];
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
 }
 
-export default function UAEVisaForm({ customers, suppliers = [], initialData, duplicateData, currentUser }: Props) {
+export default function UAEVisaForm({ 
+  customers, 
+  suppliers = [], 
+  rateCards = [],
+  uaeVisaTypes = [],
+  initialData, 
+  duplicateData, 
+  currentUser 
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
@@ -37,11 +49,51 @@ export default function UAEVisaForm({ customers, suppliers = [], initialData, du
   const [refId, setRefId] = useState(initialData?.reference_id || '');
   const [showDocs, setShowDocs] = useState(false);
 
+  // Available Visa Types dynamically derived from Supplier Rate Cards (section: Visa)
+  const availableVisaTypes = useMemo(() => {
+    const list: string[] = [];
+    const seen = new Set<string>();
+    
+    if (uaeVisaTypes && uaeVisaTypes.length > 0) {
+      uaeVisaTypes.forEach(t => {
+        if (!seen.has(t)) { seen.add(t); list.push(t); }
+      });
+    } else if (rateCards && rateCards.length > 0) {
+      rateCards
+        .filter(r => (r.section || 'Visa').toLowerCase() === 'visa')
+        .forEach(r => {
+          if (!seen.has(r.visa_type)) { seen.add(r.visa_type); list.push(r.visa_type); }
+        });
+    }
+    
+    // Include any categories if list is empty
+    if (list.length === 0) {
+      UAE_VISA_CATEGORIES.forEach(c => {
+        if (!seen.has(c)) { seen.add(c); list.push(c); }
+      });
+    }
+    return list;
+  }, [uaeVisaTypes, rateCards]);
+
+  // Available Suppliers from DB + Rate Cards + Constants
+  const availableSuppliers = useMemo(() => {
+    const set = new Set<string>();
+    suppliers.forEach(s => { if (s.name) set.add(s.name); });
+    rateCards.forEach(rc => {
+      if (rc.supplier_costs && typeof rc.supplier_costs === 'object') {
+        Object.keys(rc.supplier_costs).forEach(k => set.add(k));
+      }
+    });
+    VISA_SUPPLIERS.forEach(s => set.add(s));
+    return Array.from(set).filter(Boolean);
+  }, [suppliers, rateCards]);
+
   useEffect(() => {
     if (!initialData) generateReferenceId('AE').then(id => setRefId(id));
   }, [initialData]);
 
   const defaultHandledBy = initialData?.details?.handled_by || duplicateData?.details?.handled_by || currentUser?.fullName || (currentUser?.email ? currentUser.email.split('@')[0] : '') || '';
+  const defaultCategory = initialData?.category || duplicateData?.category || availableVisaTypes[0] || 'Visit Visa (30 Days)';
 
   const methods = useForm<UAEVisaFormValues>({
     resolver: zodResolver(uaeVisaSchema) as any,
@@ -49,13 +101,13 @@ export default function UAEVisaForm({ customers, suppliers = [], initialData, du
       customerId: initialData?.customer_id || duplicateData?.customer_id || preselectedCustomerId || '',
       isNewCustomer: false,
       status: initialData?.status || 'Open',
-      category: initialData?.category || duplicateData?.category || UAE_VISA_CATEGORIES[1], // 60 days
+      category: defaultCategory,
       details: {
         visa_issued_date: initialData?.details?.visa_issued_date || '',
         travel_date: initialData?.details?.travel_date || '',
         visa_expiry_date: initialData?.details?.visa_expiry_date || '',
-        visa_supplier: initialData?.details?.visa_supplier || duplicateData?.details?.visa_supplier || 'DAHR',
-        visa_duration: initialData?.details?.visa_duration || duplicateData?.details?.visa_duration || '60 Days',
+        visa_supplier: initialData?.details?.visa_supplier || duplicateData?.details?.visa_supplier || (availableSuppliers[0] || 'DAHR'),
+        visa_duration: initialData?.details?.visa_duration || duplicateData?.details?.visa_duration || '30 Days',
         payment_method: initialData?.details?.payment_method || duplicateData?.details?.payment_method || 'Bank Transfer',
         handled_by: defaultHandledBy,
         referred_by: initialData?.details?.referred_by || duplicateData?.details?.referred_by || '',
@@ -76,9 +128,10 @@ export default function UAEVisaForm({ customers, suppliers = [], initialData, du
   const travelDateWatch = methods.watch('details.travel_date');
   const supplierWatch = methods.watch('details.visa_supplier');
 
+  // Automatic supplier rate & selling price auto-fill
   useEffect(() => {
-    if (!initialData && supplierWatch && categoryWatch && suppliers.length > 0) {
-      const match = findSupplierRate(suppliers, supplierWatch, categoryWatch);
+    if (!initialData && (categoryWatch || supplierWatch)) {
+      const match = findSupplierRate(suppliers, supplierWatch, categoryWatch, rateCards);
       if (match) {
         let updated = false;
         if (match.cost > 0) {
@@ -89,12 +142,15 @@ export default function UAEVisaForm({ customers, suppliers = [], initialData, du
           methods.setValue('financials.amount', match.price, { shouldDirty: true });
           updated = true;
         }
+        if (match.duration) {
+          methods.setValue('details.visa_duration', match.duration as any, { shouldDirty: true });
+        }
         if (updated) {
-          toast.info(`Rates auto-filled from ${match.supplierName}: Cost ${match.cost} AED, Price ${match.price} AED`);
+          toast.info(`Rate loaded for ${match.serviceName} (${match.supplierName}): Cost ${match.cost} AED, Price ${match.price} AED`);
         }
       }
     }
-  }, [supplierWatch, categoryWatch, suppliers, initialData, methods]);
+  }, [supplierWatch, categoryWatch, suppliers, rateCards, initialData, methods]);
 
   useEffect(() => {
     if ((categoryWatch === 'Visa Change by Bus' || categoryWatch === 'Visa Change by Air') && travelDateWatch) {
@@ -205,35 +261,10 @@ export default function UAEVisaForm({ customers, suppliers = [], initialData, du
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-6">
-              <div className="card-anthropic p-6">
-                <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">Visa Details</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField 
-                    name="category" 
-                    label="Visa Type *" 
-                    component="select" 
-                    options={UAE_VISA_CATEGORIES.map(c => ({ label: c, value: c }))} 
-                    className="col-span-2" 
-                  />
-                  <FormField name="details.visa_issued_date" label="Issue Date" type="date" />
-                  <FormField name="details.travel_date" label="Travel Date" type="date" />
-                  <FormField name="details.visa_expiry_date" label="Expiry Date" type="date" />
-                  <FormField name="details.visa_duration" label="Duration" component="select" options={[{label: '30 Days', value: '30 Days'}, {label: '60 Days', value: '60 Days'}, {label: '90 Days', value: '90 Days'}]} />
-                  <FormField name="details.visa_supplier" label="Supplier" component="select" options={VISA_SUPPLIERS.map(s => ({label: s, value: s}))} />
-                  <FormField name="status" label="Status" component="select" options={SERVICE_STATUSES.map(s => ({label: s, value: s}))} />
-                </div>
-              </div>
-
-              <div className="card-anthropic p-6">
-                <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">Staff & Additional Info</h3>
-                <div className="space-y-4">
-                  <FormField name="details.handled_by" label="Handled By / Served By (Staff)" placeholder="e.g. Staff Name" />
-                  <FormField name="details.referred_by" label="Referred By (B2B/Agent)" placeholder="e.g. Agent Name" />
-                  <FormField name="details.comments" label="Comments" component="textarea" />
-                  <FormField name="details.remark" label="Admin Remark (Private)" component="textarea" />
-                </div>
-              </div>
+              <UAEVisaDetailsFields 
+                availableVisaTypes={availableVisaTypes} 
+                availableSuppliers={availableSuppliers} 
+              />
             </div>
 
             <div className="space-y-6">

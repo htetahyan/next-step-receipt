@@ -19,16 +19,18 @@ import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 import { UserProfile } from '@/lib/auth-permissions';
 import { findSupplierRate } from '@/lib/rateAutofill';
+import { RateCard } from '@/app/actions/rate-cards';
 
 interface Props {
   customers: any[];
   suppliers?: any[];
+  rateCards?: RateCard[];
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
 }
 
-export default function AirTicketForm({ customers, suppliers = [], initialData, duplicateData, currentUser }: Props) {
+export default function AirTicketForm({ customers, suppliers = [], rateCards = [], initialData, duplicateData, currentUser }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
@@ -75,8 +77,8 @@ export default function AirTicketForm({ customers, suppliers = [], initialData, 
   const airlineWatch = methods.watch('details.airline');
 
   useEffect(() => {
-    if (!initialData && airlineWatch && categoryWatch && suppliers.length > 0) {
-      const match = findSupplierRate(suppliers, airlineWatch, categoryWatch);
+    if (!initialData && (airlineWatch || categoryWatch)) {
+      const match = findSupplierRate(suppliers, airlineWatch, categoryWatch, rateCards);
       if (match) {
         let updated = false;
         if (match.cost > 0) {
@@ -92,7 +94,7 @@ export default function AirTicketForm({ customers, suppliers = [], initialData, 
         }
       }
     }
-  }, [airlineWatch, categoryWatch, suppliers, initialData, methods]);
+  }, [airlineWatch, categoryWatch, suppliers, rateCards, initialData, methods]);
 
   const onSubmit = async (data: AirTicketFormValues) => {
     setSaving(true);

@@ -19,16 +19,18 @@ import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 import { UserProfile } from '@/lib/auth-permissions';
 import { findSupplierRate } from '@/lib/rateAutofill';
+import { RateCard } from '@/app/actions/rate-cards';
 
 interface Props {
   customers: any[];
   suppliers?: any[];
+  rateCards?: RateCard[];
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
 }
 
-export default function TourPackageForm({ customers, suppliers = [], initialData, duplicateData, currentUser }: Props) {
+export default function TourPackageForm({ customers, suppliers = [], rateCards = [], initialData, duplicateData, currentUser }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
@@ -73,8 +75,8 @@ export default function TourPackageForm({ customers, suppliers = [], initialData
   const supplierWatch = methods.watch('details.supplier_name');
 
   useEffect(() => {
-    if (!initialData && supplierWatch && (tourPlansWatch || categoryWatch) && suppliers.length > 0) {
-      const match = findSupplierRate(suppliers, supplierWatch, tourPlansWatch || categoryWatch);
+    if (!initialData && (supplierWatch || tourPlansWatch || categoryWatch)) {
+      const match = findSupplierRate(suppliers, supplierWatch, tourPlansWatch || categoryWatch, rateCards);
       if (match) {
         let updated = false;
         if (match.cost > 0) {
@@ -90,7 +92,7 @@ export default function TourPackageForm({ customers, suppliers = [], initialData
         }
       }
     }
-  }, [supplierWatch, tourPlansWatch, categoryWatch, suppliers, initialData, methods]);
+  }, [supplierWatch, tourPlansWatch, categoryWatch, suppliers, rateCards, initialData, methods]);
 
   const onSubmit = async (data: TourPackageFormValues) => {
     setSaving(true);

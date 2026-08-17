@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requirePermission } from './users';
+import { revalidateRatesCache } from '@/lib/cachedRates';
 
 export interface RateCard {
   id: string;
@@ -53,6 +54,7 @@ export async function upsertRateCard(
         .select()
         .single();
       if (error) throw error;
+      await revalidateRatesCache();
       revalidatePath('/dashboard/suppliers');
       return { success: true, data: data as RateCard };
     } else {
@@ -62,6 +64,7 @@ export async function upsertRateCard(
         .select()
         .single();
       if (error) throw error;
+      await revalidateRatesCache();
       revalidatePath('/dashboard/suppliers');
       return { success: true, data: data as RateCard };
     }
@@ -78,6 +81,7 @@ export async function deleteRateCard(id: string): Promise<{ success: boolean; er
     const supabase = await createClient();
     const { error } = await supabase.from('rate_cards').delete().eq('id', id);
     if (error) throw error;
+    await revalidateRatesCache();
     revalidatePath('/dashboard/suppliers');
     return { success: true };
   } catch (err: any) {
@@ -98,6 +102,7 @@ export async function bulkImportRateCards(
       .insert(rows)
       .select();
     if (error) throw error;
+    await revalidateRatesCache();
     revalidatePath('/dashboard/suppliers');
     return { success: true, count: data?.length || 0 };
   } catch (err: any) {

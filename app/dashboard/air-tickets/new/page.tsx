@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import AirTicketForm from './air-ticket-form';
 import { getCurrentUserProfile } from '@/app/actions/users';
+import { getCachedSuppliersAndRates } from '@/lib/cachedRates';
 
 export default async function NewAirTicketPage(props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const searchParams = await props.searchParams;
@@ -9,7 +10,6 @@ export default async function NewAirTicketPage(props: { searchParams?: Promise<{
   const currentUser = await getCurrentUserProfile();
 
   let customers: any[] = [];
-  let suppliers: any[] = [];
 
   try {
     const { data: customerData } = await supabase
@@ -17,15 +17,11 @@ export default async function NewAirTicketPage(props: { searchParams?: Promise<{
       .select('id, name, phone, passport_no, email')
       .order('name', { ascending: true });
     if (customerData) customers = customerData;
-
-    const { data: supplierData } = await supabase
-      .from('suppliers')
-      .select('id, name, services')
-      .order('name', { ascending: true });
-    if (supplierData) suppliers = supplierData;
   } catch (e) {
-    console.error('Failed to fetch data:', e);
+    console.error('Failed to fetch customers:', e);
   }
+
+  const { suppliers, rateCards } = await getCachedSuppliersAndRates();
 
   let duplicateData = null;
   if (duplicateId) {
@@ -45,6 +41,7 @@ export default async function NewAirTicketPage(props: { searchParams?: Promise<{
     <AirTicketForm 
       customers={customers} 
       suppliers={suppliers} 
+      rateCards={rateCards}
       duplicateData={duplicateData} 
       currentUser={currentUser}
     />

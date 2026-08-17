@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import OtherVisaForm from './other-visa-form';
 import { getCurrentUserProfile } from '@/app/actions/users';
+import { getCachedSuppliersAndRates } from '@/lib/cachedRates';
 
 export default async function NewOtherVisaPage(props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const searchParams = await props.searchParams;
@@ -9,22 +10,17 @@ export default async function NewOtherVisaPage(props: { searchParams?: Promise<{
   const currentUser = await getCurrentUserProfile();
 
   let customers: any[] = [];
-  let suppliers: any[] = [];
   try {
     const { data } = await supabase
       .from('customers')
       .select('id, name, phone, passport_no, email')
       .order('name', { ascending: true });
     if (data) customers = data;
-
-    const { data: supplierData } = await supabase
-      .from('suppliers')
-      .select('id, name, services')
-      .order('name', { ascending: true });
-    if (supplierData) suppliers = supplierData;
   } catch (e) {
-    console.error('Failed to fetch customers/suppliers:', e);
+    console.error('Failed to fetch customers:', e);
   }
+
+  const { suppliers, rateCards } = await getCachedSuppliersAndRates();
 
   let duplicateData = null;
   if (duplicateId) {
@@ -44,6 +40,7 @@ export default async function NewOtherVisaPage(props: { searchParams?: Promise<{
     <OtherVisaForm 
       customers={customers} 
       suppliers={suppliers}
+      rateCards={rateCards}
       duplicateData={duplicateData} 
       currentUser={currentUser} 
     />

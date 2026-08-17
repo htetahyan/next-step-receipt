@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requirePermission } from './users';
+import { revalidateRatesCache } from '@/lib/cachedRates';
 
 // Fetch all suppliers
 export async function getSuppliers() {
@@ -48,6 +49,7 @@ export async function addSupplier(data: {
 
     if (error) throw error;
 
+    await revalidateRatesCache();
     revalidatePath('/dashboard/suppliers');
     return { success: true, data: newSupplier };
   } catch (err: any) {
@@ -87,6 +89,7 @@ export async function updateSupplier(
 
     if (error) throw error;
 
+    await revalidateRatesCache();
     revalidatePath('/dashboard/suppliers');
     return { success: true, data: updated };
   } catch (err: any) {
@@ -105,6 +108,7 @@ export async function deleteSupplier(id: string) {
     const { error } = await supabase.from('suppliers').delete().eq('id', id);
     if (error) throw error;
 
+    await revalidateRatesCache();
     revalidatePath('/dashboard/suppliers');
     return { success: true };
   } catch (err: any) {
@@ -112,3 +116,4 @@ export async function deleteSupplier(id: string) {
     return { success: false, error: err.message };
   }
 }
+

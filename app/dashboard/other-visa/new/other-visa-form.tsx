@@ -19,16 +19,18 @@ import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 import { UserProfile } from '@/lib/auth-permissions';
 import { findSupplierRate } from '@/lib/rateAutofill';
+import { RateCard } from '@/app/actions/rate-cards';
 
 interface Props {
   customers: any[];
   suppliers?: any[];
+  rateCards?: RateCard[];
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
 }
 
-export default function OtherVisaForm({ customers, suppliers = [], initialData, duplicateData, currentUser }: Props) {
+export default function OtherVisaForm({ customers, suppliers = [], rateCards = [], initialData, duplicateData, currentUser }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
@@ -73,8 +75,8 @@ export default function OtherVisaForm({ customers, suppliers = [], initialData, 
   const supplierWatch = methods.watch('details.visa_supplier' as any);
 
   useEffect(() => {
-    if (!initialData && categoryWatch && suppliers.length > 0) {
-      const match = findSupplierRate(suppliers, supplierWatch, categoryWatch);
+    if (!initialData && (categoryWatch || supplierWatch)) {
+      const match = findSupplierRate(suppliers, supplierWatch, categoryWatch, rateCards);
       if (match) {
         let updated = false;
         if (match.cost > 0) {
@@ -90,7 +92,7 @@ export default function OtherVisaForm({ customers, suppliers = [], initialData, 
         }
       }
     }
-  }, [supplierWatch, categoryWatch, suppliers, initialData, methods]);
+  }, [supplierWatch, categoryWatch, suppliers, rateCards, initialData, methods]);
 
   const onSubmit = async (data: OtherVisaFormValues) => {
     setSaving(true);
