@@ -10,6 +10,7 @@ import DocumentModal from './DocumentModal'
 import Link from 'next/link'
 import Pagination from './Pagination'
 import { UserProfile, checkPermission } from '@/lib/auth-permissions'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function CustomerList({
   initialCustomers,
@@ -30,6 +31,7 @@ export default function CustomerList({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [currentCustomer, setCurrentCustomer] = useState<any>(null)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [docCustomer, setDocCustomer] = useState<any>(null)
   
@@ -85,17 +87,19 @@ export default function CustomerList({
     setIsModalOpen(true)
   }
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete ${name}?`)) return
-    setIsDeleting(id)
-    const res = await deleteCustomer(id)
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(deleteTarget.id);
+    const res = await deleteCustomer(deleteTarget.id);
     if (res.error) {
-      toast.error(res.error)
+      toast.error(res.error);
     } else {
-      setCustomers(customers.filter(c => c.id !== id))
+      setCustomers(customers.filter(c => c.id !== deleteTarget.id));
+      toast.success('Customer deleted');
     }
-    setIsDeleting(null)
-  }
+    setIsDeleting(null);
+    setDeleteTarget(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -278,19 +282,25 @@ export default function CustomerList({
                       >
                         <ArrowRight className="h-4 w-4" />
                       </Link>
-                       <button 
-                        onClick={() => handleEdit(customer)}
-                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button 
-                        disabled={isDeleting === customer.id}
-                        onClick={() => handleDelete(customer.id, customer.name)}
-                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:text-red-500"
-                      >
-                        {isDeleting === customer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      </button>
+                       {canEdit && (
+                         <button 
+                          onClick={() => handleEdit(customer)}
+                          className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
+                          title="Edit Customer"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                       )}
+                       {canDelete && (
+                        <button 
+                          disabled={isDeleting === customer.id}
+                          onClick={() => setDeleteTarget({ id: customer.id, name: customer.name })}
+                          className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:text-red-500"
+                          title="Delete Customer"
+                        >
+                          {isDeleting === customer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                       )}
                     </div>
                   </td>
                 </tr>
@@ -465,6 +475,18 @@ export default function CustomerList({
           customerName={docCustomer.name}
         />
       )}
+
+      {/* Delete Customer Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Customer Account"
+        itemType="customer account"
+        itemName={deleteTarget?.name || ''}
+        isDeleting={!!isDeleting}
+        description="Are you sure you want to permanently delete this customer? This will also remove all associated visas, services, and invoices."
+      />
     </div>
   )
 }

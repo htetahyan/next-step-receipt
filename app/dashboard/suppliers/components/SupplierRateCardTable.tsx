@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getRateCards, upsertRateCard, deleteRateCard, bulkImportRateCards, RateCard } from '@/app/actions/rate-cards';
 import { toast } from 'sonner';
 import { Plus, Trash2, Loader2, Save, FileSpreadsheet, ChevronDown, ChevronRight } from 'lucide-react';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 
 interface Supplier {
   id: string;
@@ -13,12 +14,15 @@ interface Supplier {
 interface Props {
   suppliers: Supplier[];
   canEdit: boolean;
+  canDelete?: boolean;
 }
 
-export default function SupplierRateCardTable({ suppliers, canEdit }: Props) {
+export default function SupplierRateCardTable({ suppliers, canEdit, canDelete = false }: Props) {
   const [rows, setRows] = useState<RateCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
@@ -94,14 +98,17 @@ export default function SupplierRateCardTable({ suppliers, canEdit }: Props) {
     }
   };
 
-  const handleDeleteRow = async (id: string) => {
-    if (!confirm('Delete this rate card entry?')) return;
-    const res = await deleteRateCard(id);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    const res = await deleteRateCard(deleteTarget.id);
+    setIsDeleting(false);
     if (res.success) {
-      setRows(prev => prev.filter(r => r.id !== id));
-      toast.success('Deleted');
+      setRows(prev => prev.filter(r => r.id !== deleteTarget.id));
+      toast.success('Rate card entry deleted');
+      setDeleteTarget(null);
     } else {
-      toast.error('Failed to delete');
+      toast.error(res.error || 'Failed to delete');
     }
   };
 
@@ -207,9 +214,13 @@ export default function SupplierRateCardTable({ suppliers, canEdit }: Props) {
                       <td className="px-1 py-1">
                         <EditableCell value={row.required_documents} onSave={v => handleCellSave(row, 'required_documents', v)} isSaving={saving === row.id + 'required_documents'} canEdit={canEdit} />
                       </td>
-                      {canEdit && (
+                      {canDelete && (
                         <td className="px-1 py-1 text-center">
-                          <button onClick={() => handleDeleteRow(row.id)} className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-colors opacity-40 hover:opacity-100" title="Delete row">
+                          <button
+                            onClick={() => setDeleteTarget({ id: row.id, name: row.visa_type })}
+                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-colors opacity-40 hover:opacity-100 cursor-pointer"
+                            title="Delete row"
+                          >
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </td>
@@ -235,6 +246,18 @@ export default function SupplierRateCardTable({ suppliers, canEdit }: Props) {
           )}
         </div>
       )}
+
+      {/* Delete Rate Card Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Rate Card Row"
+        itemType="rate card entry"
+        itemName={deleteTarget?.name || ''}
+        isDeleting={isDeleting}
+        description="Are you sure you want to delete this pricing row from the rate card? This action cannot be undone."
+      />
     </div>
   );
 }

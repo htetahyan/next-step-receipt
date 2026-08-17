@@ -9,6 +9,7 @@ import { checkPermission, UserProfile } from '@/lib/auth-permissions';
 import SupplierCards, { Supplier } from './components/SupplierCards';
 import SupplierModal from './components/SupplierModal';
 import SupplierRateCardTable from './components/SupplierRateCardTable';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 
 type Tab = 'suppliers' | 'ratecard';
 
@@ -22,6 +23,8 @@ export default function SuppliersPage() {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [deletingSupplier, setDeletingSupplier] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -47,12 +50,15 @@ export default function SuppliersPage() {
     setLoading(false);
   }
 
-  async function handleDelete(id: string, sName: string) {
-    if (!confirm(`Are you sure you want to delete ${sName}?`)) return;
+  async function handleConfirmDelete() {
+    if (!deletingSupplier) return;
+    setIsDeleting(true);
     const { deleteSupplier } = await import('@/app/actions/suppliers');
-    const res = await deleteSupplier(id);
+    const res = await deleteSupplier(deletingSupplier.id);
+    setIsDeleting(false);
     if (res.success) {
       toast.success('Supplier deleted');
+      setDeletingSupplier(null);
       loadSuppliers();
     } else {
       toast.error(res.error || 'Failed to delete supplier');
@@ -116,12 +122,13 @@ export default function SuppliersPage() {
           canDelete={canDelete}
           canCreate={canCreate}
           onEdit={(supplier) => { setEditingSupplier(supplier); setIsModalOpen(true); }}
-          onDelete={handleDelete}
+          onDelete={(id, name) => setDeletingSupplier({ id, name })}
         />
       ) : (
         <SupplierRateCardTable
           suppliers={suppliers.map(s => ({ id: s.id, name: s.name }))}
           canEdit={canEdit}
+          canDelete={canDelete}
         />
       )}
 
@@ -131,6 +138,18 @@ export default function SuppliersPage() {
         onClose={() => setIsModalOpen(false)}
         editingSupplier={editingSupplier}
         onSaved={() => { setIsModalOpen(false); loadSuppliers(); }}
+      />
+
+      {/* Delete Supplier Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deletingSupplier}
+        onClose={() => setDeletingSupplier(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Supplier"
+        itemType="supplier"
+        itemName={deletingSupplier?.name || ''}
+        isDeleting={isDeleting}
+        description="Are you sure you want to delete this supplier? This will remove the supplier and their configured rates."
       />
     </div>
   );

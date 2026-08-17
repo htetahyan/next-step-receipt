@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { requirePermission } from './users';
 
 // Fetch all suppliers
 export async function getSuppliers() {
@@ -29,6 +30,7 @@ export async function addSupplier(data: {
   services?: any[];
 }) {
   try {
+    await requirePermission('suppliers', 'create');
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
@@ -66,6 +68,7 @@ export async function updateSupplier(
   }
 ) {
   try {
+    await requirePermission('suppliers', 'edit');
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
@@ -95,6 +98,7 @@ export async function updateSupplier(
 // Delete a supplier
 export async function deleteSupplier(id: string) {
   try {
+    await requirePermission('suppliers', 'delete');
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 

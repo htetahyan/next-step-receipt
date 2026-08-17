@@ -7,6 +7,7 @@ import { deleteInvoice } from '@/app/actions/invoices'
 import { toast } from 'sonner'
 import Pagination from './Pagination'
 import { UserProfile, checkPermission } from '@/lib/auth-permissions'
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal'
 
 export default function InvoiceList({
   initialInvoices,
@@ -18,20 +19,23 @@ export default function InvoiceList({
   const canDelete = checkPermission(profile || null, 'invoices', 'delete');
   const [invoices, setInvoices] = useState(initialInvoices)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; number: string } | null>(null)
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 15
 
-  const handleDelete = async (id: string, number: string) => {
-    if (!confirm(`Are you sure you want to delete invoice ${number}?`)) return
-    setIsDeleting(id)
-    const res = await deleteInvoice(id)
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(deleteTarget.id)
+    const res = await deleteInvoice(deleteTarget.id)
     if (res.error) {
        toast.error(res.error)
     } else {
-       setInvoices(invoices.filter(i => i.id !== id))
+       setInvoices(invoices.filter(i => i.id !== deleteTarget.id))
+       toast.success('Invoice deleted')
     }
     setIsDeleting(null)
+    setDeleteTarget(null)
   }
 
   const [startDate, setStartDate] = useState('')
@@ -170,7 +174,7 @@ export default function InvoiceList({
                       {canDelete && (
                         <button 
                           disabled={isDeleting === invoice.id}
-                          onClick={() => handleDelete(invoice.id, invoice.invoice_number)}
+                          onClick={() => setDeleteTarget({ id: invoice.id, number: invoice.invoice_number })}
                           className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50 cursor-pointer"
                           title="Delete Permanently"
                         >
@@ -205,6 +209,18 @@ export default function InvoiceList({
           totalItems={filtered.length}
           itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
+        />
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmModal
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDelete}
+          title="Delete Invoice"
+          itemType="invoice"
+          itemName={deleteTarget?.number || ''}
+          isDeleting={!!isDeleting}
+          description="Are you sure you want to delete this invoice? This action cannot be undone."
         />
     </div>
   )

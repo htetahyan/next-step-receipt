@@ -29,6 +29,7 @@ import {
   DEFAULT_STAFF_PERMISSIONS,
   DEFAULT_ADMIN_PERMISSIONS,
 } from '@/lib/auth-permissions';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 
 const MODULES: { key: ModuleKey; label: string; description: string }[] = [
   { key: 'uae_visa', label: 'UAE Visa Tracker', description: 'Visas, extensions, bus/inside changes' },
@@ -47,6 +48,9 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -54,7 +58,6 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('staff');
   const [permissions, setPermissions] = useState<PermissionsMap>(DEFAULT_STAFF_PERMISSIONS);
-  const [submitting, setSubmitting] = useState(false);
 
   const isAdmin = currentUserProfile?.role === 'admin';
 
@@ -181,14 +184,14 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
     }
   };
 
-  const handleDelete = async (userId: string, userEmail: string) => {
-    if (!confirm(`Are you sure you want to permanently delete the account for "${userEmail}"?`)) {
-      return;
-    }
-
-    const res = await deleteStaffMember(userId);
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    const res = await deleteStaffMember(deletingUser.id);
+    setIsDeleting(false);
     if (res.success) {
-      toast.success(`Deleted user ${userEmail}`);
+      toast.success(`Deleted user ${deletingUser.email}`);
+      setDeletingUser(null);
       loadUsers();
     } else {
       toast.error(res.error || 'Failed to delete user');
@@ -305,10 +308,10 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
                       >
                         <Edit2 className="w-3.5 h-3.5 opacity-70" />
                       </button>
-                      {!isCurrent && (
+                      {u.id !== currentUserProfile?.id && (
                         <button
                           type="button"
-                          onClick={() => handleDelete(u.id, u.email)}
+                          onClick={() => setDeletingUser(u)}
                           className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
                           title="Delete User"
                         >
@@ -538,6 +541,18 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
           </div>
         </div>
       )}
+
+      {/* Delete User Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deletingUser}
+        onClose={() => setDeletingUser(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Staff Account"
+        itemType="staff member"
+        itemName={deletingUser ? `${deletingUser.fullName || deletingUser.email} (${deletingUser.email})` : ''}
+        isDeleting={isDeleting}
+        description="Are you sure you want to permanently delete this team member account? They will lose all access to NextStep immediately."
+      />
     </div>
   );
 }

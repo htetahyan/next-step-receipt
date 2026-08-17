@@ -10,6 +10,7 @@ import * as XLSX from 'xlsx';
 
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
 interface Props {
@@ -29,6 +30,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
   const [statusFilter, setStatusFilter] = useState('all');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; ref: string; name: string } | null>(null);
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
@@ -149,17 +151,18 @@ export default function TourPackageList({ initialServices, customers, profile }:
     setShowExportMenu(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this record?')) return;
-    setDeletingId(id);
-    const res = await deleteCustomerService(id);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    const res = await deleteCustomerService(deleteTarget.id);
     if (res.success) {
-      setServices(services.filter(s => s.id !== id));
-      toast.success('Record deleted');
+      setServices(services.filter(s => s.id !== deleteTarget.id));
+      toast.success('Tour package record deleted');
     } else {
       toast.error(res.error || 'Failed to delete record');
     }
     setDeletingId(null);
+    setDeleteTarget(null);
   };
 
   return (
@@ -335,7 +338,11 @@ export default function TourPackageList({ initialServices, customers, profile }:
                         )}
                         {canDelete && (
                           <button
-                            onClick={() => handleDelete(s.id)}
+                            onClick={() => setDeleteTarget({
+                              id: s.id,
+                              ref: s.reference_id,
+                              name: cust?.name || (details as any)?.tour_plans || 'Tour Package'
+                            })}
                             disabled={deletingId === s.id}
                             className="p-1.5 opacity-60 hover:opacity-100 hover:text-red-500 transition-colors rounded-md hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-30 cursor-pointer"
                             title="Delete"
@@ -369,6 +376,18 @@ export default function TourPackageList({ initialServices, customers, profile }:
           onPageChange={setCurrentPage}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Tour Package Record"
+        itemType="tour package record"
+        itemName={deleteTarget ? `${deleteTarget.ref} (${deleteTarget.name})` : ''}
+        isDeleting={!!deletingId}
+        description="Are you sure you want to delete this tour package record? This action cannot be undone."
+      />
     </div>
   );
 }

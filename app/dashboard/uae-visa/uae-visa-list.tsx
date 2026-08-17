@@ -12,15 +12,15 @@ import * as XLSX from 'xlsx';
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
 import OdooQuickEditDrawer from '@/components/OdooQuickEditDrawer';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import OdooKanbanView from '@/components/OdooKanbanView';
+import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
 interface Props {
   initialServices: any[];
   customers: any[];
   profile?: UserProfile | null;
 }
-
-import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
 export default function UAEVisaList({ initialServices, customers, profile }: Props) {
   const router = useRouter();
@@ -46,6 +46,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
   const [groupBy, setGroupBy] = useState<'none' | 'status' | 'supplier' | 'category'>('none');
   const [selectedService, setSelectedService] = useState<any | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; ref: string; name: string } | null>(null);
   const [autoClosing, setAutoClosing] = useState(false);
 
   const handleAutoClose = async () => {
@@ -447,17 +448,18 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
     setShowExportMenu(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this visa record?')) return;
-    setDeletingId(id);
-    const res = await deleteCustomerService(id);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    const res = await deleteCustomerService(deleteTarget.id);
     if (res.success) {
-      setServices(services.filter(s => s.id !== id));
-      toast.success('Record deleted');
+      setServices(services.filter(s => s.id !== deleteTarget.id));
+      toast.success('Visa record deleted');
     } else {
       toast.error(res.error || 'Failed to delete record');
     }
     setDeletingId(null);
+    setDeleteTarget(null);
   };
 
   return (
@@ -1068,7 +1070,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                           </Link>
 
                           {/* Clear Quick Action */}
-                          {service.status !== 'Closed' && service.status !== 'Cancelled' && (
+                          {canEdit && service.status !== 'Closed' && service.status !== 'Cancelled' && (
                             <button
                               onClick={async () => {
                                 if (confirm('Clear/Close this active visa record?')) {
@@ -1096,14 +1098,20 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                             <Copy className="w-3.5 h-3.5" />
                           </Link>
 
-                          <button
-                            onClick={() => handleDelete(service.id)}
-                            disabled={deletingId === service.id}
-                            className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 transition-colors"
-                            title="Delete"
-                          >
-                            {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleteTarget({
+                                id: service.id,
+                                ref: service.reference_id,
+                                name: customer?.name || (details as any)?.customer_name || 'Visa Record'
+                              })}
+                              disabled={deletingId === service.id}
+                              className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 transition-colors"
+                              title="Delete"
+                            >
+                              {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1149,8 +1157,21 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
           setServices(prev => prev.filter(s => s.id !== serviceId));
           setIsDrawerOpen(false);
         }}
+        canDelete={canDelete}
         suppliersList={suppliers}
         categoriesList={categories}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Visa Record"
+        itemType="visa record"
+        itemName={deleteTarget ? `${deleteTarget.ref} (${deleteTarget.name})` : ''}
+        isDeleting={!!deletingId}
+        description="Are you sure you want to delete this visa record? This action cannot be undone."
       />
     </div>
   );

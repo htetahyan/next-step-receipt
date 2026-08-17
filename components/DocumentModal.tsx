@@ -3,9 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, FileText, Loader2, Trash2, Eye, Download, Image as ImageIcon } from 'lucide-react';
 import { getDocuments, deleteDocument } from '@/app/actions/documents';
+import { getCurrentUserProfile } from '@/app/actions/users';
+import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { toast } from 'sonner';
 import DocumentUploadZone from './DocumentUploadZone';
 import DocumentViewerModal from './DocumentViewerModal';
+import DeleteConfirmModal from './ui/DeleteConfirmModal';
 import { downloadDocumentFile, isImageFile } from '@/lib/downloadHelper';
 
 interface DocumentModalProps {
@@ -17,13 +20,25 @@ interface DocumentModalProps {
 }
 
 export default function DocumentModal({ isOpen, onClose, customerId, serviceId, customerName }: DocumentModalProps) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; fileKey: string; title: string } | null>(null);
 
   // Viewer Modal State
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+
+  useEffect(() => {
+    async function init() {
+      const p = await getCurrentUserProfile();
+      setProfile(p);
+    }
+    init();
+  }, []);
+
+  const canDelete = checkPermission(profile, 'customers', 'delete');
 
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
@@ -42,17 +57,18 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
 
   if (!isOpen) return null;
 
-  const handleDelete = async (id: string, fileKey: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
-    setIsDeleting(id);
-    const res = await deleteDocument(id, fileKey);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(deleteTarget.id);
+    const res = await deleteDocument(deleteTarget.id, deleteTarget.fileKey);
     if (!res.error) {
-      setDocuments((docs) => docs.filter((d) => d.id !== id));
+      setDocuments((docs) => docs.filter((d) => d.id !== deleteTarget.id));
       toast.success('Document deleted');
     } else {
       toast.error(res.error);
     }
     setIsDeleting(null);
+    setDeleteTarget(null);
   };
 
   const handleOpenViewer = (index: number) => {
@@ -149,14 +165,16 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
                               </button>
                             </>
                           )}
-                          <button
-                            onClick={() => handleDelete(doc.id, key)}
-                            disabled={isDeleting === doc.id}
-                            className="p-1.5 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors opacity-70 hover:opacity-100"
-                            title="Delete Document"
-                          >
-                            {isDeleting === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => setDeleteTarget({ id: doc.id, fileKey: key, title: doc.title })}
+                              disabled={isDeleting === doc.id}
+                              className="p-1.5 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+                              title="Delete Document"
+                            >
+                              {isDeleting === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -180,6 +198,18 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
         onClose={() => setIsViewerOpen(false)}
         documents={documents}
         initialIndex={viewerIndex}
+      />
+
+      {/* Delete Document Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Document"
+        itemType="document"
+        itemName={deleteTarget?.title || ''}
+        isDeleting={!!isDeleting}
+        description="Are you sure you want to permanently delete this document and its attached file? This action cannot be undone."
       />
     </>
   );

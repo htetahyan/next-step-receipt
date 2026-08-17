@@ -9,6 +9,7 @@ import { deleteCustomerService } from '@/app/actions/services';
 
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
 export default function AirTicketList({
@@ -27,6 +28,7 @@ export default function AirTicketList({
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; ref: string; name: string } | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -144,17 +146,18 @@ export default function AirTicketList({
     setShowExportMenu(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this ticket record?')) return;
-    setDeletingId(id);
-    const res = await deleteCustomerService(id);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    const res = await deleteCustomerService(deleteTarget.id);
     if (res.success) {
-      setServices(services.filter(s => s.id !== id));
-      toast.success("Deleted successfully");
+      setServices(services.filter(s => s.id !== deleteTarget.id));
+      toast.success("Ticket record deleted");
     } else {
-      toast.error(res.error);
+      toast.error(res.error || 'Failed to delete record');
     }
     setDeletingId(null);
+    setDeleteTarget(null);
   };
 
   return (
@@ -317,7 +320,16 @@ export default function AirTicketList({
                           <Link href={`/dashboard/air-tickets/${service.id}`} className="p-1.5 rounded hover:bg-[var(--card-border)] cursor-pointer" title="View / Edit"><Eye className="w-3.5 h-3.5" /></Link>
                         )}
                         {canDelete && (
-                          <button onClick={() => handleDelete(service.id)} disabled={deletingId === service.id} className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 cursor-pointer" title="Delete">
+                          <button
+                            onClick={() => setDeleteTarget({
+                              id: service.id,
+                              ref: service.reference_id,
+                              name: customer?.name || (details as any)?.customer_name || 'Ticket'
+                            })}
+                            disabled={deletingId === service.id}
+                            className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 cursor-pointer transition-colors"
+                            title="Delete"
+                          >
                             {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                           </button>
                         )}
@@ -350,6 +362,18 @@ export default function AirTicketList({
           onPageChange={setCurrentPage}
         />
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Air Ticket Record"
+        itemType="air ticket record"
+        itemName={deleteTarget ? `${deleteTarget.ref} (${deleteTarget.name})` : ''}
+        isDeleting={!!deletingId}
+        description="Are you sure you want to delete this air ticket record? This action cannot be undone."
+      />
     </div>
   );
 }

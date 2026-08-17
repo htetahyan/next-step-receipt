@@ -9,6 +9,7 @@ import { deleteCustomerService } from '@/app/actions/services';
 
 import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 
 const COUNTRY_EMOJI: Record<string, string> = {
@@ -38,7 +39,9 @@ export default function OtherVisaList({
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; ref: string; name: string } | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
@@ -67,13 +70,18 @@ export default function OtherVisaList({
     setCurrentPage(1);
   }, [search, categoryFilter]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this record?')) return;
-    setDeletingId(id);
-    const res = await deleteCustomerService(id);
-    if (res.success) setServices(services.filter(s => s.id !== id));
-    else toast.error(res.error);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    const res = await deleteCustomerService(deleteTarget.id);
+    if (res.success) {
+      setServices(services.filter(s => s.id !== deleteTarget.id));
+      toast.success('Visa record deleted');
+    } else {
+      toast.error(res.error || 'Failed to delete record');
+    }
     setDeletingId(null);
+    setDeleteTarget(null);
   };
 
   // Group by category for summary
@@ -313,7 +321,16 @@ export default function OtherVisaList({
                           <Link href={`/dashboard/other-visa/${service.id}`} className="p-1.5 rounded hover:bg-[var(--card-border)] cursor-pointer" title="View / Edit"><Eye className="w-3.5 h-3.5" /></Link>
                         )}
                         {canDelete && (
-                          <button onClick={() => handleDelete(service.id)} disabled={deletingId === service.id} className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 cursor-pointer" title="Delete">
+                          <button
+                            onClick={() => setDeleteTarget({
+                              id: service.id,
+                              ref: service.reference_id,
+                              name: customer?.name || (details as any)?.customer_name || 'Visa'
+                            })}
+                            disabled={deletingId === service.id}
+                            className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 cursor-pointer transition-colors"
+                            title="Delete"
+                          >
                             {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                           </button>
                         )}
@@ -346,6 +363,18 @@ export default function OtherVisaList({
           onPageChange={setCurrentPage}
         />
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Visa Record"
+        itemType="visa record"
+        itemName={deleteTarget ? `${deleteTarget.ref} (${deleteTarget.name})` : ''}
+        isDeleting={!!deletingId}
+        description="Are you sure you want to delete this visa record? This action cannot be undone."
+      />
     </div>
   );
 }

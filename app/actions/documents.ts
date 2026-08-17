@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { deleteFromR2, getPresignedReadUrl } from './r2';
 import { createClient } from '@/utils/supabase/server';
+import { requirePermission } from './users';
 
 function safeRevalidate(path: string) {
   try {
@@ -21,6 +22,7 @@ export async function addDocument(data: {
   tag?: string;
 }) {
   try {
+    await requirePermission('customers', 'edit');
     const supabase = await createClient();
 
     const { error } = await supabase
@@ -88,6 +90,7 @@ export async function getDocuments(customerId: string, serviceId?: string) {
 
 export async function deleteDocument(id: string, fileKey: string) {
   try {
+    await requirePermission('customers', 'delete');
     const supabase = await createClient();
 
     // 1. Delete from R2 storage if key exists

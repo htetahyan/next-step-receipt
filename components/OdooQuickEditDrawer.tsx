@@ -8,6 +8,7 @@ import { quickUpdateService, deleteCustomerService } from '@/app/actions/service
 import { STATUS_COLORS } from '@/lib/statusColors';
 import DocumentModal from '@/components/DocumentModal';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
+import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { getDocuments } from '@/app/actions/documents';
 import { downloadDocumentFile, isImageFile } from '@/lib/downloadHelper';
 
@@ -17,6 +18,7 @@ interface Props {
   onClose: () => void;
   onUpdate: (updatedService: any) => void;
   onDelete: (serviceId: string) => void;
+  canDelete?: boolean;
   suppliersList?: string[];
   categoriesList?: string[];
 }
@@ -29,11 +31,13 @@ export default function OdooQuickEditDrawer({
   onClose,
   onUpdate,
   onDelete,
+  canDelete = false,
   suppliersList = [],
   categoriesList = [],
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Form State
   const [status, setStatus] = useState('Open');
@@ -219,11 +223,11 @@ export default function OdooQuickEditDrawer({
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete visa record "${service.reference_id}"?`)) return;
+  const handleConfirmDelete = async () => {
     setDeleting(true);
     const res = await deleteCustomerService(service.id);
     setDeleting(false);
+    setShowDeleteModal(false);
     if (res.success) {
       onDelete(service.id);
       toast.success('Visa record deleted!');
@@ -625,25 +629,40 @@ export default function OdooQuickEditDrawer({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium flex items-center gap-1.5 transition-colors"
-            >
-              {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Delete
-            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(true)}
+                disabled={deleting}
+                className="px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Delete
+              </button>
+            )}
 
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-5 py-2 rounded-lg bg-[#D97757] text-white hover:bg-[#c26243] text-xs font-semibold flex items-center gap-2 transition-all shadow-md"
+              className="px-5 py-2 rounded-lg bg-[#D97757] text-white hover:bg-[#c26243] text-xs font-semibold flex items-center gap-2 transition-all shadow-md cursor-pointer"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Quick Save
             </button>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleConfirmDelete}
+          title="Delete Visa Record"
+          itemType="visa record"
+          itemName={service?.reference_id || 'Visa Service'}
+          isDeleting={deleting}
+          description="Are you sure you want to delete this visa record? This will permanently remove the service and its records."
+        />
 
         {/* Upload & Manager Modal */}
         {service?.customer_id && (

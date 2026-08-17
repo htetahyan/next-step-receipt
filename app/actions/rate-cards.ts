@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { requirePermission } from './users';
 
 export interface RateCard {
   id: string;
@@ -40,6 +41,7 @@ export async function upsertRateCard(
   payload: Partial<Omit<RateCard, 'id' | 'created_at' | 'updated_at'>>
 ): Promise<{ success: boolean; data?: RateCard; error?: string }> {
   try {
+    await requirePermission('suppliers', id ? 'edit' : 'create');
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
@@ -71,6 +73,7 @@ export async function upsertRateCard(
 
 export async function deleteRateCard(id: string): Promise<{ success: boolean; error?: string }> {
   try {
+    await requirePermission('suppliers', 'delete');
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
     const { error } = await supabase.from('rate_cards').delete().eq('id', id);
@@ -87,6 +90,7 @@ export async function bulkImportRateCards(
   rows: Partial<Omit<RateCard, 'id' | 'created_at' | 'updated_at'>>[]
 ): Promise<{ success: boolean; count?: number; error?: string }> {
   try {
+    await requirePermission('suppliers', 'create');
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
     const { data, error } = await supabase
