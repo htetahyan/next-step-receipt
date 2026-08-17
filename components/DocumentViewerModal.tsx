@@ -327,13 +327,17 @@ export default function DocumentViewerModal({
                     setZoom(1);
                     setRotation(0);
                   }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border ${
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border ${
                     isSelected
                       ? 'border-[#D97757] bg-[#D97757]/10 text-[#D97757] font-bold shadow-xs scale-105'
                       : 'border-[var(--card-border)] hover:bg-[var(--card-border)] opacity-70 hover:opacity-100'
                   }`}
                 >
-                  {isImgThumb ? <ImageIcon className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                  {isImgThumb && url ? (
+                    <img src={url} alt={doc.title} className="w-5 h-5 rounded object-cover shrink-0" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-[#D97757] shrink-0" />
+                  )}
                   <span className="max-w-[120px] truncate">{doc.title}</span>
                 </button>
               );

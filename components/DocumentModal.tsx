@@ -125,15 +125,34 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
                       <div
                         key={doc.id}
                         onClick={() => handleOpenViewer(index)}
-                        className="card-anthropic flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-[var(--sidebar-bg)] transition-all cursor-pointer group hover:border-[#D97757]/40"
+                        className="card-anthropic flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3 sm:p-4 hover:bg-[var(--sidebar-bg)] transition-all cursor-pointer group hover:border-[#D97757]/40"
                       >
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="p-2 bg.var(--sidebar-bg)] rounded-lg shrink-0 text-[#D97757] group-hover:scale-105 transition-transform">
-                            {isImg ? <ImageIcon className="h-5 w-5 opacity-70 group-hover:opacity-100" /> : <FileText className="h-5 w-5 opacity-70 group-hover:opacity-100" />}
-                          </div>
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          {/* Visual Image Preview Thumbnail or PDF Icon */}
+                          {isImg && url ? (
+                            <div className="w-14 h-14 rounded-lg overflow-hidden bg-black/10 shrink-0 border border-[var(--card-border)] relative group/thumb shadow-xs">
+                              <img
+                                src={url}
+                                alt={doc.title}
+                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                <Eye className="w-4 h-4" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-14 h-14 rounded-lg bg-[#D97757]/10 text-[#D97757] flex flex-col items-center justify-center shrink-0 border border-[#D97757]/20 group-hover:scale-105 transition-transform">
+                              <FileText className="h-5 w-5 opacity-80" />
+                              <span className="text-[9px] font-mono font-bold uppercase tracking-wider opacity-60 mt-0.5">
+                                {doc.title.split('.').pop()?.slice(0, 4) || 'DOC'}
+                              </span>
+                            </div>
+                          )}
+
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="font-semibold truncate group-hover:text-[#D97757] transition-colors">{doc.title}</p>
+                              <p className="font-semibold text-sm truncate group-hover:text-[#D97757] transition-colors">{doc.title}</p>
                               {doc.tag && (
                                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#D97757]/10 text-[#D97757] shrink-0">
                                   {doc.tag}
