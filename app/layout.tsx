@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import OfflineBanner from "@/components/ui/OfflineBanner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,6 +32,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-[#F5F4EF] text-[#222222]" suppressHydrationWarning>
+        <OfflineBanner />
         {children}
         <Toaster richColors position="top-right" />
       </body>
