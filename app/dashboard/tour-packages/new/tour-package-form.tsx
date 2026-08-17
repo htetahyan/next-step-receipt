@@ -18,6 +18,7 @@ import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 import { UserProfile } from '@/lib/auth-permissions';
+import { findSupplierRate } from '@/lib/rateAutofill';
 
 interface Props {
   customers: any[];
@@ -66,6 +67,30 @@ export default function TourPackageForm({ customers, suppliers = [], initialData
       }
     }
   });
+
+  const categoryWatch = methods.watch('category');
+  const tourPlansWatch = methods.watch('details.tour_plans');
+  const supplierWatch = methods.watch('details.supplier_name');
+
+  useEffect(() => {
+    if (!initialData && supplierWatch && (tourPlansWatch || categoryWatch) && suppliers.length > 0) {
+      const match = findSupplierRate(suppliers, supplierWatch, tourPlansWatch || categoryWatch);
+      if (match) {
+        let updated = false;
+        if (match.cost > 0) {
+          methods.setValue('financials.supplier_cost', match.cost, { shouldDirty: true });
+          updated = true;
+        }
+        if (match.price > 0) {
+          methods.setValue('financials.amount', match.price, { shouldDirty: true });
+          updated = true;
+        }
+        if (updated) {
+          toast.info(`Rates auto-filled from ${match.supplierName}: Cost ${match.cost} AED, Price ${match.price} AED`);
+        }
+      }
+    }
+  }, [supplierWatch, tourPlansWatch, categoryWatch, suppliers, initialData, methods]);
 
   const onSubmit = async (data: TourPackageFormValues) => {
     setSaving(true);

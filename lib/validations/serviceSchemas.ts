@@ -45,6 +45,7 @@ export const airTicketSchema = baseServiceSchema.extend({
     travel_date: z.string().optional(),
     return_date: z.string().optional(),
     airline: z.string().optional(),
+    supplier_name: z.string().optional(),
     pnr: z.string().optional(),
     ticket_no: z.string().optional(),
     sector: z.string().optional(),
@@ -59,6 +60,7 @@ export const airTicketSchema = baseServiceSchema.extend({
 export const otherVisaSchema = baseServiceSchema.extend({
   category: z.string(), // country
   details: z.object({
+    visa_supplier: z.string().optional(),
     travel_date: z.string().optional(),
     visa_type: z.string().optional(),
     appointment_date: z.string().optional(),

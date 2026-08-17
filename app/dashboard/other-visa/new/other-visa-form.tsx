@@ -8,7 +8,7 @@ import { ArrowLeft, Globe, Save, Loader2, FileText } from 'lucide-react';
 import Link from 'next/link';
 
 import { addCustomerService, updateCustomerService, generateReferenceId } from '@/app/actions/services';
-import { SERVICE_STATUSES } from '@/lib/service-constants';
+import { SERVICE_STATUSES, VISA_SUPPLIERS } from '@/lib/service-constants';
 import { toast } from 'sonner';
 import { addCustomer } from '@/app/actions/customers';
 import DocumentModal from '@/components/DocumentModal';
@@ -18,15 +18,17 @@ import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 import { UserProfile } from '@/lib/auth-permissions';
+import { findSupplierRate } from '@/lib/rateAutofill';
 
 interface Props {
   customers: any[];
+  suppliers?: any[];
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
 }
 
-export default function OtherVisaForm({ customers, initialData, duplicateData, currentUser }: Props) {
+export default function OtherVisaForm({ customers, suppliers = [], initialData, duplicateData, currentUser }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
@@ -48,6 +50,7 @@ export default function OtherVisaForm({ customers, initialData, duplicateData, c
       status: initialData?.status || 'Open',
       category: initialData?.category || duplicateData?.category || '',
       details: {
+        visa_supplier: initialData?.details?.visa_supplier || duplicateData?.details?.visa_supplier || '',
         travel_date: initialData?.details?.travel_date || '',
         visa_type: initialData?.details?.visa_type || duplicateData?.details?.visa_type || 'Tourist',
         appointment_date: initialData?.details?.appointment_date || '',
@@ -65,6 +68,29 @@ export default function OtherVisaForm({ customers, initialData, duplicateData, c
       }
     }
   });
+
+  const categoryWatch = methods.watch('category');
+  const supplierWatch = methods.watch('details.visa_supplier' as any);
+
+  useEffect(() => {
+    if (!initialData && categoryWatch && suppliers.length > 0) {
+      const match = findSupplierRate(suppliers, supplierWatch, categoryWatch);
+      if (match) {
+        let updated = false;
+        if (match.cost > 0) {
+          methods.setValue('financials.supplier_cost', match.cost, { shouldDirty: true });
+          updated = true;
+        }
+        if (match.price > 0) {
+          methods.setValue('financials.amount', match.price, { shouldDirty: true });
+          updated = true;
+        }
+        if (updated) {
+          toast.info(`Rates auto-filled from ${match.supplierName}: Cost ${match.cost} AED, Price ${match.price} AED`);
+        }
+      }
+    }
+  }, [supplierWatch, categoryWatch, suppliers, initialData, methods]);
 
   const onSubmit = async (data: OtherVisaFormValues) => {
     setSaving(true);
@@ -167,7 +193,17 @@ export default function OtherVisaForm({ customers, initialData, duplicateData, c
                 <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">Visa Details</h3>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField name="category" label="Destination Country *" placeholder="e.g. USA, UK, Schengen" className="col-span-2" />
+                  <FormField name="category" label="Destination / Service Category *" placeholder="e.g. Schengen / EU Visa, Japan Visa, UK Visa" className="col-span-2" />
+                  <FormField 
+                    name="details.visa_supplier" 
+                    label="Supplier" 
+                    component="select" 
+                    options={[
+                      { label: 'Select Supplier...', value: '' },
+                      ...VISA_SUPPLIERS.map(s => ({ label: s, value: s })),
+                      ...suppliers.filter(s => !VISA_SUPPLIERS.includes(s.name as any)).map(s => ({ label: s.name, value: s.name }))
+                    ]} 
+                  />
                   <FormField 
                     name="details.visa_type" 
                     label="Visa Type" 
@@ -182,7 +218,7 @@ export default function OtherVisaForm({ customers, initialData, duplicateData, c
                   />
                   <FormField name="details.appointment_date" label="Appointment Date" type="date" />
                   <FormField name="details.travel_date" label="Expected Travel Date" type="date" />
-                  <FormField name="status" label="Status" component="select" options={SERVICE_STATUSES.map(s => ({label: s, value: s}))} />
+                  <FormField name="status" label="Status" component="select" options={SERVICE_STATUSES.map(s => ({label: s, value: s}))} className="col-span-2" />
                 </div>
               </div>
 

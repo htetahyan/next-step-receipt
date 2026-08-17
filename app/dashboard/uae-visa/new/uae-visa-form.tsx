@@ -18,6 +18,7 @@ import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
 import { UserProfile } from '@/lib/auth-permissions';
+import { findSupplierRate } from '@/lib/rateAutofill';
 
 interface Props {
   customers: any[];
@@ -77,26 +78,19 @@ export default function UAEVisaForm({ customers, suppliers = [], initialData, du
 
   useEffect(() => {
     if (!initialData && supplierWatch && categoryWatch && suppliers.length > 0) {
-      const supplier = suppliers.find(s => s.name === supplierWatch);
-      if (supplier && Array.isArray(supplier.services)) {
-        const service = supplier.services.find((s: any) => s.name === categoryWatch);
-        if (service) {
-          const currentCost = Number(methods.getValues('financials.supplier_cost')) || 0;
-          const currentAmount = Number(methods.getValues('financials.amount')) || 0;
-          
-          let updated = false;
-          if (currentCost === 0 && service.defaultCost) {
-            methods.setValue('financials.supplier_cost', service.defaultCost, { shouldDirty: true });
-            updated = true;
-          }
-          if (currentAmount === 0 && service.defaultPrice) {
-            methods.setValue('financials.amount', service.defaultPrice, { shouldDirty: true });
-            updated = true;
-          }
-          
-          if (updated) {
-            toast.info(`Rates auto-filled from ${supplierWatch}`);
-          }
+      const match = findSupplierRate(suppliers, supplierWatch, categoryWatch);
+      if (match) {
+        let updated = false;
+        if (match.cost > 0) {
+          methods.setValue('financials.supplier_cost', match.cost, { shouldDirty: true });
+          updated = true;
+        }
+        if (match.price > 0) {
+          methods.setValue('financials.amount', match.price, { shouldDirty: true });
+          updated = true;
+        }
+        if (updated) {
+          toast.info(`Rates auto-filled from ${match.supplierName}: Cost ${match.cost} AED, Price ${match.price} AED`);
         }
       }
     }

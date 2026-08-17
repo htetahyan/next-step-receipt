@@ -9,14 +9,21 @@ export default async function NewOtherVisaPage(props: { searchParams?: Promise<{
   const currentUser = await getCurrentUserProfile();
 
   let customers: any[] = [];
+  let suppliers: any[] = [];
   try {
     const { data } = await supabase
       .from('customers')
       .select('id, name, phone, passport_no, email')
       .order('name', { ascending: true });
     if (data) customers = data;
+
+    const { data: supplierData } = await supabase
+      .from('suppliers')
+      .select('id, name, services')
+      .order('name', { ascending: true });
+    if (supplierData) suppliers = supplierData;
   } catch (e) {
-    console.error('Failed to fetch customers:', e);
+    console.error('Failed to fetch customers/suppliers:', e);
   }
 
   let duplicateData = null;
@@ -36,6 +43,7 @@ export default async function NewOtherVisaPage(props: { searchParams?: Promise<{
   return (
     <OtherVisaForm 
       customers={customers} 
+      suppliers={suppliers}
       duplicateData={duplicateData} 
       currentUser={currentUser} 
     />
