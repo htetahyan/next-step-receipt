@@ -17,9 +17,20 @@ export function parseFinancialNumber(val: any, fallback: number = 0): number {
 }
 
 /**
- * Format a number or string amount to a clean locale string (e.g. "11,400")
+ * Format a number or string amount to a clean locale string (e.g. "11,400") or direct string
  */
 export function formatCurrencyAmount(val: any, fallback: string = '0'): string {
-  const num = parseFinancialNumber(val, 0);
-  return num.toLocaleString();
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'number') {
+    return isNaN(val) ? fallback : val.toLocaleString();
+  }
+  const str = String(val).trim();
+  if (!str || str.toLowerCase() === 'nan' || str.toLowerCase() === 'undefined' || str.toLowerCase() === 'null') {
+    return fallback;
+  }
+  const num = parseFinancialNumber(val, NaN);
+  if (!isNaN(num)) {
+    return num.toLocaleString();
+  }
+  return str;
 }
