@@ -76,7 +76,8 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
       visa_supplier: details.visa_supplier || details.supplier_name || '',
       supplier_name: details.supplier_name || details.visa_supplier || '',
       tour_plans: details.tour_plans || '',
-      referred_by: details.referred_by || details.handled_by || '',
+      handled_by: details.handled_by || '',
+      referred_by: details.referred_by || '',
       comments: details.comments || details.notes || '',
       notes: details.notes || details.comments || '',
       remark: details.remark || '',
@@ -105,6 +106,7 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
           visa_supplier: serviceEditData.visa_supplier,
           supplier_name: serviceEditData.supplier_name,
           tour_plans: serviceEditData.tour_plans,
+          handled_by: serviceEditData.handled_by,
           referred_by: serviceEditData.referred_by,
           comments: serviceEditData.comments,
           notes: serviceEditData.notes || serviceEditData.comments,
@@ -370,11 +372,22 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs opacity-70 mb-1">Handled / Referred By</label>
+                                <label className="block text-xs opacity-70 mb-1">Handled By (Staff)</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.handled_by}
+                                  onChange={(e) => setServiceEditData({...serviceEditData, handled_by: e.target.value})}
+                                  placeholder="e.g. Staff Name"
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Referred By (Agent)</label>
                                 <input
                                   type="text"
                                   value={serviceEditData.referred_by}
                                   onChange={(e) => setServiceEditData({...serviceEditData, referred_by: e.target.value})}
+                                  placeholder="e.g. Agent Name"
                                   className="input-anthropic w-full text-sm py-1.5"
                                 />
                               </div>
@@ -441,6 +454,26 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                                   className="input-anthropic w-full text-sm py-1.5"
                                 />
                               </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Handled By (Staff)</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.handled_by}
+                                  placeholder="e.g. Staff Name"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, handled_by: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Referred By (Agent)</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.referred_by}
+                                  placeholder="e.g. Agent Name"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, referred_by: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
                             </div>
                           ) : isTourPackage ? (
                             <div className="grid grid-cols-2 gap-4">
@@ -484,6 +517,26 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                                   className="input-anthropic w-full text-sm py-1.5"
                                 />
                               </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Handled By (Staff)</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.handled_by}
+                                  placeholder="e.g. Staff Name"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, handled_by: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Referred By (Agent)</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.referred_by}
+                                  placeholder="e.g. Agent Name"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, referred_by: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 gap-4">
@@ -524,6 +577,26 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                                   type="date"
                                   value={serviceEditData.visa_expiry_date}
                                   onChange={(e) => setServiceEditData({...serviceEditData, visa_expiry_date: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Handled By (Staff)</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.handled_by}
+                                  placeholder="e.g. Staff Name"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, handled_by: e.target.value})}
+                                  className="input-anthropic w-full text-sm py-1.5"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs opacity-70 mb-1">Referred By (Agent)</label>
+                                <input
+                                  type="text"
+                                  value={serviceEditData.referred_by}
+                                  placeholder="e.g. Agent Name"
+                                  onChange={(e) => setServiceEditData({...serviceEditData, referred_by: e.target.value})}
                                   className="input-anthropic w-full text-sm py-1.5"
                                 />
                               </div>
@@ -615,7 +688,8 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                                 {(details.departure_date || details.travel_date) && <div><span className="opacity-50">Departure Date:</span> <span className="font-medium">{details.departure_date || details.travel_date}</span></div>}
                                 {details.departure_time && <div><span className="opacity-50">Departure Time:</span> <span className="font-medium">{details.departure_time}</span></div>}
                                 {details.booking_date && <div><span className="opacity-50">Booking Date:</span> <span className="font-medium">{details.booking_date}</span></div>}
-                                {(details.handled_by || details.referred_by) && <div><span className="opacity-50">Handled By:</span> <span className="font-medium">{details.handled_by || details.referred_by}</span></div>}
+                                {details.handled_by && <div><span className="opacity-50">Handled By:</span> <span className="font-medium">{details.handled_by}</span></div>}
+                                {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
                               </>
                             ) : isUAEVisa ? (
                               <>
@@ -624,6 +698,7 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                                 {details.visa_expiry_date && <div><span className="opacity-50">Expiry:</span> <span className="font-medium font-mono text-[#D97757]">{details.visa_expiry_date}</span></div>}
                                 {details.visa_duration && <div><span className="opacity-50">Duration:</span> <span className="font-medium">{details.visa_duration}</span></div>}
                                 {details.visa_supplier && <div><span className="opacity-50">Supplier:</span> <span className="font-medium">{details.visa_supplier}</span></div>}
+                                {details.handled_by && <div><span className="opacity-50">Handled By:</span> <span className="font-medium">{details.handled_by}</span></div>}
                                 {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
                               </>
                             ) : isTourPackage ? (
@@ -631,12 +706,16 @@ export default function CustomerHubClient({ customer, services, pastInvoices, do
                                 {details.travel_date && <div><span className="opacity-50">Travel Date:</span> <span className="font-medium">{details.travel_date}</span></div>}
                                 {(details.supplier_name || details.visa_supplier) && <div><span className="opacity-50">Supplier:</span> <span className="font-medium">{details.supplier_name || details.visa_supplier}</span></div>}
                                 {(details.tour_plans || details.destination) && <div className="col-span-2"><span className="opacity-50">Plans / Details:</span> <span className="font-medium">{details.tour_plans || details.destination}</span></div>}
+                                {details.handled_by && <div><span className="opacity-50">Handled By:</span> <span className="font-medium">{details.handled_by}</span></div>}
+                                {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
                               </>
                             ) : (
                               <>
                                 {details.destination && <div><span className="opacity-50">Destination:</span> <span className="font-medium font-mono text-[#D97757]">{details.destination}</span></div>}
                                 {details.travel_date && <div><span className="opacity-50">Travel:</span> <span className="font-medium">{details.travel_date}</span></div>}
                                 {details.visa_expiry_date && <div><span className="opacity-50">Expiry:</span> <span className="font-medium font-mono text-[#D97757]">{details.visa_expiry_date}</span></div>}
+                                {details.handled_by && <div><span className="opacity-50">Handled By:</span> <span className="font-medium">{details.handled_by}</span></div>}
+                                {details.referred_by && <div><span className="opacity-50">Referred By:</span> <span className="font-medium">{details.referred_by}</span></div>}
                               </>
                             )}
 

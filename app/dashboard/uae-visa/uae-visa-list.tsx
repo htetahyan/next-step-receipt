@@ -225,6 +225,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
           customer?.phone,
           s.reference_id,
           details?.visa_supplier,
+          details?.handled_by,
           details?.referred_by,
         ].some(v => v && String(v).toLowerCase().includes(q));
         if (!matches) return false;
@@ -404,6 +405,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
         'Supplier Cost (AED)': supplierCost,
         'Gross Profit (AED)': profit,
         'Payment Method': fin?.payment_method || details?.payment_method || '',
+        'Handled By': details?.handled_by || '',
         'Referred By': details?.referred_by || '',
         'Notes': details?.comments || details?.remark || details?.notes || '',
       };
@@ -958,6 +960,14 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                                 <span className="text-[#D97757] font-sans font-semibold flex items-center gap-0.5">
                                   <Phone className="w-2.5 h-2.5" />
                                   {phoneNum}
+                                </span>
+                              </>
+                            )}
+                            {details?.handled_by && (
+                              <>
+                                <span className="opacity-30">•</span>
+                                <span className="text-emerald-700 dark:text-emerald-400 font-sans font-medium">
+                                  By: {details.handled_by}
                                 </span>
                               </>
                             )}

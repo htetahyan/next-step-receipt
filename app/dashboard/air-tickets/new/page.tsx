@@ -1,10 +1,12 @@
 import { createClient } from '@/utils/supabase/server';
 import AirTicketForm from './air-ticket-form';
+import { getCurrentUserProfile } from '@/app/actions/users';
 
 export default async function NewAirTicketPage(props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const searchParams = await props.searchParams;
   const duplicateId = searchParams?.duplicate as string | undefined;
   const supabase = await createClient();
+  const currentUser = await getCurrentUserProfile();
 
   let customers: any[] = [];
   let suppliers: any[] = [];
@@ -39,5 +41,12 @@ export default async function NewAirTicketPage(props: { searchParams?: Promise<{
     }
   }
 
-  return <AirTicketForm customers={customers} suppliers={suppliers} duplicateData={duplicateData} />;
+  return (
+    <AirTicketForm 
+      customers={customers} 
+      suppliers={suppliers} 
+      duplicateData={duplicateData} 
+      currentUser={currentUser}
+    />
+  );
 }

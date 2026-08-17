@@ -46,6 +46,8 @@ export default function TourPackageList({ initialServices, customers, profile }:
           s.reference_id,
           details?.supplier_name,
           details?.tour_plans,
+          details?.handled_by,
+          details?.referred_by,
           details?.remark,
         ].some(v => v && String(v).toLowerCase().includes(q));
         if (!matches) return false;
@@ -106,6 +108,8 @@ export default function TourPackageList({ initialServices, customers, profile }:
         'GP': profit,
         'Supplier Name': details?.supplier_name || '',
         'Tour Name': details?.tour_plans || '',
+        'Handled By': details?.handled_by || '',
+        'Referred By': details?.referred_by || '',
         'Remark': details?.remark || '',
       };
     });
@@ -286,7 +290,14 @@ export default function TourPackageList({ initialServices, customers, profile }:
                 return (
                   <tr key={s.id} className="hover:bg-[var(--sidebar-bg)] transition-colors">
                     <td className="px-4 py-3">{details?.travel_date || '—'}</td>
-                    <td className="px-4 py-3 font-medium">{cust?.name || '—'}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <div>{cust?.name || '—'}</div>
+                      {details?.handled_by && (
+                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-normal">
+                          By: {details.handled_by}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">{amt.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right">{discount.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-medium">{totalPayment.toLocaleString()}</td>

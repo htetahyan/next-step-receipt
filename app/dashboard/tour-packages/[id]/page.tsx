@@ -1,10 +1,12 @@
 import { createClient } from '@/utils/supabase/server';
 import TourPackageForm from '../new/tour-package-form';
 import { notFound } from 'next/navigation';
+import { getCurrentUserProfile } from '@/app/actions/users';
 
 export default async function EditTourPackagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
+  const currentUser = await getCurrentUserProfile();
 
   const { data: service } = await supabase
     .from('customer_services')
@@ -40,7 +42,12 @@ export default async function EditTourPackagePage({ params }: { params: Promise<
 
   return (
     <>
-      <TourPackageForm customers={customers} suppliers={suppliers} initialData={service} />
+      <TourPackageForm 
+        customers={customers} 
+        suppliers={suppliers} 
+        initialData={service} 
+        currentUser={currentUser} 
+      />
     </>
   );
 }

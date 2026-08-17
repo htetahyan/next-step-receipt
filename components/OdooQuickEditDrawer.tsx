@@ -48,6 +48,7 @@ export default function OdooQuickEditDrawer({
   const [travelDate, setTravelDate] = useState('');
   const [visaIssuedDate, setVisaIssuedDate] = useState('');
   const [visaExpiryDate, setVisaExpiryDate] = useState('');
+  const [handledBy, setHandledBy] = useState('');
   const [referredBy, setReferredBy] = useState('');
   const [comments, setComments] = useState('');
 
@@ -90,6 +91,7 @@ export default function OdooQuickEditDrawer({
       setTravelDate(det.travel_date || '');
       setVisaIssuedDate(det.visa_issued_date || '');
       setVisaExpiryDate(det.visa_expiry_date || '');
+      setHandledBy(det.handled_by || '');
       setReferredBy(det.referred_by || '');
       setComments(det.comments || det.remark || det.notes || '');
 
@@ -160,6 +162,7 @@ export default function OdooQuickEditDrawer({
       travel_date: travelDate,
       visa_issued_date: visaIssuedDate,
       visa_expiry_date: visaExpiryDate,
+      handled_by: handledBy,
       referred_by: referredBy,
       comments: comments,
       customer_name: customerName,
@@ -419,15 +422,27 @@ export default function OdooQuickEditDrawer({
                 />
               </div>
 
-              <div className="sm:col-span-3">
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Referred By</label>
-                <input
-                  type="text"
-                  value={referredBy}
-                  onChange={e => setReferredBy(e.target.value)}
-                  placeholder="Agent / Reference name"
-                  className="w-full input-anthropic px-3 py-2 text-sm"
-                />
+              <div className="sm:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Handled By (Staff)</label>
+                  <input
+                    type="text"
+                    value={handledBy}
+                    onChange={e => setHandledBy(e.target.value)}
+                    placeholder="Staff / Handled by name"
+                    className="w-full input-anthropic px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Referred By (Agent)</label>
+                  <input
+                    type="text"
+                    value={referredBy}
+                    onChange={e => setReferredBy(e.target.value)}
+                    placeholder="Agent / Reference name"
+                    className="w-full input-anthropic px-3 py-2 text-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>

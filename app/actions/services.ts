@@ -69,7 +69,15 @@ export async function addCustomerService(data: any) {
 
     // Check RBAC permission for this specific service module
     const moduleKey = mapCategoryToModule(category);
-    await requirePermission(moduleKey, 'create');
+    const userProfile = await requirePermission(moduleKey, 'create');
+
+    const defaultHandledBy = userProfile.fullName || (userProfile.email ? userProfile.email.split('@')[0] : '');
+    const finalDetails = {
+      ...(details || {}),
+      handled_by: details?.handled_by?.trim() !== undefined && details?.handled_by?.trim() !== '' 
+        ? details.handled_by.trim() 
+        : defaultHandledBy,
+    };
 
     const supabase = await createClient();
 
@@ -79,7 +87,7 @@ export async function addCustomerService(data: any) {
       isNewCustomer: false,
       status,
       category,
-      details: details || {},
+      details: finalDetails,
       financials: financials || {},
     };
 
@@ -93,13 +101,13 @@ export async function addCustomerService(data: any) {
       otherVisaSchema.parse(validationData);
     }
 
-    const effectiveDateISO = parseDateToISO(details?.travel_date || details?.visa_issued_date);
+    const effectiveDateISO = parseDateToISO(finalDetails?.travel_date || finalDetails?.visa_issued_date);
     const serviceInsertPayload: any = {
       customer_id: customerId,
       reference_id: referenceId || null,
       category,
       status,
-      details: details || {},
+      details: finalDetails,
       financials: financials || {},
     };
     if (effectiveDateISO) {
@@ -155,7 +163,7 @@ export async function addCustomerService(data: any) {
       }
     }
     return service;
-  }, ['/dashboard/customers', '/dashboard/uae-visa', '/dashboard/air-tickets', '/dashboard/other-visa'], data);
+  }, ['/dashboard/customers', '/dashboard/uae-visa', '/dashboard/air-tickets', '/dashboard/other-visa', '/dashboard/tour-packages'], data);
 }
 
 // ── Bulk Migrate Services ───────────────────────────────────

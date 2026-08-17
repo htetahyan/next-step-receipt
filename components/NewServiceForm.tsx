@@ -88,6 +88,7 @@ export default function NewServiceForm() {
           })(),
           visa_supplier: formData.get('visa_supplier') || '',
           visa_duration: formData.get('visa_duration') || '',
+          handled_by: formData.get('handled_by') || '',
           referred_by: formData.get('referred_by') || '',
           remark: formData.get('remark') || '',
           comments: formData.get('comments') || '',
@@ -255,14 +256,18 @@ export default function NewServiceForm() {
       <div className="border-t border-[var(--card-border)] pt-8">
          <h3 className="font-serif text-lg mb-6">Additional Information</h3>
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-               <label className="block text-sm font-medium mb-2 opacity-70">Referred By</label>
-               <input name="referred_by" placeholder="e.g. Agent Hay Man Thu" className="w-full rounded-md border border-[var(--card-border)] p-3 bg-[var(--background)] font-medium" />
-            </div>
-            <div>
-               <label className="block text-sm font-medium mb-2 opacity-70">Remark</label>
-               <input name="remark" className="w-full rounded-md border border-[var(--card-border)] p-3 bg-[var(--background)] font-medium" />
-            </div>
+             <div>
+                <label className="block text-sm font-medium mb-2 opacity-70">Handled By (Staff)</label>
+                <input name="handled_by" placeholder="e.g. Staff Name" className="w-full rounded-md border border-[var(--card-border)] p-3 bg-[var(--background)] font-medium" />
+             </div>
+             <div>
+                <label className="block text-sm font-medium mb-2 opacity-70">Referred By (Agent)</label>
+                <input name="referred_by" placeholder="e.g. Agent Name" className="w-full rounded-md border border-[var(--card-border)] p-3 bg-[var(--background)] font-medium" />
+             </div>
+             <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-2 opacity-70">Remark</label>
+                <input name="remark" className="w-full rounded-md border border-[var(--card-border)] p-3 bg-[var(--background)] font-medium" />
+             </div>
             <div className="md:col-span-2">
                <label className="block text-sm font-medium mb-2 opacity-70">Comments</label>
                <input name="comments" className="w-full rounded-md border border-[var(--card-border)] p-3 bg-[var(--background)] font-medium" />

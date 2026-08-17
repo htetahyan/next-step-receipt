@@ -1,10 +1,12 @@
 import { createClient } from '@/utils/supabase/server';
 import OtherVisaForm from './other-visa-form';
+import { getCurrentUserProfile } from '@/app/actions/users';
 
 export default async function NewOtherVisaPage(props: { searchParams?: Promise<{ [key: string]: string | string[] | undefined }> }) {
   const searchParams = await props.searchParams;
   const duplicateId = searchParams?.duplicate as string | undefined;
   const supabase = await createClient();
+  const currentUser = await getCurrentUserProfile();
 
   let customers: any[] = [];
   try {
@@ -31,5 +33,11 @@ export default async function NewOtherVisaPage(props: { searchParams?: Promise<{
     }
   }
 
-  return <OtherVisaForm customers={customers} duplicateData={duplicateData} />;
+  return (
+    <OtherVisaForm 
+      customers={customers} 
+      duplicateData={duplicateData} 
+      currentUser={currentUser} 
+    />
+  );
 }

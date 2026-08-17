@@ -17,13 +17,16 @@ import { FormField } from '@/components/ui/form/FormField';
 import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 
+import { UserProfile } from '@/lib/auth-permissions';
+
 interface Props {
   customers: any[];
   initialData?: any;
   duplicateData?: any;
+  currentUser?: UserProfile | null;
 }
 
-export default function OtherVisaForm({ customers, initialData, duplicateData }: Props) {
+export default function OtherVisaForm({ customers, initialData, duplicateData, currentUser }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId') || '';
@@ -34,6 +37,8 @@ export default function OtherVisaForm({ customers, initialData, duplicateData }:
   useEffect(() => {
     if (!initialData) generateReferenceId('OV').then(id => setRefId(id));
   }, [initialData]);
+
+  const defaultHandledBy = initialData?.details?.handled_by || duplicateData?.details?.handled_by || currentUser?.fullName || (currentUser?.email ? currentUser.email.split('@')[0] : '') || '';
 
   const methods = useForm<OtherVisaFormValues>({
     resolver: zodResolver(otherVisaSchema) as any,
@@ -46,6 +51,7 @@ export default function OtherVisaForm({ customers, initialData, duplicateData }:
         travel_date: initialData?.details?.travel_date || '',
         visa_type: initialData?.details?.visa_type || duplicateData?.details?.visa_type || 'Tourist',
         appointment_date: initialData?.details?.appointment_date || '',
+        handled_by: defaultHandledBy,
         referred_by: initialData?.details?.referred_by || duplicateData?.details?.referred_by || '',
         comments: initialData?.details?.comments || duplicateData?.details?.comments || '',
         remark: initialData?.details?.remark || duplicateData?.details?.remark || '',
@@ -181,9 +187,10 @@ export default function OtherVisaForm({ customers, initialData, duplicateData }:
               </div>
 
               <div className="card-anthropic p-6">
-                <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">Additional Info</h3>
+                <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">Staff & Additional Info</h3>
                 <div className="space-y-4">
-                  <FormField name="details.referred_by" label="Referred By (B2B/Agent)" />
+                  <FormField name="details.handled_by" label="Handled By / Served By (Staff)" placeholder="e.g. Staff Name" />
+                  <FormField name="details.referred_by" label="Referred By (B2B/Agent)" placeholder="e.g. Agent Name" />
                   <FormField name="details.comments" label="Comments" component="textarea" />
                   <FormField name="details.remark" label="Admin Remark (Private)" component="textarea" />
                 </div>
