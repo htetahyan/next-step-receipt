@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { UserProfile, checkPermission, ModuleKey } from "@/lib/auth-permissions";
+import { useOnlineStatus } from "./ui/OfflineBanner";
 
 interface SidebarProps {
   profile?: UserProfile | null;
 }
 
 export default function Sidebar({ profile }: SidebarProps) {
+  const isOnline = useOnlineStatus();
   const pathname = usePathname();
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -178,8 +180,16 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       <div className="p-3 border-t border-[var(--card-border)] space-y-2">
         {profile && (
-          <div className="px-3 py-1.5 rounded-lg bg-[var(--background)] border border-[var(--card-border)] text-xs flex flex-col">
-            <span className="font-semibold truncate">{profile.fullName || profile.email.split('@')[0]}</span>
+          <div className="px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)] text-xs flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold truncate">{profile.fullName || profile.email.split('@')[0]}</span>
+              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                isOnline ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
             <span className="opacity-60 text-[10px] truncate">{profile.email}</span>
           </div>
         )}
