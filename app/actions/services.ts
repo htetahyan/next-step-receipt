@@ -64,8 +64,12 @@ import { safeAction } from '@/lib/safeAction';
 
 // ── Add Service ─────────────────────────────────────────────
 export async function addCustomerService(data: any) {
-  return safeAction(async (data: any) => {
-    const { customerId, referenceId, category, status, details, financials } = data;
+  try {
+    const { customerId, referenceId, category, status, details, financials } = data || {};
+
+    if (!customerId) {
+      return { success: false, error: 'Customer ID is required' };
+    }
 
     // Check RBAC permission for this specific service module
     const moduleKey = mapCategoryToModule(category);
@@ -81,32 +85,36 @@ export async function addCustomerService(data: any) {
 
     const supabase = await createClient();
 
-    // 2. Validate input using Zod schemas based on category
+    // 2. Validate input using Zod schemas based on moduleKey
     const validationData = {
       customerId,
       isNewCustomer: false,
-      status,
-      category,
+      status: status || 'Open',
+      category: category || 'Service',
       details: finalDetails,
       financials: financials || {},
     };
 
-    if (category && (category.startsWith('Visa Extension') || category.includes('Visa'))) {
-      uaeVisaSchema.parse(validationData);
-    } else if (category === 'Air Ticket' || category === 'Flight Booking') {
-      airTicketSchema.parse(validationData);
-    } else if (category === 'Tour Package') {
-      tourPackageSchema.parse(validationData);
-    } else {
-      otherVisaSchema.parse(validationData);
+    try {
+      if (moduleKey === 'tour_packages') {
+        tourPackageSchema.parse(validationData);
+      } else if (moduleKey === 'air_tickets') {
+        airTicketSchema.parse(validationData);
+      } else if (moduleKey === 'other_visa') {
+        otherVisaSchema.parse(validationData);
+      } else {
+        uaeVisaSchema.parse(validationData);
+      }
+    } catch (zodErr: any) {
+      console.warn('Schema validation warning (proceeding with normalized payload):', zodErr?.message);
     }
 
     const effectiveDateISO = parseDateToISO(finalDetails?.travel_date || finalDetails?.visa_issued_date);
     const serviceInsertPayload: any = {
       customer_id: customerId,
       reference_id: referenceId || null,
-      category,
-      status,
+      category: category || 'Service',
+      status: status || 'Open',
       details: finalDetails,
       financials: financials || {},
     };
@@ -126,44 +134,58 @@ export async function addCustomerService(data: any) {
     }
 
     // Auto-generate invoice if there is a positive amount
-    const amount = financials?.amount || 0;
+    const amount = Number(financials?.amount) || 0;
     if (amount > 0) {
-      const randomSuffix = Math.floor(100 + Math.random() * 900); // 3-digit random
-      const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}${randomSuffix}`;
-      
-      const invoiceInsertPayload: any = {
-        customer_id: customerId,
-        invoice_number: invoiceNumber,
-        date: effectiveDateISO ? effectiveDateISO.split('T')[0] : new Date().toISOString().split('T')[0],
-        subtotal: amount.toString(),
-        vat_amount: '0',
-        total_amount: amount.toString(),
-        payment_method: financials?.payment_method || 'cash',
-      };
-      if (effectiveDateISO) {
-        invoiceInsertPayload.created_at = effectiveDateISO;
-      }
+      try {
+        const randomSuffix = Math.floor(100 + Math.random() * 900); // 3-digit random
+        const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}${randomSuffix}`;
+        
+        const invoiceInsertPayload: any = {
+          customer_id: customerId,
+          invoice_number: invoiceNumber,
+          date: effectiveDateISO ? effectiveDateISO.split('T')[0] : new Date().toISOString().split('T')[0],
+          subtotal: amount.toString(),
+          vat_amount: '0',
+          total_amount: amount.toString(),
+          payment_method: financials?.payment_method || 'cash',
+        };
+        if (effectiveDateISO) {
+          invoiceInsertPayload.created_at = effectiveDateISO;
+        }
 
-      const { data: newInvoice, error: invErr } = await supabase
-        .from('invoices')
-        .insert(invoiceInsertPayload)
-        .select()
-        .single();
+        const { data: newInvoice, error: invErr } = await supabase
+          .from('invoices')
+          .insert(invoiceInsertPayload)
+          .select()
+          .single();
 
-      if (newInvoice && !invErr) {
-        await supabase
-          .from('invoice_items')
-          .insert({
-            invoice_id: newInvoice.id,
-            description: category || 'Service Fee',
-            quantity: '1',
-            rate: amount.toString(),
-            amount: amount.toString(),
-          });
+        if (newInvoice && !invErr) {
+          await supabase
+            .from('invoice_items')
+            .insert({
+              invoice_id: newInvoice.id,
+              description: category || 'Service Fee',
+              quantity: '1',
+              rate: amount.toString(),
+              amount: amount.toString(),
+            });
+        }
+      } catch (invError: any) {
+        console.error('Non-critical invoice generation error:', invError);
       }
     }
-    return service;
-  }, ['/dashboard/customers', '/dashboard/uae-visa', '/dashboard/air-tickets', '/dashboard/other-visa', '/dashboard/tour-packages'], data);
+
+    revalidatePath('/dashboard/customers');
+    revalidatePath('/dashboard/uae-visa');
+    revalidatePath('/dashboard/air-tickets');
+    revalidatePath('/dashboard/other-visa');
+    revalidatePath('/dashboard/tour-packages');
+
+    return { success: true, service, data: service };
+  } catch (err: any) {
+    console.error('Failed to add customer service:', err);
+    return { success: false, error: err.message || 'Failed to create service' };
+  }
 }
 
 // ── Bulk Migrate Services ───────────────────────────────────

@@ -150,6 +150,22 @@ export default function TourPackageForm({ customers, suppliers = [], rateCards =
     }
   };
 
+  const supplierOptions = React.useMemo(() => {
+    const list: { label: string; value: string }[] = [
+      { label: 'Select Supplier...', value: '' },
+    ];
+    suppliers.forEach((s) => {
+      if (s?.name && !list.some((o) => o.value === s.name)) {
+        list.push({ label: s.name, value: s.name });
+      }
+    });
+    const currSupplier = initialData?.details?.supplier_name || duplicateData?.details?.supplier_name;
+    if (currSupplier && !list.some((o) => o.value === currSupplier)) {
+      list.push({ label: currSupplier, value: currSupplier });
+    }
+    return list;
+  }, [suppliers, initialData, duplicateData]);
+
   return (
     <div className="max-w-3xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-8">
@@ -208,15 +224,10 @@ export default function TourPackageForm({ customers, suppliers = [], rateCards =
                   <FormField 
                     name="details.supplier_name" 
                     label="Supplier Name" 
-                    component="input" 
-                    list="suppliers-list"
+                    component="select" 
+                    options={supplierOptions}
                     className="col-span-2 md:col-span-1" 
                   />
-                  <datalist id="suppliers-list">
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.name} />
-                    ))}
-                  </datalist>
                   <FormField name="details.tour_plans" label="Tour Name" component="textarea" className="col-span-2" />
                   <FormField name="status" label="Status" component="select" options={SERVICE_STATUSES.map(s => ({label: s, value: s}))} className="col-span-2" />
                 </div>

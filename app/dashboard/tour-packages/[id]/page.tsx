@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import TourPackageForm from '../new/tour-package-form';
 import { notFound } from 'next/navigation';
 import { getCurrentUserProfile } from '@/app/actions/users';
+import { getCachedSuppliersAndRates } from '@/lib/cachedRates';
 
 export default async function EditTourPackagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,22 +30,14 @@ export default async function EditTourPackagePage({ params }: { params: Promise<
     console.error('Failed to fetch customers:', e);
   }
 
-  let suppliers: any[] = [];
-  try {
-    const { data } = await supabase
-      .from('suppliers')
-      .select('id, name, services')
-      .order('name', { ascending: true });
-    if (data) suppliers = data;
-  } catch (e) {
-    console.error('Failed to fetch suppliers:', e);
-  }
+  const { suppliers, rateCards } = await getCachedSuppliersAndRates();
 
   return (
     <>
       <TourPackageForm 
         customers={customers} 
         suppliers={suppliers} 
+        rateCards={rateCards}
         initialData={service} 
         currentUser={currentUser} 
       />
