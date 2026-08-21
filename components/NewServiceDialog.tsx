@@ -2,22 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { addCustomerService } from '@/app/actions/services';
 import { getPresignedUrl } from '@/app/actions/r2';
 import { addDocument } from '@/app/actions/documents';
-import { createClient } from '@/utils/supabase/client';
 import { getSuppliers } from '@/app/actions/suppliers';
-import { Loader2, UploadCloud, File, X, Plus } from 'lucide-react';
+import { Loader2, UploadCloud, File, X, Shield, Plane, Globe, Map, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CATEGORIES = [
-  'Passport Renew',
   'UAE Visit Visa',
+  'Air Ticket',
+  'Tour Package',
+  'Other Visa',
+  'Passport Renew',
   'Visa Extension B2B',
-  'Visa Extension A2A',
   'Inside Visa',
-  'Flight Service',
-  'Other'
+  'Other',
 ];
 
 interface NewServiceDialogProps {
@@ -28,9 +29,14 @@ interface NewServiceDialogProps {
   customerMetadata?: any;
 }
 
-export default function NewServiceDialog({ isOpen, onClose, customerId, customerName, customerMetadata }: NewServiceDialogProps) {
+export default function NewServiceDialog({
+  isOpen,
+  onClose,
+  customerId,
+  customerName,
+  customerMetadata,
+}: NewServiceDialogProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [customCategory, setCustomCategory] = useState('');
@@ -45,7 +51,7 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
 
   useEffect(() => {
     if (isOpen) {
-      getSuppliers().then(res => {
+      getSuppliers().then((res) => {
         if (res.success && res.data) {
           setSuppliers(res.data);
         }
@@ -53,7 +59,7 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
     }
   }, [isOpen]);
 
-  const activeSupplier = suppliers.find(s => s.id === selectedSupplierId);
+  const activeSupplier = suppliers.find((s) => s.id === selectedSupplierId);
 
   const handleSupplierChange = (supplierId: string) => {
     setSelectedSupplierId(supplierId);
@@ -61,9 +67,8 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
       setAmount('0');
       setSupplierCost('0');
     } else {
-      const s = suppliers.find(x => x.id === supplierId);
+      const s = suppliers.find((x) => x.id === supplierId);
       if (s && s.services && s.services.length > 0) {
-        // Automatically default to the first supplied service if available
         const srv = s.services[0];
         setCategory(CATEGORIES.includes(srv.serviceName) ? srv.serviceName : 'Other');
         if (!CATEGORIES.includes(srv.serviceName)) {
@@ -72,18 +77,6 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
         setAmount(String(srv.defaultPrice || 0));
         setSupplierCost(String(srv.defaultCost || 0));
       }
-    }
-  };
-
-  const handleSupplierServiceChange = (serviceIdx: number) => {
-    if (activeSupplier && activeSupplier.services && activeSupplier.services[serviceIdx]) {
-      const srv = activeSupplier.services[serviceIdx];
-      setCategory(CATEGORIES.includes(srv.serviceName) ? srv.serviceName : 'Other');
-      if (!CATEGORIES.includes(srv.serviceName)) {
-        setCustomCategory(srv.serviceName);
-      }
-      setAmount(String(srv.defaultPrice || 0));
-      setSupplierCost(String(srv.defaultCost || 0));
     }
   };
 
@@ -122,19 +115,15 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
                 title: file.name,
                 file_url: presignedRes.publicUrl,
                 file_key: presignedRes.fileKey,
-                tag: category
+                tag: category,
               });
-            } else {
-              console.error("Failed to upload to R2:", uploadRes.statusText);
             }
-          } else {
-            console.error("Failed to get presigned URL:", presignedRes.error);
           }
         }
       }
 
       // 2. Prepare database payload
-      const finalCategory = category === 'Other' ? (customCategory || 'Other Service') : category;
+      const finalCategory = category === 'Other' ? customCategory || 'Other Service' : category;
       const numAmount = Number(amount || 0);
       const numCost = Number(supplierCost || 0);
 
@@ -146,7 +135,7 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
           travel_date: formData.get('travel_date'),
           passport_expiry: formData.get('passport_expiry'),
           notes: formData.get('notes'),
-          documents: uploadedDocs, // Save document references in the service JSON
+          documents: uploadedDocs,
           visa_supplier: activeSupplier?.name || null,
         },
         financials: {
@@ -156,12 +145,12 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
           supplier_cost: numCost,
           refund: 0,
           balance: numAmount - numCost,
-        }
+        },
       };
 
       const res = await addCustomerService(data);
       if (res.success) {
-        const createdService = res.data;
+        const createdService = res.service || res.data;
         if (createdService && uploadedDocs.length > 0) {
           for (const doc of uploadedDocs) {
             await addDocument({
@@ -170,18 +159,19 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
               title: doc.title,
               file_url: doc.file_url!,
               file_key: doc.file_key!,
-              tag: finalCategory
+              tag: finalCategory,
             });
           }
         }
+        toast.success('Service created successfully');
         onClose();
-        router.refresh(); // Refresh the page to show the new service
+        router.refresh();
       } else {
-        toast.error(res.error);
-        setLoading(false);
+        toast.error(res.error || 'Failed to create service');
       }
     } catch (err: any) {
-      toast.error("Error: " + err.message);
+      toast.error(err.message || 'An error occurred');
+    } finally {
       setLoading(false);
     }
   }
@@ -189,178 +179,172 @@ export default function NewServiceDialog({ isOpen, onClose, customerId, customer
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-container max-w-2xl max-h-[90vh] scale-in-center" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-[var(--card-border)] flex items-center justify-between flex-shrink-0 bg-[var(--sidebar-bg)]">
+        <div className="flex items-center justify-between p-6 border-b border-[var(--card-border)]">
           <div>
-            <h3 className="text-xl font-serif text-[var(--foreground)] flex items-center gap-2">
-              <Plus className="h-5 w-5 text-[#D97757]" />
-              Add New Service
-            </h3>
-            <p className="text-sm opacity-60 mt-1">For {customerName}</p>
+            <h3 className="text-xl font-serif font-normal">Add Service</h3>
+            <p className="text-xs opacity-60 mt-0.5">For {customerName}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-[var(--card-border)] rounded-full transition-colors">
-            <X className="h-6 w-6 opacity-50" />
+            <X className="h-5 w-5 opacity-50" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* Quick Launch Cards */}
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-2">
+              Launch Full Dedicated Form
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <Link
+                href={`/dashboard/uae-visa/new?customerId=${customerId}`}
+                className="p-3 rounded-lg border border-[var(--card-border)] hover:border-[#D97757] hover:bg-[#D97757]/5 transition-all text-center group"
+              >
+                <Shield className="w-5 h-5 mx-auto mb-1.5 opacity-60 group-hover:text-[#D97757] group-hover:opacity-100 transition-colors" />
+                <div className="text-xs font-medium">UAE Visa</div>
+              </Link>
+              <Link
+                href={`/dashboard/air-tickets/new?customerId=${customerId}`}
+                className="p-3 rounded-lg border border-[var(--card-border)] hover:border-[#D97757] hover:bg-[#D97757]/5 transition-all text-center group"
+              >
+                <Plane className="w-5 h-5 mx-auto mb-1.5 opacity-60 group-hover:text-[#D97757] group-hover:opacity-100 transition-colors" />
+                <div className="text-xs font-medium">Air Ticket</div>
+              </Link>
+              <Link
+                href={`/dashboard/tour-packages/new?customerId=${customerId}`}
+                className="p-3 rounded-lg border border-[var(--card-border)] hover:border-[#D97757] hover:bg-[#D97757]/5 transition-all text-center group"
+              >
+                <Map className="w-5 h-5 mx-auto mb-1.5 opacity-60 group-hover:text-[#D97757] group-hover:opacity-100 transition-colors" />
+                <div className="text-xs font-medium">Tour Package</div>
+              </Link>
+              <Link
+                href={`/dashboard/other-visa/new?customerId=${customerId}`}
+                className="p-3 rounded-lg border border-[var(--card-border)] hover:border-[#D97757] hover:bg-[#D97757]/5 transition-all text-center group"
+              >
+                <Globe className="w-5 h-5 mx-auto mb-1.5 opacity-60 group-hover:text-[#D97757] group-hover:opacity-100 transition-colors" />
+                <div className="text-xs font-medium">Other Visa</div>
+              </Link>
+            </div>
+          </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 opacity-70">Service Category</label>
+          <div className="relative flex items-center justify-center">
+            <div className="border-t border-[var(--card-border)] w-full" />
+            <span className="bg-[var(--card-bg)] px-3 text-[10px] uppercase tracking-widest opacity-40 absolute">
+              Or Quick Add Here
+            </span>
+          </div>
+
+          {/* Quick Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-1">
+                  Service Category
+                </label>
                 <select
                   value={category}
-                  onChange={e => setCategory(e.target.value)}
-                  className="input-anthropic w-full p-3 font-medium"
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="input-anthropic w-full text-sm py-2"
                 >
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               {category === 'Other' && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="block text-sm font-medium mb-2 opacity-70">Custom Service Name</label>
-                  <input 
-                    required 
-                    value={customCategory} 
-                    onChange={e => setCustomCategory(e.target.value)} 
-                    placeholder="e.g. Translation Service, Attestation" 
-                    className="input-anthropic w-full p-3 font-medium border-[#D97757]/30 focus:border-[#D97757]" 
+                <div className="col-span-2">
+                  <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-1">
+                    Custom Service Name
+                  </label>
+                  <input
+                    required
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="e.g. Translation, Attestation"
+                    className="input-anthropic w-full text-sm py-2"
                   />
                 </div>
               )}
-            </div>
 
-            {/* Dynamic Fields */}
-            <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium mb-2 opacity-70">Travel Date (if applicable)</label>
-                <input name="travel_date" type="date" className="input-anthropic w-full p-3 font-medium" />
+                <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-1">
+                  Travel Date
+                </label>
+                <input name="travel_date" type="date" className="input-anthropic w-full text-sm py-2" />
               </div>
               <div>
-                 <label className="block text-sm font-medium mb-2 opacity-70">Passport Expiry</label>
-                 <input 
-                   name="passport_expiry" 
-                   type="date" 
-                   defaultValue={customerMetadata?.expiry_date || ''}
-                   className="input-anthropic w-full p-3 font-medium" 
-                 />
+                <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-1">
+                  Supplier
+                </label>
+                <select
+                  value={selectedSupplierId}
+                  onChange={(e) => handleSupplierChange(e.target.value)}
+                  className="input-anthropic w-full text-sm py-2"
+                >
+                  <option value="">No Supplier (Manual)</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-1">
+                  Amount (AED)
+                </label>
+                <input
+                  name="amount"
+                  type="number"
+                  required
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="input-anthropic w-full text-sm py-2 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-1">
+                  Supplier Cost (AED)
+                </label>
+                <input
+                  name="supplier_cost"
+                  type="number"
+                  value={supplierCost}
+                  onChange={(e) => setSupplierCost(e.target.value)}
+                  className="input-anthropic w-full text-sm py-2 font-mono"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-1">
+                  Notes
+                </label>
+                <input
+                  name="notes"
+                  placeholder="Additional notes"
+                  className="input-anthropic w-full text-sm py-2"
+                />
               </div>
             </div>
 
-            <div>
-               <label className="block text-sm font-medium mb-2 opacity-70">Notes / Specifics</label>
-               <input name="notes" placeholder="Any specific requirements" className="input-anthropic w-full p-3 font-medium" />
-            </div>
-
-            <div className="border-t border-[var(--card-border)] pt-6">
-               <h3 className="font-serif text-lg mb-4 flex items-center gap-2">
-                  <UploadCloud className="w-5 h-5 opacity-70" /> Attach Documents
-               </h3>
-               <div className="border border-dashed border-[var(--card-border)] rounded-md p-8 text-center hover:bg-[var(--sidebar-bg)] transition-colors">
-                  <input type="file" multiple onChange={handleFileChange} className="hidden" id="doc-upload" />
-                  <label htmlFor="doc-upload" className="cursor-pointer flex flex-col items-center gap-2">
-                     <UploadCloud className="w-8 h-8 opacity-40" />
-                     <span className="text-sm font-medium hover:underline text-[#D97757]">Click to browse</span>
-                     <span className="text-xs opacity-50">Upload passport copies, photos, visas (PDF, JPG)</span>
-                  </label>
-               </div>
-               {files.length > 0 && (
-                 <div className="mt-4 space-y-2">
-                   {files.map((f, i) => (
-                     <div key={i} className="flex items-center justify-between p-3 bg-[var(--sidebar-bg)] rounded border border-[var(--card-border)]">
-                       <div className="flex items-center gap-3">
-                         <File className="w-4 h-4 opacity-50" />
-                         <span className="text-sm font-medium truncate max-w-[200px]">{f.name}</span>
-                       </div>
-                       <button type="button" onClick={() => removeFile(i)} className="opacity-50 hover:text-red-500 hover:opacity-100 p-1 transition-all">
-                         <X className="w-4 h-4" />
-                       </button>
-                     </div>
-                   ))}
-                 </div>
-               )}
-            </div>
-
-             <div className="border-t border-[var(--card-border)] pt-6 space-y-4">
-               <h3 className="font-serif text-lg">Supplier & Rate Prefilling</h3>
-               <div className="grid grid-cols-2 gap-6">
-                 <div>
-                   <label className="block text-sm font-medium mb-2 opacity-70">Supplier (Optional)</label>
-                   <select
-                     value={selectedSupplierId}
-                     onChange={e => handleSupplierChange(e.target.value)}
-                     className="input-anthropic w-full p-3 font-medium text-sm"
-                   >
-                     <option value="">No Supplier (Manual Entry)</option>
-                     {suppliers.map(s => (
-                       <option key={s.id} value={s.id}>{s.name}</option>
-                     ))}
-                   </select>
-                 </div>
-
-                 {activeSupplier && activeSupplier.services && activeSupplier.services.length > 0 && (
-                   <div className="animate-in fade-in duration-300">
-                     <label className="block text-sm font-medium mb-2 opacity-70">Supplier's Rate List</label>
-                     <select
-                       onChange={e => handleSupplierServiceChange(Number(e.target.value))}
-                       className="input-anthropic w-full p-3 font-medium text-sm"
-                       defaultValue="0"
-                     >
-                       {activeSupplier.services.map((srv: any, idx: number) => (
-                         <option key={idx} value={idx}>
-                           {srv.serviceName} ({srv.defaultPrice} AED / Cost: {srv.defaultCost} AED)
-                         </option>
-                       ))}
-                     </select>
-                   </div>
-                 )}
-               </div>
-             </div>
-
-             <div className="border-t border-[var(--card-border)] pt-6">
-                <h3 className="font-serif text-lg mb-4">Financials (Auto-generates Invoice)</h3>
-                <div className="grid grid-cols-2 gap-6">
-                   <div>
-                      <label className="block text-sm font-medium mb-2 opacity-70">Amount to Charge (AED)</label>
-                      <input 
-                        name="amount" 
-                        type="number" 
-                        required 
-                        value={amount} 
-                        onChange={e => setAmount(e.target.value)}
-                        className="input-anthropic w-full p-3 font-mono" 
-                      />
-                   </div>
-                   <div>
-                      <label className="block text-sm font-medium mb-2 opacity-70">Supplier Cost (AED)</label>
-                      <input 
-                        name="supplier_cost" 
-                        type="number" 
-                        value={supplierCost} 
-                        onChange={e => setSupplierCost(e.target.value)}
-                        className="input-anthropic w-full p-3 font-mono" 
-                      />
-                   </div>
-                </div>
-             </div>
-
-            <button disabled={loading} type="submit" className="w-full py-4 bg-[#D97757] text-[#F5F4EF] rounded-md font-medium hover:opacity-90 transition-colors flex items-center justify-center gap-2">
-              {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-              {loading ? 'Processing & Uploading...' : 'Save Service & Generate Invoice'}
+            <button
+              disabled={loading}
+              type="submit"
+              className="w-full py-3 bg-[#D97757] text-white rounded-lg font-medium hover:bg-[#c66446] transition-colors flex items-center justify-center gap-2 text-sm shadow-sm mt-4"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {loading ? 'Creating Service...' : 'Create Quick Service'}
             </button>
           </form>
         </div>
       </div>
-
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(148, 163, 184, 0.3); border-radius: 20px; }
-      `}</style>
     </div>
   );
 }
