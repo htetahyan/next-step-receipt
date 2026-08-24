@@ -1,83 +1,98 @@
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@/utils/supabase/server';
 import { 
-  DollarSign, 
-  TrendingUp, 
-  Users, 
-  AlertTriangle,
-  Clock,
-  ArrowUpRight,
-  ShieldCheck,
-  Plane,
-  Globe,
-  Compass,
-  FileText,
-  CreditCard,
-  CalendarCheck,
-  CheckCircle2
-} from 'lucide-react'
-import SalesChart from '@/components/SalesChart'
-import DashboardFilters from '@/components/DashboardFilters'
-import VisaReminders, { DepartureReminder } from '@/components/VisaReminders'
-import { subDays, startOfDay, format, isAfter, isBefore, parseISO, eachDayOfInterval, differenceInDays, startOfMonth, startOfYear } from 'date-fns'
-import Link from 'next/link'
+  subDays, 
+  startOfDay, 
+  format, 
+  isAfter, 
+  isBefore, 
+  parseISO, 
+  eachDayOfInterval, 
+  differenceInDays, 
+  startOfMonth, 
+  startOfYear 
+} from 'date-fns';
+import Link from 'next/link';
+import { 
+  Globe, 
+  ShieldCheck, 
+  Plane, 
+  Compass, 
+  Clock, 
+  AlertTriangle 
+} from 'lucide-react';
 
-export const dynamic = 'force-dynamic'
+import SalesChart from '@/components/SalesChart';
+import DashboardFilters from '@/components/DashboardFilters';
+import VisaReminders, { DepartureReminder } from '@/components/VisaReminders';
+import { DashboardQuickActions } from './components/DashboardQuickActions';
+import { DashboardKPICards } from './components/DashboardKPICards';
+import { DashboardRecentServices } from './components/DashboardRecentServices';
+import { StaffLeaderboard } from './components/StaffLeaderboard';
+import { OutstandingReceivablesWidget } from './components/OutstandingReceivablesWidget';
+import { parseFinancialNumber } from '@/lib/financialUtils';
 
-export default async function Dashboard({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string }> 
+export const dynamic = 'force-dynamic';
+
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string }>;
 }) {
   const { range = 'today', category = 'all', status = 'all', from, to } = await searchParams;
-  const supabase = await createClient()
+  const supabase = await createClient();
 
-  // 1. Parallel Single-Pass Data Ingestion
   const now = new Date();
   let startDate: Date;
   let endDate: Date | undefined;
 
   switch (range) {
-    case 'today': startDate = startOfDay(now); break;
-    case '7d': startDate = subDays(now, 7); break;
-    case '30d': startDate = subDays(now, 30); break;
-    case 'this-month': startDate = startOfMonth(now); break;
-    case '90d': startDate = subDays(now, 90); break;
-    case 'this-year': startDate = startOfYear(now); break;
-    case 'custom': 
+    case 'today':
+      startDate = startOfDay(now);
+      break;
+    case '7d':
+      startDate = subDays(now, 7);
+      break;
+    case '30d':
+      startDate = subDays(now, 30);
+      break;
+    case 'this-month':
+      startDate = startOfMonth(now);
+      break;
+    case '90d':
+      startDate = subDays(now, 90);
+      break;
+    case 'this-year':
+      startDate = startOfYear(now);
+      break;
+    case 'custom':
       startDate = from ? parseISO(from) : startOfDay(now);
       endDate = to ? parseISO(to) : undefined;
       break;
-    default: startDate = startOfDay(now);
+    default:
+      startDate = startOfDay(now);
   }
 
   let allServices: any[] = [];
-  let recentInvoices: any[] = [];
   let totalCustomersCount = 0;
 
   try {
-    const [servicesRes, invoicesRes, customersRes] = await Promise.all([
+    const [servicesRes, customersRes] = await Promise.all([
       supabase
         .from('customer_services')
         .select('id, customer_id, reference_id, category, status, details, financials, created_at, customer:customers(id, name, passport_no)')
         .order('created_at', { ascending: false }),
-      supabase
-        .from('invoices')
-        .select('id, invoice_number, total_amount, payment_method, date, created_at, customer:customers(name)')
-        .order('created_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('customers')
-        .select('*', { count: 'exact', head: true })
+      supabase.from('customers').select('*', { count: 'exact', head: true }),
     ]);
 
     if (servicesRes.data) allServices = servicesRes.data;
-    if (invoicesRes.data) recentInvoices = invoicesRes.data;
     if (customersRes.count) totalCustomersCount = customersRes.count;
   } catch (err) {
     console.error('Error fetching dashboard dataset:', err);
   }
 
-  // 2. High-Performance Single-Pass Memory Aggregation
+  // Top 20 Recent Services for the Ledger
+  const recent20Services = allServices.slice(0, 20);
+
   const parseDateToTimestamp = (dateVal: any): number => {
     if (!dateVal) return 0;
     if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? 0 : dateVal.getTime();
@@ -99,7 +114,6 @@ export default async function Dashboard({
       const ts = parseDateToTimestamp(travelDate);
       if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
     }
-    // Fallback to created_at if no explicit travel date
     if (srv.created_at) {
       const ts = parseDateToTimestamp(srv.created_at);
       if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
@@ -111,6 +125,8 @@ export default async function Dashboard({
   let totalReceiving = 0;
   let totalCost = 0;
   let totalBookingsCount = 0;
+  let activeBookingsCount = 0;
+  let closedBookingsCount = 0;
 
   const categoryDistribution: Record<string, { count: number; volume: number }> = {
     'UAE Visa': { count: 0, volume: 0 },
@@ -134,7 +150,12 @@ export default async function Dashboard({
     const cust = srv.customer as any;
     const cat = String(srv.category || '').toLowerCase();
 
-    // Categorization
+    if (srv.status === 'Open' || srv.status === 'In Progress') {
+      activeBookingsCount++;
+    } else if (srv.status === 'Closed') {
+      closedBookingsCount++;
+    }
+
     let mainCategory = 'Other Visas';
     if (cat.includes('uae') || cat.includes('inside') || cat.includes('a2a') || cat.includes('bus') || cat.includes('visit visa')) {
       mainCategory = 'UAE Visa';
@@ -160,7 +181,7 @@ export default async function Dashboard({
             travelDate: format(tDate, 'dd MMM yyyy'),
             daysLeft,
             isHot: daysLeft <= 2,
-            mode: cat
+            mode: cat,
           });
         }
       }
@@ -175,7 +196,7 @@ export default async function Dashboard({
       uaeServicesByPerson.get(key)!.push(srv);
     }
 
-    // Filter Evaluation for KPI & Charts
+    // Date Filtering for KPI & Charts
     const sDate = getServiceDate(srv);
     let matchesDate = false;
     if (range === 'all') {
@@ -184,7 +205,7 @@ export default async function Dashboard({
       const d = parseISO(sDate);
       if (!isNaN(d.getTime())) {
         const isAfterStart = isAfter(d, startDate) || format(d, 'yyyy-MM-dd') === format(startDate, 'yyyy-MM-dd');
-        const isBeforeEnd = endDate ? (isBefore(d, endDate) || format(d, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd')) : true;
+        const isBeforeEnd = endDate ? isBefore(d, endDate) || format(d, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd') : true;
         matchesDate = isAfterStart && isBeforeEnd;
       }
     }
@@ -205,9 +226,11 @@ export default async function Dashboard({
     }
 
     if (matchesDate && matchesCategory && matchesStatus) {
-      const amt = Number(fin.amount || 0);
-      const recAmt = Number(fin.receiving_amount !== undefined ? fin.receiving_amount : (amt - Number(fin.discount || 0)));
-      const cst = Number(fin.supplier_cost || 0);
+      const amt = parseFinancialNumber(fin.amount, 0);
+      const disc = parseFinancialNumber(fin.discount, 0);
+      const recAmt = parseFinancialNumber(fin.receiving_amount, amt - disc);
+      const cst = parseFinancialNumber(fin.supplier_cost, 0);
+      const ref = parseFinancialNumber(fin.refund, 0);
 
       totalRevenue += amt;
       totalReceiving += recAmt;
@@ -223,8 +246,7 @@ export default async function Dashboard({
         salesMap[sDate] = (salesMap[sDate] || 0) + amt;
       }
 
-      // Negative margin alert
-      const margin = recAmt - cst;
+      const margin = recAmt - cst - ref;
       if (margin < 0 && srv.status !== 'Cancelled') {
         negativeProfitAlerts.push({
           id: srv.id,
@@ -233,7 +255,7 @@ export default async function Dashboard({
           category: srv.category,
           margin,
           receiving: recAmt,
-          cost: cst
+          cost: cst,
         });
       }
     }
@@ -241,10 +263,10 @@ export default async function Dashboard({
 
   // Calculate Expiry Alerts from Grouped Profiles
   uaeServicesByPerson.forEach((personServices) => {
-    const active = personServices.filter(s => s.status !== 'Closed' && s.status !== 'Cancelled');
+    const active = personServices.filter((s) => s.status !== 'Closed' && s.status !== 'Cancelled');
     if (active.length === 0) return;
 
-    const latest = active.sort((a, b) => (parseDateToTimestamp(b.created_at) - parseDateToTimestamp(a.created_at)))[0];
+    const latest = active.sort((a, b) => parseDateToTimestamp(b.created_at) - parseDateToTimestamp(a.created_at))[0];
     const details = (latest.details as any) || {};
     let expiryStr = details.visa_expiry_date;
     if (!expiryStr && details.travel_date) {
@@ -268,38 +290,39 @@ export default async function Dashboard({
             name: latest.customer?.name || 'Unknown',
             category: latest.category,
             expiryDate: format(expDate, 'dd MMM yyyy'),
-            daysLeft
+            daysLeft,
           });
         }
       }
     }
   });
 
-  // Calculations
   const grossProfit = totalReceiving - totalCost;
   const marginPercent = totalReceiving > 0 ? Math.round((grossProfit / totalReceiving) * 100) : 0;
   const collectionRate = totalRevenue > 0 ? Math.round((totalReceiving / totalRevenue) * 100) : 100;
   const abv = totalBookingsCount > 0 ? Math.round(totalRevenue / totalBookingsCount) : 0;
 
-  // Chart Interval Timeline Data
   const intervalDays = eachDayOfInterval({
-    start: range === 'all' 
-      ? (allServices.length ? parseISO(getServiceDate(allServices[allServices.length - 1]) || format(subDays(now, 7), 'yyyy-MM-dd')) : subDays(now, 7)) 
-      : startDate,
-    end: now
+    start:
+      range === 'all'
+        ? allServices.length
+          ? parseISO(getServiceDate(allServices[allServices.length - 1]) || format(subDays(now, 7), 'yyyy-MM-dd'))
+          : subDays(now, 7)
+        : startDate,
+    end: now,
   });
 
-  const chartData = intervalDays.map(day => {
+  const chartData = intervalDays.map((day) => {
     const dKey = format(day, 'yyyy-MM-dd');
     return {
       name: format(day, 'dd MMM'),
-      value: salesMap[dKey] || 0
+      value: salesMap[dKey] || 0,
     };
   });
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16">
-      {/* ── Executive Header ── */}
+      {/* Executive Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-[var(--card-border)] pb-6">
         <div>
           <div className="flex items-center gap-2">
@@ -318,93 +341,33 @@ export default async function Dashboard({
         <DashboardFilters />
       </div>
 
-      {/* ── 4-Card Hero KPI Bento Grid ── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: Gross Sales */}
-        <div className="card-anthropic p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5">
-          <div>
-            <div className="flex items-center justify-between opacity-60 mb-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">Gross Revenue</span>
-              <DollarSign className="w-4 h-4 text-[#D97757]" />
-            </div>
-            <div className="text-2xl font-serif font-semibold text-[#222222] dark:text-[#F5F4EF]">
-              {totalRevenue.toLocaleString()} <span className="text-xs font-normal opacity-60 font-mono">AED</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--card-border)] text-xs opacity-70 font-mono">
-            <span>{totalBookingsCount} bookings</span>
-            <span>ABV: {abv.toLocaleString()} AED</span>
-          </div>
-        </div>
+      {/* 1-Click Quick Add Actions Bar */}
+      <DashboardQuickActions />
 
-        {/* KPI 2: Receiving Cashflow */}
-        <div className="card-anthropic p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5">
-          <div>
-            <div className="flex items-center justify-between opacity-60 mb-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">Collected Receiving</span>
-              <CreditCard className="w-4 h-4 text-blue-500" />
-            </div>
-            <div className="text-2xl font-serif font-semibold text-blue-600 dark:text-blue-400">
-              {totalReceiving.toLocaleString()} <span className="text-xs font-normal opacity-60 font-mono">AED</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--card-border)] text-xs opacity-70 font-mono">
-            <span>Collection Rate</span>
-            <span className="font-semibold">{collectionRate}%</span>
-          </div>
-        </div>
+      {/* Hero 4-Card Bento Grid & Pipeline Counter */}
+      <DashboardKPICards
+        totalRevenue={totalRevenue}
+        totalReceiving={totalReceiving}
+        totalCost={totalCost}
+        grossProfit={grossProfit}
+        marginPercent={marginPercent}
+        collectionRate={collectionRate}
+        totalBookingsCount={totalBookingsCount}
+        abv={abv}
+        activeBookingsCount={activeBookingsCount}
+        closedBookingsCount={closedBookingsCount}
+      />
 
-        {/* KPI 3: Direct Supplier Cost */}
-        <div className="card-anthropic p-5 flex flex-col justify-between transition-all hover:-translate-y-0.5">
-          <div>
-            <div className="flex items-center justify-between opacity-60 mb-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">Supplier / Airline Cost</span>
-              <Plane className="w-4 h-4 text-amber-500" />
-            </div>
-            <div className="text-2xl font-serif font-semibold text-amber-600 dark:text-amber-400">
-              {totalCost.toLocaleString()} <span className="text-xs font-normal opacity-60 font-mono">AED</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--card-border)] text-xs opacity-70 font-mono">
-            <span>Payable Direct Costs</span>
-            <span className="opacity-80">Suppliers</span>
-          </div>
-        </div>
-
-        {/* KPI 4: Net Gross Profit */}
-        <div className="card-anthropic p-5 flex flex-col justify-between border border-emerald-500/20 bg-emerald-500/5 transition-all hover:-translate-y-0.5">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-300">
-                Gross Profit
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                {marginPercent}% Margin
-              </span>
-            </div>
-            <div className={`text-2xl font-serif font-semibold ${grossProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>
-              {grossProfit.toLocaleString()} <span className="text-xs font-normal opacity-60 font-mono">AED</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-emerald-500/20 text-xs opacity-75 font-mono text-emerald-900 dark:text-emerald-200">
-            <span>Formula</span>
-            <span>Receiving - Cost</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Visual Analytics Grid (Timeline + Category Mix) ── */}
+      {/* Visual Analytics Grid (Timeline + Category Mix) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2/3: Sales Timeline Chart */}
         <div className="lg:col-span-2 card-anthropic p-6">
-          <SalesChart 
-            data={chartData} 
-            title="Revenue & Booking Timeline" 
+          <SalesChart
+            data={chartData}
+            title="Revenue & Booking Timeline"
             subtitle={`Daily sales velocity for ${range === 'today' ? 'today' : range.replace('-', ' ')}`}
           />
         </div>
 
-        {/* Right 1/3: Service Mix Breakdown */}
         <div className="card-anthropic p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-[var(--card-border)] mb-4">
@@ -433,9 +396,9 @@ export default async function Dashboard({
                       </div>
                     </div>
                     <div className="w-full bg-[var(--sidebar-bg)] border border-[var(--card-border)]/50 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className="bg-[#D97757] h-full rounded-full transition-all duration-500" 
-                        style={{ width: `${pct}%` }} 
+                      <div
+                        className="bg-[#D97757] h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
                   </div>
@@ -451,7 +414,13 @@ export default async function Dashboard({
         </div>
       </div>
 
-      {/* ── Operational Command Watchlist (Dual Grid) ── */}
+      {/* Operational Intelligence Row: Staff Leaderboard + Outstanding Receivables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <StaffLeaderboard services={allServices} />
+        <OutstandingReceivablesWidget services={allServices} />
+      </div>
+
+      {/* Operational Command Watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Visa Expirations Watchlist */}
         <div className="card-anthropic overflow-hidden border border-blue-500/20">
@@ -472,7 +441,10 @@ export default async function Dashboard({
               </div>
             ) : (
               nearExpiryAlerts.map((srv) => (
-                <div key={srv.id} className="p-4 flex items-center justify-between hover:bg-[var(--sidebar-bg)] transition-colors">
+                <div
+                  key={srv.id}
+                  className="p-4 flex items-center justify-between hover:bg-[var(--sidebar-bg)] transition-colors"
+                >
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-serif text-sm font-medium">{srv.name}</span>
@@ -505,7 +477,7 @@ export default async function Dashboard({
         <VisaReminders reminders={departureReminders} />
       </div>
 
-      {/* ── Financial Risk & Negative Margin Alerts (if any exist) ── */}
+      {/* Negative Margin Alert (if any) */}
       {negativeProfitAlerts.length > 0 && (
         <div className="card-anthropic p-5 border border-red-500/20 bg-red-500/5">
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-red-500/10">
@@ -520,14 +492,19 @@ export default async function Dashboard({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {negativeProfitAlerts.slice(0, 6).map((srv) => (
-              <div key={srv.id} className="p-3 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-xs">
+              <div
+                key={srv.id}
+                className="p-3 bg-[var(--background)] border border-[var(--card-border)] rounded-xl text-xs"
+              >
                 <div className="flex justify-between font-semibold">
                   <span>{srv.name}</span>
                   <span className="text-red-600 font-mono">{srv.margin.toLocaleString()} AED</span>
                 </div>
                 <div className="flex justify-between text-[10px] opacity-60 font-mono mt-1">
                   <span>{srv.category}</span>
-                  <span>Sale: {srv.receiving} | Cost: {srv.cost}</span>
+                  <span>
+                    Sale: {srv.receiving} | Cost: {srv.cost}
+                  </span>
                 </div>
               </div>
             ))}
@@ -535,69 +512,8 @@ export default async function Dashboard({
         </div>
       )}
 
-      {/* ── Recent Invoices Table ── */}
-      <div className="card-anthropic overflow-hidden">
-        <div className="border-b border-[var(--card-border)] px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <FileText className="w-4 h-4 text-[#D97757]" />
-            <h3 className="text-base font-serif font-medium">Recent Invoice Ledger</h3>
-          </div>
-          <Link href="/dashboard/invoices" className="text-xs font-medium text-[#D97757] hover:underline flex items-center gap-1">
-            View All Invoices <ArrowUpRight className="w-3 h-3" />
-          </Link>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-[10px] uppercase tracking-wider opacity-70 font-mono">
-              <tr>
-                <th className="px-6 py-3 font-medium">Invoice Number</th>
-                <th className="px-6 py-3 font-medium">Customer</th>
-                <th className="px-6 py-3 font-medium">Payment Mode</th>
-                <th className="px-6 py-3 text-right font-medium">Amount</th>
-                <th className="px-6 py-3 text-right font-medium">Date</th>
-                <th className="px-6 py-3 text-right font-medium">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--card-border)]">
-              {recentInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-[var(--sidebar-bg)] transition-colors">
-                  <td className="px-6 py-3.5 font-mono text-xs font-semibold text-[#D97757]">
-                    {inv.invoice_number}
-                  </td>
-                  <td className="px-6 py-3.5 font-medium text-xs">
-                    {inv.customer?.name || 'Walk-in Client'}
-                  </td>
-                  <td className="px-6 py-3.5 text-xs opacity-70">
-                    {inv.payment_method || 'Bank Transfer'}
-                  </td>
-                  <td className="px-6 py-3.5 text-right font-mono text-xs font-semibold">
-                    {Number(inv.total_amount || 0).toLocaleString()} AED
-                  </td>
-                  <td className="px-6 py-3.5 text-right font-mono text-xs opacity-60">
-                    {inv.date || (inv.created_at ? format(parseISO(inv.created_at), 'dd MMM yyyy') : '—')}
-                  </td>
-                  <td className="px-6 py-3.5 text-right">
-                    <Link
-                      href={`/dashboard/invoices/${inv.id}`}
-                      className="text-xs text-[#D97757] hover:underline font-mono"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {recentInvoices.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center opacity-50 text-xs font-serif">
-                    No invoices found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Primary Feature: Recent Services Ledger (Last 20 Services) with Profit & Dates */}
+      <DashboardRecentServices services={recent20Services} />
     </div>
-  )
+  );
 }
