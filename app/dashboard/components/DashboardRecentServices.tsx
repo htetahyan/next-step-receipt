@@ -245,7 +245,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
               <th className="px-6 py-3 font-medium">Ref & Type</th>
               <th className="px-6 py-3 font-medium">Service Details</th>
               <th className="px-6 py-3 font-medium">Customer</th>
-              <th className="px-6 py-3 font-medium">Date & Staff</th>
+              <th className="px-6 py-3 font-medium">Service Date</th>
               <th className="px-6 py-3 font-medium">Status</th>
               <th className="px-6 py-3 text-right font-medium">Receiving (AED)</th>
               <th className="px-6 py-3 text-right font-medium">Cost (AED)</th>
@@ -291,11 +291,6 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                     <div className="font-medium text-xs truncate" title={serviceLabel}>
                       {serviceLabel}
                     </div>
-                    {details.handled_by && (
-                      <div className="text-[10px] opacity-50 font-mono truncate">
-                        By: {details.handled_by}
-                      </div>
-                    )}
                   </td>
 
                   {/* Customer */}

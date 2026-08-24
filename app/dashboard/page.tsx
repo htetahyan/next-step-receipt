@@ -27,7 +27,6 @@ import VisaReminders, { DepartureReminder } from '@/components/VisaReminders';
 import { DashboardQuickActions } from './components/DashboardQuickActions';
 import { DashboardKPICards } from './components/DashboardKPICards';
 import { DashboardRecentServices } from './components/DashboardRecentServices';
-import { StaffLeaderboard } from './components/StaffLeaderboard';
 import { OutstandingReceivablesWidget } from './components/OutstandingReceivablesWidget';
 import { parseFinancialNumber } from '@/lib/financialUtils';
 
@@ -414,11 +413,8 @@ export default async function Dashboard({
         </div>
       </div>
 
-      {/* Operational Intelligence Row: Staff Leaderboard + Outstanding Receivables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <StaffLeaderboard services={allServices} />
-        <OutstandingReceivablesWidget services={allServices} />
-      </div>
+      {/* Outstanding Receivables & Unsettled Balances */}
+      <OutstandingReceivablesWidget services={allServices} />
 
       {/* Operational Command Watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
