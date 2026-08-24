@@ -58,10 +58,16 @@ export default function TourPackageForm({
     },
   };
 
+  const lastAutofillKeyRef = React.useRef<string>('');
+
   const handleAutoFill = (values: any, setValue: any) => {
-    const supplier = values.details?.supplier_name;
-    const plans = values.details?.tour_plans;
-    const category = values.category;
+    const supplier = values.details?.supplier_name || '';
+    const plans = values.details?.tour_plans || '';
+    const category = values.category || '';
+
+    const currentKey = `${category}__${supplier}__${plans}`;
+    if (currentKey === lastAutofillKeyRef.current) return;
+    lastAutofillKeyRef.current = currentKey;
 
     if (supplier || plans || category) {
       const match = findSupplierRate(suppliers, supplier, plans || category, rateCards);

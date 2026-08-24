@@ -61,9 +61,15 @@ export default function AirTicketForm({
     },
   };
 
+  const lastAutofillKeyRef = React.useRef<string>('');
+
   const handleAutoFill = (values: any, setValue: any) => {
-    const airline = values.details?.airline;
-    const category = values.category;
+    const airline = values.details?.airline || '';
+    const category = values.category || '';
+
+    const currentKey = `${category}__${airline}`;
+    if (currentKey === lastAutofillKeyRef.current) return;
+    lastAutofillKeyRef.current = currentKey;
 
     if (airline || category) {
       const match = findSupplierRate(suppliers, airline, category, rateCards);

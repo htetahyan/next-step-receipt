@@ -78,10 +78,24 @@ export function ServiceFormShell<T extends Record<string, any>>({
     } as any,
   });
 
-  // Execute module-specific auto-fill if provided
+  // Execute module-specific auto-fill only when non-financial trigger fields change
   useEffect(() => {
     if (!initialData && onAutoFill) {
-      const subscription = methods.watch((values) => {
+      const subscription = methods.watch((values, { name }) => {
+        // If the user is modifying financials or free-text fields directly, do not re-trigger autofill
+        if (
+          name &&
+          (name.startsWith('financials.') ||
+            name.startsWith('details.comments') ||
+            name.startsWith('details.remark') ||
+            name.startsWith('details.travel_date') ||
+            name.startsWith('details.visa_issued_date') ||
+            name.startsWith('details.visa_expiry_date') ||
+            name.startsWith('details.ticket_no') ||
+            name.startsWith('details.pnr'))
+        ) {
+          return;
+        }
         onAutoFill(values, methods.setValue);
       });
       return () => subscription.unsubscribe();

@@ -115,10 +115,16 @@ export default function UAEVisaForm({
     },
   };
 
+  const lastAutofillKeyRef = React.useRef<string>('');
+
   const handleAutoFill = (values: any, setValue: any) => {
-    const category = values.category;
-    const supplier = values.details?.visa_supplier;
-    const duration = values.details?.visa_duration;
+    const category = values.category || '';
+    const supplier = values.details?.visa_supplier || '';
+    const duration = values.details?.visa_duration || '';
+
+    const currentKey = `${category}__${supplier}__${duration}`;
+    if (currentKey === lastAutofillKeyRef.current) return;
+    lastAutofillKeyRef.current = currentKey;
 
     if (category || supplier || duration) {
       const match = findSupplierRate(suppliers, supplier, category, rateCards);

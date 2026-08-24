@@ -59,9 +59,15 @@ export default function OtherVisaForm({
     },
   };
 
+  const lastAutofillKeyRef = React.useRef<string>('');
+
   const handleAutoFill = (values: any, setValue: any) => {
-    const category = values.category;
-    const supplier = values.details?.visa_supplier;
+    const category = values.category || '';
+    const supplier = values.details?.visa_supplier || '';
+
+    const currentKey = `${category}__${supplier}`;
+    if (currentKey === lastAutofillKeyRef.current) return;
+    lastAutofillKeyRef.current = currentKey;
 
     if (category || supplier) {
       const match = findSupplierRate(suppliers, supplier, category, rateCards);
