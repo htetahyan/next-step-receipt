@@ -111,10 +111,8 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
     return parts.join(' • ') || 'UAE Visa';
   };
 
-  const formatServiceDate = (srv: RecentServiceItem) => {
-    const details = srv.details || {};
-    const rawDate = details.travel_date || details.departure_date || details.visa_issued_date || srv.created_at;
-    if (!rawDate) return '—';
+  const parseFormattedDate = (rawDate?: string | null) => {
+    if (!rawDate) return null;
     try {
       if (/^\d{4}-\d{2}-\d{2}/.test(String(rawDate))) {
         return format(parseISO(String(rawDate)), 'dd MMM yyyy');
@@ -265,9 +263,9 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
               const cost = parseFinancialNumber(fin.supplier_cost, 0);
               const refund = parseFinancialNumber(fin.refund, 0);
               const profit = receiving - cost - refund;
-
               const isProfitPositive = profit >= 0;
-              const dateStr = formatServiceDate(srv);
+              const travelDate = parseFormattedDate(details.travel_date || details.departure_date || details.visa_issued_date);
+              const createdDate = parseFormattedDate(srv.created_at);
               const serviceLabel = getServiceSpecificLabel(srv);
               const serviceUrl = getServiceLink(srv);
 
@@ -315,12 +313,26 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                     )}
                   </td>
 
-                  {/* Date & Staff */}
-                  <td className="px-6 py-3.5 whitespace-nowrap text-xs font-mono opacity-80">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3 opacity-40" />
-                      <span>{dateStr}</span>
-                    </div>
+                  {/* Service Date: Travel Date + Created At */}
+                  <td className="px-6 py-3.5 whitespace-nowrap text-xs font-mono">
+                    {travelDate ? (
+                      <div>
+                        <div className="flex items-center gap-1 font-medium text-[var(--foreground)]">
+                          <Calendar className="w-3 h-3 text-[#D97757]" />
+                          <span>{travelDate}</span>
+                        </div>
+                        {createdDate && (
+                          <div className="text-[10px] opacity-50 mt-0.5">
+                            Booked: {createdDate}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 opacity-70">
+                        <Calendar className="w-3 h-3 opacity-40" />
+                        <span>{createdDate || '—'}</span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Status Badge */}
