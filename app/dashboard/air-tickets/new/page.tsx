@@ -14,8 +14,9 @@ export default async function NewAirTicketPage(props: { searchParams?: Promise<{
   try {
     const { data: customerData } = await supabase
       .from('customers')
-      .select('id, name, phone, passport_no, email')
-      .order('name', { ascending: true });
+      .select('id, name, passport_no, phone')
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (customerData) customers = customerData;
   } catch (e) {
     console.error('Failed to fetch customers:', e);

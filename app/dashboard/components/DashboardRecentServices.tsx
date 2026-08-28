@@ -243,7 +243,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
               <th className="px-6 py-3 font-medium">Ref & Type</th>
               <th className="px-6 py-3 font-medium">Service Details</th>
               <th className="px-6 py-3 font-medium">Customer</th>
-              <th className="px-6 py-3 font-medium">Service Date</th>
+              <th className="px-6 py-3 font-medium">Booked Date</th>
               <th className="px-6 py-3 font-medium">Status</th>
               <th className="px-6 py-3 text-right font-medium">Receiving (AED)</th>
               <th className="px-6 py-3 text-right font-medium">Cost (AED)</th>
@@ -313,26 +313,19 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                     )}
                   </td>
 
-                  {/* Service Date: Travel Date + Created At */}
+                  {/* Booked Date: created_at is primary, travel_date is secondary context */}
                   <td className="px-6 py-3.5 whitespace-nowrap text-xs font-mono">
-                    {travelDate ? (
-                      <div>
-                        <div className="flex items-center gap-1 font-medium text-[var(--foreground)]">
-                          <Calendar className="w-3 h-3 text-[#D97757]" />
-                          <span>{travelDate}</span>
-                        </div>
-                        {createdDate && (
-                          <div className="text-[10px] opacity-50 mt-0.5">
-                            Booked: {createdDate}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 opacity-70">
-                        <Calendar className="w-3 h-3 opacity-40" />
+                    <div>
+                      <div className="flex items-center gap-1 font-medium text-[var(--foreground)]">
+                        <Calendar className="w-3 h-3 text-[#D97757]" />
                         <span>{createdDate || '—'}</span>
                       </div>
-                    )}
+                      {travelDate && (
+                        <div className="text-[10px] opacity-50 mt-0.5">
+                          Travel: {travelDate}
+                        </div>
+                      )}
+                    </div>
                   </td>
 
                   {/* Status Badge */}

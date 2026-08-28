@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { 
   subDays, 
   startOfDay, 
+  endOfDay,
   format, 
   isAfter, 
   isBefore, 
@@ -47,28 +48,35 @@ export default async function Dashboard({
   switch (range) {
     case 'today':
       startDate = startOfDay(now);
+      endDate = endOfDay(now);
       break;
     case '7d':
       startDate = subDays(now, 7);
+      endDate = endOfDay(now);
       break;
     case '30d':
       startDate = subDays(now, 30);
+      endDate = endOfDay(now);
       break;
     case 'this-month':
       startDate = startOfMonth(now);
+      endDate = endOfDay(now);
       break;
     case '90d':
       startDate = subDays(now, 90);
+      endDate = endOfDay(now);
       break;
     case 'this-year':
       startDate = startOfYear(now);
+      endDate = endOfDay(now);
       break;
     case 'custom':
       startDate = from ? parseISO(from) : startOfDay(now);
-      endDate = to ? parseISO(to) : undefined;
+      endDate = to ? endOfDay(parseISO(to)) : endOfDay(now);
       break;
     default:
       startDate = startOfDay(now);
+      endDate = endOfDay(now);
   }
 
   let allServices: any[] = [];
@@ -106,6 +114,8 @@ export default async function Dashboard({
     return isNaN(d.getTime()) ? 0 : d.getTime();
   };
 
+  // getServiceDate: Used ONLY for operational features (departure reminders, visa expiry)
+  // Prioritizes travel_date since those features care about when travel actually happens
   const getServiceDate = (srv: any): string | null => {
     const details = (srv.details as any) || {};
     const travelDate = details.travel_date || details.application_date || details.booking_date;
@@ -113,6 +123,16 @@ export default async function Dashboard({
       const ts = parseDateToTimestamp(travelDate);
       if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
     }
+    if (srv.created_at) {
+      const ts = parseDateToTimestamp(srv.created_at);
+      if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
+    }
+    return null;
+  };
+
+  // getBookingDate: Used for ALL financial accounting — KPIs, revenue, profit, sales chart
+  // Always uses created_at (when the booking was entered into the system)
+  const getBookingDate = (srv: any): string | null => {
     if (srv.created_at) {
       const ts = parseDateToTimestamp(srv.created_at);
       if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
@@ -195,13 +215,13 @@ export default async function Dashboard({
       uaeServicesByPerson.get(key)!.push(srv);
     }
 
-    // Date Filtering for KPI & Charts
-    const sDate = getServiceDate(srv);
+    // Date Filtering for KPI & Charts — uses created_at (booking date), NOT travel_date
+    const bookingDate = getBookingDate(srv);
     let matchesDate = false;
     if (range === 'all') {
       matchesDate = true;
-    } else if (sDate) {
-      const d = parseISO(sDate);
+    } else if (bookingDate) {
+      const d = parseISO(bookingDate);
       if (!isNaN(d.getTime())) {
         const isAfterStart = isAfter(d, startDate) || format(d, 'yyyy-MM-dd') === format(startDate, 'yyyy-MM-dd');
         const isBeforeEnd = endDate ? isBefore(d, endDate) || format(d, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd') : true;
@@ -241,8 +261,8 @@ export default async function Dashboard({
         categoryDistribution[mainCategory].volume += amt;
       }
 
-      if (sDate) {
-        salesMap[sDate] = (salesMap[sDate] || 0) + amt;
+      if (bookingDate) {
+        salesMap[bookingDate] = (salesMap[bookingDate] || 0) + amt;
       }
 
       const margin = recAmt - cst - ref;
@@ -305,7 +325,7 @@ export default async function Dashboard({
     start:
       range === 'all'
         ? allServices.length
-          ? parseISO(getServiceDate(allServices[allServices.length - 1]) || format(subDays(now, 7), 'yyyy-MM-dd'))
+          ? parseISO(getBookingDate(allServices[allServices.length - 1]) || format(subDays(now, 7), 'yyyy-MM-dd'))
           : subDays(now, 7)
         : startDate,
     end: now,

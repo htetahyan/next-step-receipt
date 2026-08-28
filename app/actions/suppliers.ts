@@ -11,7 +11,7 @@ export async function getSuppliers() {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('suppliers')
-      .select('*')
+      .select('id, name, contact_person, phone, email, services, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;

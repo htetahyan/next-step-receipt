@@ -6,10 +6,10 @@ async function getCustomerData(id: string) {
   const supabase = await createClient();
 
   const [customerRes, servicesRes, invoicesRes, docsRes] = await Promise.all([
-    supabase.from('customers').select('*').eq('id', id).single(),
-    supabase.from('customer_services').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
-    supabase.from('invoices').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
-    supabase.from('customer_documents').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+    supabase.from('customers').select('id, name, passport_no, phone, email, metadata, created_at').eq('id', id).single(),
+    supabase.from('customer_services').select('id, reference_id, customer_id, category, status, details, financials, created_at').eq('customer_id', id).order('created_at', { ascending: false }),
+    supabase.from('invoices').select('id, invoice_number, customer_id, service_id, total_amount, status, items, created_at').eq('customer_id', id).order('created_at', { ascending: false }),
+    supabase.from('customer_documents').select('id, customer_id, service_id, title, file_url, file_key, tag, created_at').eq('customer_id', id).order('created_at', { ascending: false }),
   ]);
 
   if (!customerRes.data) {

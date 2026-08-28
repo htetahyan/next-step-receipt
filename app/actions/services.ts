@@ -494,7 +494,7 @@ export async function fetchServicesByCategories(categories: readonly string[]) {
     const supabase = await createClient();
     const { data: result, error } = await supabase
       .from('customer_services')
-      .select('*')
+      .select('id, reference_id, customer_id, category, status, details, financials, created_at')
       .in('category', categories as string[])
       .order('created_at', { ascending: false });
 
@@ -558,7 +558,7 @@ export async function quickUpdateService(
       .from('customer_services')
       .update(updateData)
       .eq('id', serviceId)
-      .select('*, customers(id, name, phone, email, passport_no)')
+      .select('id, reference_id, customer_id, category, status, details, financials, created_at, customers(id, name, phone, email, passport_no)')
       .single();
 
     if (updateErr) throw updateErr;

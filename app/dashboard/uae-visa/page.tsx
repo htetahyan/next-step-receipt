@@ -25,7 +25,7 @@ export default async function UAEVisaPage() {
   try {
     const { data } = await supabase
       .from('customer_services')
-      .select('*, customers!inner(id, name, phone, email, passport_no)')
+      .select('id, reference_id, customer_id, category, status, details, financials, created_at, customers!inner(id, name, passport_no, phone)')
       .not('category', 'in', `("${nonUAECategories.join('","')}")`)
       .order('created_at', { ascending: false });
 

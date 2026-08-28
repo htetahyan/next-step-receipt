@@ -93,20 +93,20 @@ export default function NewInvoicePage() {
       if (serviceIdParam) {
         const { data: service } = await supabase
           .from('customer_services')
-          .select('*, customers(*)')
+          .select('id, reference_id, category, details, financials, customer:customers(id, name, passport_no, phone, email, created_at)')
           .eq('id', serviceIdParam)
           .maybeSingle();
 
         if (service) {
-          if (service.customers) {
-            handleCustomerSelect(service.customers);
+          if (service.customer) {
+            handleCustomerSelect(service.customer);
           }
           const details = service.details || {};
           const fin = service.financials || {};
           const category = service.category || '';
           const isTour = category.toLowerCase().includes('tour') || category.toLowerCase().includes('package');
 
-          const paxMatch = (service.customers?.name || '').match(/\((\d+)\s*(?:pax|tkt|person|people)?\)/i) || (details.tour_plans || '').match(/(\d+)\s*pax/i);
+          const paxMatch = ((service.customer as any)?.name || '').match(/\((\d+)\s*(?:pax|tkt|person|people)?\)/i) || (details.tour_plans || '').match(/(\d+)\s*pax/i);
           const pax = paxMatch ? parseInt(paxMatch[1], 10) : 1;
 
           let itemDesc = '';
@@ -132,7 +132,7 @@ export default function NewInvoicePage() {
       } else if (customerIdParam) {
         const { data: customer } = await supabase
           .from('customers')
-          .select('*')
+          .select('id, name, passport_no, phone, email, created_at')
           .eq('id', customerIdParam)
           .maybeSingle();
         if (customer) {

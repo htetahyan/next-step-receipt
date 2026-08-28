@@ -22,8 +22,9 @@ export default async function EditOtherVisaPage({ params }: { params: Promise<{ 
   try {
     const { data } = await supabase
       .from('customers')
-      .select('id, name, phone, passport_no, email')
-      .order('name', { ascending: true });
+      .select('id, name, passport_no, phone')
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (data) customers = data;
   } catch (e) {
     console.error('Failed to fetch customers:', e);

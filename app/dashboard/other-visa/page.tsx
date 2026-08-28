@@ -21,7 +21,7 @@ export default async function OtherVisaPage() {
   try {
     const { data } = await supabase
       .from('customer_services')
-      .select('*, customers!inner(id, name, phone, email, passport_no)')
+      .select('id, reference_id, customer_id, category, status, details, financials, created_at, customers!inner(id, name, passport_no, phone)')
       .in('category', categories)
       .order('created_at', { ascending: false });
     if (data) services = data;

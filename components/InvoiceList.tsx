@@ -157,7 +157,7 @@ export default function InvoiceList({
                      <span className="font-medium text-slate-700 dark:text-slate-300">{invoice.customer?.name}</span>
                   </td>
                   <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
-                    {Number(invoice.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {(Number(invoice.total_amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4">
                      <div className="text-slate-500">{invoice.date}</div>

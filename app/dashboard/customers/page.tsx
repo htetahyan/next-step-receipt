@@ -16,7 +16,7 @@ export default async function CustomersPage() {
   try {
     const { data } = await supabase
       .from('customers')
-      .select('*')
+      .select('id, name, passport_no, phone, email, created_at')
       .order('created_at', { ascending: false })
     
     if (data) {

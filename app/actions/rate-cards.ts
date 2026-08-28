@@ -25,7 +25,7 @@ export async function getRateCards(): Promise<{ success: boolean; data: RateCard
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('rate_cards')
-      .select('*')
+      .select('id, visa_type, sort_order, section, supplier_costs, selling_price, sub_agent_price, other_agent_price, remark, required_documents, created_at, updated_at')
       .order('section', { ascending: true })
       .order('sort_order', { ascending: true });
 

@@ -159,7 +159,7 @@ export async function findCustomerByPassportOrName(passportNo: string, name: str
       const trimmedPassport = passportNo.replace(/\s+/g, '').toUpperCase();
       const { data: byPassport } = await supabase
         .from('customers')
-        .select('*')
+        .select('id, name, passport_no, phone, email, created_at')
         .eq('passport_no', trimmedPassport)
         .maybeSingle();
       if (byPassport) return { data: byPassport };
@@ -168,7 +168,7 @@ export async function findCustomerByPassportOrName(passportNo: string, name: str
     if (name && name.trim()) {
       const { data: byName } = await supabase
         .from('customers')
-        .select('*')
+        .select('id, name, passport_no, phone, email, created_at')
         .eq('name', name.trim())
         .maybeSingle();
       if (byName) return { data: byName };

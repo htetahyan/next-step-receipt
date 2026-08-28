@@ -20,6 +20,21 @@ export const baseServiceSchema = z.object({
   isNewCustomer: z.boolean().default(false),
   newCustomer: customerSchema.optional().nullable(),
   status: z.string().default('Open'),
+}).superRefine((data, ctx) => {
+  if (!data.isNewCustomer && (!data.customerId || data.customerId.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please select an existing customer or create a new one',
+      path: ['customerId'],
+    });
+  }
+  if (data.isNewCustomer && (!data.newCustomer?.name || data.newCustomer.name.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Customer name is required for new customers',
+      path: ['newCustomer', 'name'],
+    });
+  }
 });
 
 export const uaeVisaSchema = baseServiceSchema.extend({

@@ -57,7 +57,7 @@ export async function getDocuments(customerId: string, serviceId?: string) {
 
     let query = supabase
       .from('customer_documents')
-      .select('*')
+      .select('id, customer_id, service_id, title, file_url, file_key, tag, created_at')
       .eq('customer_id', customerId);
     
     if (serviceId && serviceId !== 'all') {
