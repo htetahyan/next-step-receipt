@@ -14,7 +14,8 @@ import {
   Calendar, 
   Tag, 
   Filter,
-  DollarSign
+  DollarSign,
+  Wrench
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { parseFinancialNumber } from '@/lib/financialUtils';
@@ -54,6 +55,8 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
         return `/dashboard/tour-packages/${srv.id}`;
       case 'other_visa':
         return `/dashboard/other-visa/${srv.id}`;
+      case 'custom_service':
+        return `/dashboard/custom-service/${srv.id}`;
       case 'uae_visa':
       default:
         return `/dashboard/uae-visa/${srv.id}`;
@@ -69,6 +72,8 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
         return <Map className="w-3.5 h-3.5 text-emerald-500" />;
       case 'other_visa':
         return <Globe className="w-3.5 h-3.5 text-purple-500" />;
+      case 'custom_service':
+        return <Wrench className="w-3.5 h-3.5 text-orange-500" />;
       case 'uae_visa':
       default:
         return <Shield className="w-3.5 h-3.5 text-[#D97757]" />;
@@ -99,6 +104,14 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
       if (details.visa_type) parts.push(details.visa_type);
       if (details.visa_supplier) parts.push(details.visa_supplier);
       return parts.join(' • ') || 'Other Visa';
+    }
+
+    if (mod === 'custom_service') {
+      const parts = [];
+      if (srv.category) parts.push(srv.category);
+      if (details.supplier_name) parts.push(details.supplier_name);
+      if (details.description) parts.push(details.description);
+      return parts.join(' • ') || srv.category || 'Custom Service';
     }
 
     // UAE Visa

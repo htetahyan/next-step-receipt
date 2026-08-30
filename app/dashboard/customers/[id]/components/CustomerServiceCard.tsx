@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { quickUpdateService } from '@/app/actions/services';
 import { parseFinancialNumber } from '@/lib/financialUtils';
 import { SERVICE_STATUSES } from '@/lib/service-constants';
+import { mapCategoryToModule } from '@/lib/auth-permissions';
 
 interface CustomerServiceCardProps {
   service: any;
@@ -28,22 +29,18 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
   const profit = receiving - supplierCost - refund;
   const balance = parseFinancialNumber(fin.balance, 0);
 
-  const catStr = String(service.category || '').toLowerCase();
-  const isAirTicket =
-    catStr.includes('ticket') || catStr.includes('flight') || catStr.includes('airline') || catStr.includes('air');
-  const isUAEVisa =
-    catStr.includes('uae') ||
-    catStr.includes('visit visa') ||
-    catStr.includes('inside') ||
-    catStr.includes('a2a') ||
-    catStr.includes('bus');
-  const isTourPackage =
-    catStr.includes('tour') || catStr.includes('package') || catStr.includes('hotel') || catStr.includes('safari');
+  const moduleKey = mapCategoryToModule(service.category);
+  const isAirTicket = moduleKey === 'air_tickets';
+  const isTourPackage = moduleKey === 'tour_packages';
+  const isOtherVisa = moduleKey === 'other_visa';
+  const isCustomService = moduleKey === 'custom_service';
+  const isUAEVisa = moduleKey === 'uae_visa';
 
   let editUrl = `/dashboard/uae-visa/${service.id}`;
   if (isAirTicket) editUrl = `/dashboard/air-tickets/${service.id}`;
   else if (isTourPackage) editUrl = `/dashboard/tour-packages/${service.id}`;
-  else if (!isUAEVisa) editUrl = `/dashboard/other-visa/${service.id}`;
+  else if (isOtherVisa) editUrl = `/dashboard/other-visa/${service.id}`;
+  else if (isCustomService) editUrl = `/dashboard/custom-service/${service.id}`;
 
   const [editForm, setEditForm] = useState({
     status: service.status || 'Open',

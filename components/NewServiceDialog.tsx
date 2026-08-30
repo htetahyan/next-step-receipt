@@ -7,7 +7,7 @@ import { addCustomerService } from '@/app/actions/services';
 import { getPresignedUrl } from '@/app/actions/r2';
 import { addDocument } from '@/app/actions/documents';
 import { getSuppliers } from '@/app/actions/suppliers';
-import { Loader2, UploadCloud, File, X, Shield, Plane, Globe, Map, Plus } from 'lucide-react';
+import { Loader2, UploadCloud, File, X, Shield, Plane, Globe, Map, Plus, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CATEGORIES = [
@@ -198,7 +198,7 @@ export default function NewServiceDialog({
             <label className="block text-[10px] uppercase tracking-wider font-medium opacity-60 mb-2">
               Launch Full Dedicated Form
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               <Link
                 href={`/dashboard/uae-visa/new?customerId=${customerId}`}
                 className="p-3 rounded-lg border border-[var(--card-border)] hover:border-[#D97757] hover:bg-[#D97757]/5 transition-all text-center group"
@@ -226,6 +226,13 @@ export default function NewServiceDialog({
               >
                 <Globe className="w-5 h-5 mx-auto mb-1.5 opacity-60 group-hover:text-[#D97757] group-hover:opacity-100 transition-colors" />
                 <div className="text-xs font-medium">Other Visa</div>
+              </Link>
+              <Link
+                href={`/dashboard/custom-service/new?customerId=${customerId}`}
+                className="p-3 rounded-lg border border-[var(--card-border)] hover:border-[#D97757] hover:bg-[#D97757]/5 transition-all text-center group"
+              >
+                <Wrench className="w-5 h-5 mx-auto mb-1.5 opacity-60 group-hover:text-[#D97757] group-hover:opacity-100 transition-colors" />
+                <div className="text-xs font-medium">Custom</div>
               </Link>
             </div>
           </div>

@@ -78,3 +78,21 @@ export const SERVICE_STATUSES = [
   'Cancelled',
   'Refund Pending',
 ] as const;
+
+// ── Custom Service Suggestions ──────────────────────────────
+export const CUSTOM_SERVICE_SUGGESTIONS = [
+  'Dummy Flight',
+  'Passport Renew',
+  'Passport Extension',
+  'Document Attestation',
+  'Medical Insurance',
+  'Emirates ID',
+  'Typing Services',
+  'Translation',
+  'Travel Insurance',
+  'Hotel Booking',
+  'Car Rental',
+  'OK to Board',
+  'Consultation Only',
+  'Other',
+] as const;

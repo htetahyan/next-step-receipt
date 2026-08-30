@@ -106,7 +106,25 @@ export const tourPackageSchema = baseServiceSchema.extend({
   financials: baseFinancialsSchema,
 });
 
+export const customServiceSchema = baseServiceSchema.extend({
+  category: z.string().min(1, 'Service name is required'),
+  details: z.object({
+    description: z.string().optional().nullable().or(z.literal('')),
+    supplier_name: z.string().optional().nullable().or(z.literal('')),
+    start_date: z.string().optional().nullable().or(z.literal('')),
+    end_date: z.string().optional().nullable().or(z.literal('')),
+    reference_number: z.string().optional().nullable().or(z.literal('')),
+    travel_date: z.string().optional().nullable().or(z.literal('')),
+    handled_by: z.string().optional().nullable().or(z.literal('')),
+    referred_by: z.string().optional().nullable().or(z.literal('')),
+    comments: z.string().optional().nullable().or(z.literal('')),
+    remark: z.string().optional().nullable().or(z.literal('')),
+  }).passthrough(),
+  financials: baseFinancialsSchema,
+});
+
 export type UAEVisaFormValues = z.infer<typeof uaeVisaSchema>;
 export type AirTicketFormValues = z.infer<typeof airTicketSchema>;
 export type OtherVisaFormValues = z.infer<typeof otherVisaSchema>;
 export type TourPackageFormValues = z.infer<typeof tourPackageSchema>;
+export type CustomServiceFormValues = z.infer<typeof customServiceSchema>;

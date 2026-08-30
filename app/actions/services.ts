@@ -180,6 +180,8 @@ export async function addCustomerService(data: any) {
     revalidatePath('/dashboard/air-tickets');
     revalidatePath('/dashboard/other-visa');
     revalidatePath('/dashboard/tour-packages');
+    revalidatePath('/dashboard/custom-service');
+    revalidatePath('/dashboard');
 
     return { success: true, service, data: service };
   } catch (err: any) {
@@ -451,6 +453,8 @@ export async function updateCustomerService(serviceId: string, data: any) {
     revalidatePath('/dashboard/air-tickets');
     revalidatePath('/dashboard/other-visa');
     revalidatePath('/dashboard/tour-packages');
+    revalidatePath('/dashboard/custom-service');
+    revalidatePath('/dashboard');
 
     return { success: true, service: updated };
   } catch (err: any) {
@@ -481,6 +485,8 @@ export async function deleteCustomerService(serviceId: string) {
     revalidatePath('/dashboard/air-tickets');
     revalidatePath('/dashboard/other-visa');
     revalidatePath('/dashboard/tour-packages');
+    revalidatePath('/dashboard/custom-service');
+    revalidatePath('/dashboard');
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Shield, Plane, Map, Globe, UserPlus, Receipt, Plus } from 'lucide-react';
+import { Shield, Plane, Map, Globe, UserPlus, Receipt, Plus, Wrench } from 'lucide-react';
 
 export function DashboardQuickActions() {
   const actions = [
@@ -29,6 +29,12 @@ export function DashboardQuickActions() {
       href: '/dashboard/other-visa/new',
       icon: Globe,
       color: 'hover:border-purple-500 hover:bg-purple-500/5 text-purple-500',
+    },
+    {
+      label: 'Custom Service',
+      href: '/dashboard/custom-service/new',
+      icon: Wrench,
+      color: 'hover:border-orange-500 hover:bg-orange-500/5 text-orange-500',
     },
     {
       label: 'Customer',

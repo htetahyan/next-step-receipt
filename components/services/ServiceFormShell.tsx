@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, FormProvider, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Save, Loader2, FileText, LucideIcon } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, FileText, LucideIcon, Upload, X } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ZodType } from 'zod';
 
 import { addCustomerService, updateCustomerService, generateReferenceId } from '@/app/actions/services';
 import { addCustomer } from '@/app/actions/customers';
+import { addDocument } from '@/app/actions/documents';
+import { getPresignedUrl } from '@/app/actions/r2';
 import DocumentModal from '@/components/DocumentModal';
 import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
@@ -33,6 +35,12 @@ export interface ServiceFormShellProps<T extends Record<string, any>> {
   currentUser?: UserProfile | null;
   renderCategoryFields: (methods: UseFormReturn<T>) => React.ReactNode;
   onAutoFill?: (watchedValues: any, setValue: UseFormReturn<T>['setValue']) => void;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ServiceFormShell<T extends Record<string, any>>({
@@ -58,6 +66,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
   const [saving, setSaving] = useState(false);
   const [refId, setRefId] = useState(initialData?.reference_id || '');
   const [showDocs, setShowDocs] = useState(false);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
 
   useEffect(() => {
     if (!initialData) {
@@ -151,6 +160,38 @@ export function ServiceFormShell<T extends Record<string, any>>({
       }
 
       if (res.success) {
+        const serviceIdToUse = initialData?.id || (res as any).service?.id || (res as any).data?.id;
+
+        if (serviceIdToUse && stagedFiles.length > 0) {
+          toast.info('Uploading documents...');
+          for (const file of stagedFiles) {
+            try {
+              const urlRes = await getPresignedUrl(file.name, file.type);
+              if (!urlRes.success || !urlRes.uploadUrl) {
+                console.error('Failed to get presigned URL for', file.name);
+                continue;
+              }
+              const uploadRes = await fetch(urlRes.uploadUrl, {
+                method: 'PUT',
+                body: file,
+              });
+              if (uploadRes.ok) {
+                await addDocument({
+                  customerId: customerId,
+                  serviceId: serviceIdToUse,
+                  title: file.name,
+                  file_url: urlRes.publicUrl!,
+                  file_key: urlRes.fileKey!,
+                });
+              } else {
+                console.error('Failed to upload', file.name);
+              }
+            } catch (uploadErr) {
+              console.error('Upload error for', file.name, uploadErr);
+            }
+          }
+        }
+
         toast.success(initialData ? 'Record updated successfully' : 'Record created successfully');
         router.push(redirectPath);
         router.refresh();
@@ -218,6 +259,57 @@ export function ServiceFormShell<T extends Record<string, any>>({
             <div className="md:col-span-2 space-y-6">
               {renderCategoryFields(methods)}
               <StaffAdditionalInfoFields />
+
+              {/* Document Staging */}
+              <div className="card-anthropic p-6">
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--card-border)]">
+                  <h3 className="text-xs font-serif uppercase tracking-wider opacity-50">
+                    Attach Documents
+                  </h3>
+                </div>
+                <div className="space-y-4">
+                  <label className="flex items-center justify-center w-full h-32 px-4 transition bg-[var(--sidebar-bg)] border-2 border-[var(--card-border)] border-dashed rounded-md appearance-none cursor-pointer hover:border-gray-400 focus:outline-none">
+                    <div className="flex flex-col items-center space-y-2">
+                      <Upload className="w-6 h-6 opacity-50" />
+                      <span className="font-medium opacity-70">Drop files to attach, or browse</span>
+                    </div>
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setStagedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                        }
+                      }}
+                    />
+                  </label>
+                  
+                  {stagedFiles.length > 0 && (
+                    <ul className="space-y-2">
+                      {stagedFiles.map((file, i) => (
+                        <li key={i} className="flex items-center justify-between p-3 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-md">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <FileText className="w-4 h-4 opacity-50 shrink-0" />
+                            <div className="flex flex-col truncate">
+                              <span className="text-sm font-medium truncate">{file.name}</span>
+                              <span className="text-xs opacity-50">{formatFileSize(file.size)}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setStagedFiles((prev) => prev.filter((_, index) => index !== i))}
+                            className="p-1 hover:bg-[var(--card-border)] rounded-md transition-colors"
+                          >
+                            <X className="w-4 h-4 opacity-50" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Right Column: Financials + Submit */}

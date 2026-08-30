@@ -6,6 +6,7 @@ export type ModuleKey =
   | 'air_tickets'
   | 'other_visa'
   | 'tour_packages'
+  | 'custom_service'
   | 'customers'
   | 'invoices'
   | 'suppliers'
@@ -30,6 +31,7 @@ export const DEFAULT_ADMIN_PERMISSIONS: PermissionsMap = {
   air_tickets: { read: true, create: true, edit: true, delete: true },
   other_visa: { read: true, create: true, edit: true, delete: true },
   tour_packages: { read: true, create: true, edit: true, delete: true },
+  custom_service: { read: true, create: true, edit: true, delete: true },
   customers: { read: true, create: true, edit: true, delete: true },
   invoices: { read: true, create: true, edit: true, delete: true },
   suppliers: { read: true, create: true, edit: true, delete: true },
@@ -42,6 +44,7 @@ export const DEFAULT_STAFF_PERMISSIONS: PermissionsMap = {
   air_tickets: { read: true, create: true, edit: false, delete: false },
   other_visa: { read: true, create: true, edit: false, delete: false },
   tour_packages: { read: true, create: true, edit: false, delete: false },
+  custom_service: { read: true, create: true, edit: false, delete: false },
   customers: { read: true, create: true, edit: false, delete: false },
   invoices: { read: true, create: false, edit: false, delete: false },
   suppliers: { read: true, create: false, edit: false, delete: false },
@@ -64,8 +67,8 @@ export function mapCategoryToModule(category?: string | null): ModuleKey {
   if (!category) return 'uae_visa';
   const cat = category.toLowerCase().trim();
 
-  if (cat.includes('tour')) return 'tour_packages';
-  if (cat.includes('ticket') || cat.includes('flight') || cat.includes('way') || cat.includes('trip')) return 'air_tickets';
+  if (cat.includes('tour') || cat.includes('safari') || cat.includes('package') || cat.includes('hotel')) return 'tour_packages';
+  if (cat.includes('ticket') || cat.includes('flight') || cat.includes('way') || cat.includes('trip') || cat.includes('airline')) return 'air_tickets';
   if (
     cat.includes('schengen') ||
     cat.includes('japan') ||
@@ -73,12 +76,30 @@ export function mapCategoryToModule(category?: string | null): ModuleKey {
     cat.includes('korea') ||
     cat.includes('uk') ||
     cat.includes('armenia') ||
-    cat.includes('other')
+    cat.includes('other country')
   ) {
     return 'other_visa';
   }
 
-  return 'uae_visa';
+  // UAE visa keywords
+  if (
+    cat.includes('uae') ||
+    cat.includes('visit visa') ||
+    cat.includes('transit') ||
+    cat.includes('multi entry') ||
+    cat.includes('visa change') ||
+    cat.includes('inside') ||
+    cat.includes('a2a') ||
+    cat.includes('bus') ||
+    cat.includes('extension') ||
+    cat.includes('oman')
+  ) {
+    return 'uae_visa';
+  }
+
+  // Custom service: categories that don't match any predefined module
+  // e.g. Dummy Flight, Passport Renew, Document Attestation, Medical Insurance, etc.
+  return 'custom_service';
 }
 
 /**

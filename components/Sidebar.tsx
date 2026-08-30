@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X, Wrench } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { UserProfile, checkPermission, ModuleKey } from "@/lib/auth-permissions";
 import { useOnlineStatus } from "./ui/OfflineBanner";
@@ -53,6 +53,7 @@ export default function Sidebar({ profile }: SidebarProps) {
     { name: "Air Tickets", href: "/dashboard/air-tickets", icon: Plane, moduleKey: "air_tickets" },
     { name: "Other Visa", href: "/dashboard/other-visa", icon: Globe, moduleKey: "other_visa" },
     { name: "Tour Packages", href: "/dashboard/tour-packages", icon: Briefcase, moduleKey: "tour_packages" },
+    { name: "Custom Services", href: "/dashboard/custom-service", icon: Wrench, moduleKey: "custom_service" },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText, moduleKey: "invoices" },
     { name: "Suppliers", href: "/dashboard/suppliers", icon: Briefcase, moduleKey: "suppliers" },
     { name: "Data Migration", href: "/dashboard/migrate", icon: Database, moduleKey: "migration" },
@@ -68,10 +69,11 @@ export default function Sidebar({ profile }: SidebarProps) {
   const canCreateAir = checkPermission(profile || null, 'air_tickets', 'create');
   const canCreateOther = checkPermission(profile || null, 'other_visa', 'create');
   const canCreateTour = checkPermission(profile || null, 'tour_packages', 'create');
+  const canCreateCustom = checkPermission(profile || null, 'custom_service', 'create');
   const canCreateCustomer = checkPermission(profile || null, 'customers', 'create');
   const canCreateInvoice = checkPermission(profile || null, 'invoices', 'create');
 
-  const hasAnyCreate = canCreateUAE || canCreateAir || canCreateOther || canCreateTour || canCreateCustomer || canCreateInvoice;
+  const hasAnyCreate = canCreateUAE || canCreateAir || canCreateOther || canCreateTour || canCreateCustom || canCreateCustomer || canCreateInvoice;
 
   const sidebarContent = (
     <div className="flex h-full w-full flex-col bg-[var(--sidebar-bg)]">
@@ -132,6 +134,15 @@ export default function Sidebar({ profile }: SidebarProps) {
                 >
                   <Briefcase className="h-4 w-4 opacity-70" />
                   New Tour Package
+                </Link>
+              )}
+              {canCreateCustom && (
+                <Link
+                  href="/dashboard/custom-service/new"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
+                >
+                  <Wrench className="h-4 w-4 opacity-70" />
+                  New Custom Service
                 </Link>
               )}
               {canCreateCustomer && (
