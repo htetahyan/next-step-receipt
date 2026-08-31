@@ -18,12 +18,14 @@ export default async function InvoicesPage() {
   let invoices: any[] = [];
 
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('invoices')
-      .select('id, invoice_number, customer_id, service_id, date, total_amount, status, items, created_at, customer:customers(id, name)')
-      .order('created_at', { ascending: false })
+      .select('id, invoice_number, customer_id, date, total_amount, payment_method, created_at, customer:customers(id, name)')
+      .order('created_at', { ascending: false });
     
-    if (data) {
+    if (error) {
+      console.error('Supabase invoices fetch error:', error);
+    } else if (data) {
       invoices = data;
     }
   } catch (e) {

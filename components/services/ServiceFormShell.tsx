@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, FormProvider, UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Save, Loader2, FileText, LucideIcon, Upload, X } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, FileText, LucideIcon, Upload, X, Hash, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ZodType } from 'zod';
@@ -111,6 +111,17 @@ export function ServiceFormShell<T extends Record<string, any>>({
     }
   }, [methods, initialData, onAutoFill]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setStagedFiles((prev) => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeStagedFile = (index: number) => {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = async (data: any) => {
     setSaving(true);
     try {
@@ -141,7 +152,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
 
       const payload = {
         customerId,
-        referenceId: refId,
+        referenceId: refId ? refId.trim() : null,
         category: data.category,
         status: data.status || 'Open',
         details: data.details || {},
@@ -221,7 +232,34 @@ export function ServiceFormShell<T extends Record<string, any>>({
               <Icon className="w-5 h-5 text-[#D97757]" />
               {initialData ? `Edit ${title}` : `New ${title}`}
             </h1>
-            <p className="text-xs opacity-50 font-mono mt-1">Ref: {refId || '...'}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-xs opacity-50 font-mono flex items-center gap-1">
+                <Hash className="w-3 h-3" /> Ref ID:
+              </span>
+              <input
+                type="text"
+                value={refId}
+                onChange={(e) => setRefId(e.target.value.toUpperCase())}
+                placeholder={`e.g. ${refPrefix}0001`}
+                className="px-2 py-0.5 text-xs font-mono font-bold rounded border border-[var(--card-border)] bg-[var(--background)] text-[#D97757] focus:outline-none focus:ring-1 focus:ring-[#D97757] tracking-wider w-28 uppercase transition-all"
+                title="Edit Reference ID"
+              />
+              {!initialData && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    generateReferenceId(refPrefix).then((id) => {
+                      setRefId(id);
+                      toast.info(`Next Reference ID: ${id}`);
+                    });
+                  }}
+                  className="p-1 hover:bg-[var(--card-border)] rounded text-xs opacity-40 hover:opacity-100 transition-opacity"
+                  title="Regenerate Reference ID"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -278,11 +316,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
                       multiple
                       className="hidden"
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      onChange={(e) => {
-                        if (e.target.files) {
-                          setStagedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-                        }
-                      }}
+                      onChange={handleFileChange}
                     />
                   </label>
                   
@@ -299,7 +333,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
                           </div>
                           <button
                             type="button"
-                            onClick={() => setStagedFiles((prev) => prev.filter((_, index) => index !== i))}
+                            onClick={() => removeStagedFile(i)}
                             className="p-1 hover:bg-[var(--card-border)] rounded-md transition-colors"
                           >
                             <X className="w-4 h-4 opacity-50" />

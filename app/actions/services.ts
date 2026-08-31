@@ -22,24 +22,39 @@ import { mapCategoryToModule } from '@/lib/auth-permissions';
 export async function generateReferenceId(prefix: string): Promise<string> {
   try {
     const supabase = await createClient();
+    const cleanPrefix = (prefix || 'REF').toUpperCase().trim();
+    
+    // Fetch recent matching reference_ids to find the highest sequence number
     const { data, error } = await supabase
       .from('customer_services')
       .select('reference_id')
-      .like('reference_id', `${prefix}%`)
-      .order('reference_id', { ascending: false })
-      .limit(1);
+      .ilike('reference_id', `${cleanPrefix}%`)
+      .order('created_at', { ascending: false })
+      .limit(300);
 
-    if (error || !data || data.length === 0 || !data[0].reference_id) {
-      return `${prefix}0001`;
+    if (error || !data || data.length === 0) {
+      return `${cleanPrefix}0001`;
     }
 
-    const lastNum = parseInt(data[0].reference_id.replace(prefix, ''), 10);
-    const nextNum = (lastNum + 1).toString().padStart(4, '0');
-    return `${prefix}${nextNum}`;
-  } catch {
-    // Fallback
-    const rand = Math.floor(Math.random() * 9000 + 1000);
-    return `${prefix}${rand}`;
+    let maxNum = 0;
+    for (const row of data) {
+      if (!row.reference_id) continue;
+      // Match any digits following the prefix, optional dashes, slashes, or spaces
+      // e.g. AE0001, AE002, AE-0003, AE 0004
+      const match = String(row.reference_id).match(new RegExp(`^${cleanPrefix}[-\\s/]?(\\d+)`, 'i'));
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+
+    const nextNum = (maxNum + 1).toString().padStart(4, '0');
+    return `${cleanPrefix}${nextNum}`;
+  } catch (err) {
+    console.error('Error generating reference id:', err);
+    return `${(prefix || 'REF').toUpperCase().trim()}0001`;
   }
 }
 
@@ -435,14 +450,20 @@ export async function updateCustomerService(serviceId: string, data: any) {
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
+    const updatePayload: any = {
+      category: data.category,
+      status: data.status,
+      details: data.details,
+      financials: data.financials,
+    };
+
+    if (data.referenceId !== undefined) {
+      updatePayload.reference_id = data.referenceId ? String(data.referenceId).trim() : null;
+    }
+
     const { data: updated, error } = await supabase
       .from('customer_services')
-      .update({
-        category: data.category,
-        status: data.status,
-        details: data.details,
-        financials: data.financials,
-      })
+      .update(updatePayload)
       .eq('id', serviceId)
       .select()
       .single();
