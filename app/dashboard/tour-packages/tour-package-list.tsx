@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, FileSpreadsheet, ChevronDown, Map, Trash2, Edit3, Copy, Receipt } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, ChevronDown, Map, Trash2, Edit3, Copy, Receipt, Pencil, Check, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
-import { deleteCustomerService } from '@/app/actions/services';
+import { deleteCustomerService, updateServiceRefId } from '@/app/actions/services';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -34,6 +34,28 @@ export default function TourPackageList({ initialServices, customers, profile }:
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  // Inline Reference ID Editing State
+  const [editingRefId, setEditingRefId] = useState<{ id: string; value: string } | null>(null);
+  const [isSavingRef, setIsSavingRef] = useState(false);
+
+  const handleSaveRefId = async (serviceId: string, newRef: string) => {
+    setIsSavingRef(true);
+    try {
+      const res = await updateServiceRefId(serviceId, newRef);
+      if (res.success) {
+        setServices(prev => prev.map(s => s.id === serviceId ? { ...s, reference_id: res.reference_id } : s));
+        toast.success(`Reference ID updated to "${res.reference_id}"`);
+        setEditingRefId(null);
+      } else {
+        toast.error(res.error || 'Failed to update Reference ID');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating Reference ID');
+    } finally {
+      setIsSavingRef(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     return services.filter(s => {
@@ -265,6 +287,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-[var(--sidebar-bg)] border-b border-[var(--card-border)] text-xs uppercase tracking-wider opacity-60">
               <tr>
+                <th className="px-4 py-3 font-medium">Ref ID</th>
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Customer</th>
                 <th className="px-4 py-3 font-medium text-right">Amount</th>
@@ -292,6 +315,55 @@ export default function TourPackageList({ initialServices, customers, profile }:
 
                 return (
                   <tr key={s.id} className="hover:bg-[var(--sidebar-bg)] transition-colors">
+                    <td className="px-4 py-3">
+                      {editingRefId?.id === s.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editingRefId?.value || ''}
+                            onChange={(e) => setEditingRefId({ id: s.id, value: e.target.value.toUpperCase() })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && editingRefId) handleSaveRefId(s.id, editingRefId.value);
+                              if (e.key === 'Escape') setEditingRefId(null);
+                            }}
+                            autoFocus
+                            className="px-1.5 py-0.5 text-xs font-mono font-bold w-24 rounded border border-[#D97757] bg-[var(--background)] text-[#D97757] uppercase focus:outline-none shadow-xs"
+                          />
+                          <button
+                            disabled={isSavingRef}
+                            onClick={() => editingRefId && handleSaveRefId(s.id, editingRefId.value)}
+                            className="p-1 hover:bg-emerald-500/10 text-emerald-600 rounded transition-colors"
+                            title="Save Reference ID"
+                          >
+                            {isSavingRef ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => setEditingRefId(null)}
+                            className="p-1 hover:bg-red-500/10 text-red-500 rounded transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className={`inline-flex items-center gap-1.5 group/ref ${canEdit ? 'cursor-pointer' : ''}`}
+                          onClick={() => {
+                            if (canEdit) {
+                              setEditingRefId({ id: s.id, value: s.reference_id || '' });
+                            }
+                          }}
+                          title={canEdit ? "Click to edit Reference ID" : undefined}
+                        >
+                          <span className="font-mono text-xs text-[#D97757] font-semibold group-hover/ref:underline">
+                            {s.reference_id || '—'}
+                          </span>
+                          {canEdit && (
+                            <Pencil className="w-3 h-3 opacity-0 group-hover/ref:opacity-70 text-[#D97757] transition-opacity" />
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">{details?.travel_date || '—'}</td>
                     <td className="px-4 py-3 font-medium">
                       <div>{cust?.name || '—'}</div>

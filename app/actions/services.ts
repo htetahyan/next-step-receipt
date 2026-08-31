@@ -532,11 +532,51 @@ export async function fetchServicesByCategories(categories: readonly string[]) {
   }
 }
 
+export async function updateServiceRefId(serviceId: string, referenceId: string) {
+  try {
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from('customer_services')
+      .select('id, category')
+      .eq('id', serviceId)
+      .maybeSingle();
+
+    if (fetchErr || !existing) return { success: false, error: 'Service record not found' };
+
+    const moduleKey = mapCategoryToModule(existing.category);
+    await requirePermission(moduleKey, 'edit');
+
+    const cleanRef = referenceId ? referenceId.trim().toUpperCase() : null;
+
+    const { error } = await supabase
+      .from('customer_services')
+      .update({ reference_id: cleanRef })
+      .eq('id', serviceId);
+
+    if (error) throw error;
+
+    revalidatePath('/dashboard/uae-visa');
+    revalidatePath('/dashboard/air-tickets');
+    revalidatePath('/dashboard/other-visa');
+    revalidatePath('/dashboard/tour-packages');
+    revalidatePath('/dashboard/custom-service');
+    revalidatePath('/dashboard');
+
+    return { success: true, reference_id: cleanRef };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update Reference ID' };
+  }
+}
+
 export async function quickUpdateService(
   serviceId: string,
   payload: {
     status?: string;
     category?: string;
+    reference_id?: string;
+    referenceId?: string;
     details?: any;
     financials?: any;
     customer?: {
@@ -565,6 +605,11 @@ export async function quickUpdateService(
     const updateData: any = {};
     if (payload.status) updateData.status = payload.status;
     if (payload.category) updateData.category = payload.category;
+
+    if (payload.reference_id !== undefined || payload.referenceId !== undefined) {
+      const refVal = payload.reference_id !== undefined ? payload.reference_id : payload.referenceId;
+      updateData.reference_id = refVal ? String(refVal).trim().toUpperCase() : null;
+    }
 
     if (payload.details) {
       updateData.details = {

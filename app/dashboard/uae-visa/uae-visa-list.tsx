@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy, LayoutGrid, List, Layers, Edit3 } from 'lucide-react';
+import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy, LayoutGrid, List, Layers, Edit3, Pencil, Check } from 'lucide-react';
 import Link from 'next/link';
-import { deleteCustomerService, quickUpdateService } from '@/app/actions/services';
+import { deleteCustomerService, quickUpdateService, updateServiceRefId } from '@/app/actions/services';
 import { autoCloseExpiredVisas } from '@/app/actions/auto-close-visas';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -40,6 +40,28 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
+
+  // Inline Reference ID Editing State
+  const [editingRefId, setEditingRefId] = useState<{ id: string; value: string } | null>(null);
+  const [isSavingRef, setIsSavingRef] = useState(false);
+
+  const handleSaveRefId = async (serviceId: string, newRef: string) => {
+    setIsSavingRef(true);
+    try {
+      const res = await updateServiceRefId(serviceId, newRef);
+      if (res.success) {
+        setServices(prev => prev.map(s => s.id === serviceId ? { ...s, reference_id: res.reference_id } : s));
+        toast.success(`Reference ID updated to "${res.reference_id}"`);
+        setEditingRefId(null);
+      } else {
+        toast.error(res.error || 'Failed to update Reference ID');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating Reference ID');
+    } finally {
+      setIsSavingRef(false);
+    }
+  };
 
   // Odoo Specific View Modes & Quick Edit Drawer State
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
@@ -942,10 +964,61 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                           : ''
                       }`}
                     >
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs text-[#D97757] font-bold hover:underline">
-                          {service.reference_id || '—'}
-                        </span>
+                      <td 
+                        className="px-4 py-3"
+                        onClick={(e) => {
+                          if (canEdit) {
+                            e.stopPropagation();
+                          }
+                        }}
+                      >
+                        {editingRefId?.id === service.id ? (
+                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={editingRefId?.value || ''}
+                              onChange={(e) => setEditingRefId({ id: service.id, value: e.target.value.toUpperCase() })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && editingRefId) handleSaveRefId(service.id, editingRefId.value);
+                                if (e.key === 'Escape') setEditingRefId(null);
+                              }}
+                              autoFocus
+                              className="px-1.5 py-0.5 text-xs font-mono font-bold w-24 rounded border border-[#D97757] bg-[var(--background)] text-[#D97757] uppercase focus:outline-none shadow-xs"
+                            />
+                            <button
+                              disabled={isSavingRef}
+                              onClick={() => editingRefId && handleSaveRefId(service.id, editingRefId.value)}
+                              className="p-1 hover:bg-emerald-500/10 text-emerald-600 rounded transition-colors"
+                              title="Save Reference ID"
+                            >
+                              {isSavingRef ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => setEditingRefId(null)}
+                              className="p-1 hover:bg-red-500/10 text-red-500 rounded transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div 
+                            className={`inline-flex items-center gap-1.5 group/ref ${canEdit ? 'cursor-pointer' : ''}`}
+                            onClick={() => {
+                              if (canEdit) {
+                                setEditingRefId({ id: service.id, value: service.reference_id || '' });
+                              }
+                            }}
+                            title={canEdit ? "Click to edit Reference ID" : undefined}
+                          >
+                            <span className="font-mono text-xs text-[#D97757] font-bold group-hover/ref:underline">
+                              {service.reference_id || '—'}
+                            </span>
+                            {canEdit && (
+                              <Pencil className="w-3 h-3 opacity-0 group-hover/ref:opacity-70 text-[#D97757] transition-opacity" />
+                            )}
+                          </div>
+                        )}
                       </td>
                       
                       {/* Customer & Phone Details */}

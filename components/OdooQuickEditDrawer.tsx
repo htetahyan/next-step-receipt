@@ -40,6 +40,7 @@ export default function OdooQuickEditDrawer({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Form State
+  const [referenceId, setReferenceId] = useState('');
   const [status, setStatus] = useState('Open');
   const [category, setCategory] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -84,6 +85,7 @@ export default function OdooQuickEditDrawer({
       const det = (service.details as any) || {};
       const fin = (service.financials as any) || {};
 
+      setReferenceId(service.reference_id || '');
       setStatus(service.status || 'Open');
       setCategory(service.category || 'UAE Visit Visa 30 Days');
       setCustomerName(cust.name || det.customer_name || '');
@@ -99,10 +101,10 @@ export default function OdooQuickEditDrawer({
       setReferredBy(det.referred_by || '');
       setComments(det.comments || det.remark || det.notes || '');
 
-      setAmount(fin.amount !== undefined ? fin.amount : 0);
-      setReceivingAmount(fin.receiving_amount !== undefined ? fin.receiving_amount : 0);
-      setSupplierCost(fin.supplier_cost !== undefined ? fin.supplier_cost : 0);
-      setPaymentMethod(fin.payment_method || det.payment_method || 'cash');
+      setAmount(fin.amount || 0);
+      setReceivingAmount(fin.receiving_amount || 0);
+      setSupplierCost(fin.supplier_cost || 0);
+      setPaymentMethod(fin.payment_method || 'cash');
     }
   }, [service]);
 
@@ -182,9 +184,12 @@ export default function OdooQuickEditDrawer({
       payment_method: paymentMethod,
     };
 
+    const cleanRef = referenceId.trim().toUpperCase();
+
     // Optimistic Update
     const optimisticService = {
       ...service,
+      reference_id: cleanRef,
       status,
       category,
       details: updatedDetails,
@@ -199,6 +204,7 @@ export default function OdooQuickEditDrawer({
     onUpdate(optimisticService);
 
     const res = await quickUpdateService(service.id, {
+      reference_id: cleanRef,
       status,
       category,
       details: updatedDetails,
@@ -228,12 +234,13 @@ export default function OdooQuickEditDrawer({
     const res = await deleteCustomerService(service.id);
     setDeleting(false);
     setShowDeleteModal(false);
+
     if (res.success) {
-      onDelete(service.id);
-      toast.success('Visa record deleted!');
+      toast.success('Service deleted successfully');
       onClose();
+      onDelete(service.id);
     } else {
-      toast.error(res.error || 'Failed to delete visa record');
+      toast.error(res.error || 'Failed to delete service');
     }
   };
 
@@ -255,9 +262,17 @@ export default function OdooQuickEditDrawer({
               <Shield className="w-6 h-6 text-[#D97757]" />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-[#D97757]">
-                    {service.reference_id || 'Quick Edit'}
-                  </span>
+                  <div className="flex items-center gap-1 bg-[var(--background)] px-2 py-0.5 rounded border border-[var(--card-border)]">
+                    <span className="text-[10px] opacity-50 font-mono">REF:</span>
+                    <input
+                      type="text"
+                      value={referenceId}
+                      onChange={e => setReferenceId(e.target.value.toUpperCase())}
+                      placeholder="e.g. AE0001"
+                      className="font-mono text-xs font-bold text-[#D97757] bg-transparent focus:outline-none w-24 uppercase"
+                      title="Edit Reference ID"
+                    />
+                  </div>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-[#D97757]/10 text-[#D97757] font-semibold">
                     {category}
                   </span>
