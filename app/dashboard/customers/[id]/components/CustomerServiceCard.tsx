@@ -43,6 +43,7 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
   else if (isCustomService) editUrl = `/dashboard/custom-service/${service.id}`;
 
   const [editForm, setEditForm] = useState({
+    reference_id: service.reference_id || '',
     status: service.status || 'Open',
     category: service.category || '',
     amount: String(amount),
@@ -83,6 +84,7 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
       const calcBalance = receivingAmount - numSupplierCost - numRefund;
 
       const updatedPayload = {
+        reference_id: editForm.reference_id ? editForm.reference_id.trim().toUpperCase() : null,
         category: editForm.category || service.category,
         status: editForm.status,
         details: {
@@ -140,10 +142,21 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="font-serif text-lg">{service.category}</div>
-          {service.reference_id && (
-            <span className="text-xs font-mono text-[#D97757] bg-[#D97757]/10 px-2 py-0.5 rounded font-semibold">
-              {service.reference_id}
-            </span>
+          {isEditing ? (
+            <input
+              type="text"
+              value={editForm.reference_id}
+              onChange={e => setEditForm({ ...editForm, reference_id: e.target.value.toUpperCase() })}
+              placeholder="Ref ID"
+              className="text-xs font-mono text-[#D97757] bg-[var(--background)] px-2 py-0.5 rounded font-semibold border border-[var(--card-border)] w-24 uppercase focus:outline-none focus:ring-1 focus:ring-[#D97757]"
+              title="Edit Reference ID"
+            />
+          ) : (
+            service.reference_id && (
+              <span className="text-xs font-mono text-[#D97757] bg-[#D97757]/10 px-2 py-0.5 rounded font-semibold">
+                {service.reference_id}
+              </span>
+            )
           )}
         </div>
 

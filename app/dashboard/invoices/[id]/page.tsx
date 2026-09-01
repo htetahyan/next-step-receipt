@@ -13,7 +13,7 @@ export default async function InvoiceViewPage({ params }: { params: Promise<{ id
 
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('*, customer:customers(*), items:invoice_items(*)')
+    .select('id, invoice_number, customer_id, date, subtotal, vat_amount, total_amount, payment_method, customer:customers(id, name, email, phone), items:invoice_items(id, description, quantity, rate, amount)')
     .eq('id', id)
     .single();
 

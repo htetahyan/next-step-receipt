@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { FileText, Download } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function PortalPage({ params }: { params: Promise<{ customerId: string }> }) {
   const { customerId } = await params;
@@ -9,10 +10,18 @@ export default async function PortalPage({ params }: { params: Promise<{ custome
   let invoices: any[] = [];
 
   try {
-    const { data: custData } = await supabase.from('customers').select('*').eq('id', customerId).single()
+    const { data: custData } = await supabase
+      .from('customers')
+      .select('id, name, email, phone, passport_no, created_at')
+      .eq('id', customerId)
+      .maybeSingle()
     if (custData) customer = custData;
 
-    const { data: invData } = await supabase.from('invoices').select('*').eq('customer_id', customerId).order('created_at', { ascending: false })
+    const { data: invData } = await supabase
+      .from('invoices')
+      .select('id, invoice_number, customer_id, date, total_amount, payment_method, created_at')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
     if (invData && invData.length > 0) invoices = invData;
   } catch (e) {
     console.error('Failed to fetch portal data:', e);
@@ -37,9 +46,9 @@ export default async function PortalPage({ params }: { params: Promise<{ custome
               <tr>
                 <th scope="col" className="px-6 py-4">Invoice</th>
                 <th scope="col" className="px-6 py-4">Amount</th>
-                <th scope="col" className="px-6 py-4">Status</th>
+                <th scope="col" className="px-6 py-4">Payment Method</th>
                 <th scope="col" className="px-6 py-4">Date</th>
-                <th scope="col" className="px-6 py-4 text-right">Download</th>
+                <th scope="col" className="px-6 py-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -51,21 +60,20 @@ export default async function PortalPage({ params }: { params: Promise<{ custome
                       <span className="font-medium text-slate-900 dark:text-white">{invoice.invoice_number}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-medium">${Number(invoice.total_amount).toLocaleString()}</td>
+                  <td className="px-6 py-4 font-medium">AED {(Number(invoice.total_amount) || 0).toLocaleString()}</td>
                   <td className="px-6 py-4">
-                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                      invoice.status === 'draft' ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300' :
-                      'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
-                      {invoice.status}
+                     <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 uppercase">
+                      {invoice.payment_method || 'Paid'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">{invoice.date}</td>
+                  <td className="px-6 py-4">{invoice.date || '—'}</td>
                   <td className="px-6 py-4 text-right">
-                    <button className="text-emerald-700 hover:text-emerald-600 flex items-center justify-end gap-1 w-full text-sm font-medium">
-                      <Download className="w-4 h-4" /> PDF
-                    </button>
+                    <Link
+                      href={`/dashboard/invoices/${invoice.id}`}
+                      className="text-emerald-700 hover:text-emerald-600 inline-flex items-center gap-1 text-sm font-medium"
+                    >
+                      <Download className="w-4 h-4" /> View / PDF
+                    </Link>
                   </td>
                 </tr>
               ))}

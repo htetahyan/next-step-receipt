@@ -245,20 +245,35 @@ export default function NewInvoicePage() {
           customerId = newCustomer.id;
        }
 
-       // Create Invoice
-       const { data: invoice, error: invoiceError } = await supabase
-         .from('invoices')
-         .insert([{
-            customer_id: customerId,
-            invoice_number: formData.invoiceNumber,
-            date: format(new Date(), 'yyyy-MM-dd'),
-            subtotal: subtotal,
-            vat_amount: vatAmount,
-            total_amount: totalAmount,
-            payment_method: (formData.paymentMethod || 'cash').toLowerCase()
-         }])
-         .select()
-         .single();
+        // Format invoice date for database (yyyy-MM-dd)
+        let invoiceDbDate = format(new Date(), 'yyyy-MM-dd');
+        if (formData.date) {
+          try {
+            const parts = formData.date.trim().split('-');
+            if (parts.length === 3) {
+              if (parts[0].length === 4) {
+                invoiceDbDate = formData.date.trim();
+              } else {
+                invoiceDbDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              }
+            }
+          } catch {}
+        }
+
+        // Create Invoice
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('invoices')
+          .insert([{
+             customer_id: customerId,
+             invoice_number: formData.invoiceNumber,
+             date: invoiceDbDate,
+             subtotal: subtotal,
+             vat_amount: vatAmount,
+             total_amount: totalAmount,
+             payment_method: (formData.paymentMethod || 'cash').toLowerCase()
+          }])
+          .select()
+          .single();
 
        if (invoiceError) throw invoiceError;
 

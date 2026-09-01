@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X, Wrench } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X, Wrench, Building2 } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { UserProfile, checkPermission, ModuleKey } from "@/lib/auth-permissions";
 import { useOnlineStatus } from "./ui/OfflineBanner";
@@ -55,7 +55,7 @@ export default function Sidebar({ profile }: SidebarProps) {
     { name: "Tour Packages", href: "/dashboard/tour-packages", icon: Briefcase, moduleKey: "tour_packages" },
     { name: "Custom Services", href: "/dashboard/custom-service", icon: Wrench, moduleKey: "custom_service" },
     { name: "Invoices", href: "/dashboard/invoices", icon: FileText, moduleKey: "invoices" },
-    { name: "Suppliers", href: "/dashboard/suppliers", icon: Briefcase, moduleKey: "suppliers" },
+    { name: "Suppliers", href: "/dashboard/suppliers", icon: Building2, moduleKey: "suppliers" },
     { name: "Data Migration", href: "/dashboard/migrate", icon: Database, moduleKey: "migration" },
     { name: "Settings", href: "/dashboard/settings", icon: Settings, moduleKey: "settings" },
   ];

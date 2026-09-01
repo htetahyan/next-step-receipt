@@ -43,6 +43,9 @@ export async function addDocument(data: {
       safeRevalidate('/dashboard/uae-visa');
       safeRevalidate('/dashboard/air-tickets');
       safeRevalidate('/dashboard/other-visa');
+      safeRevalidate('/dashboard/tour-packages');
+      safeRevalidate('/dashboard/custom-service');
+      safeRevalidate('/dashboard');
     }
     return { success: true };
   } catch (error: any) {

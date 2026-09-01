@@ -107,8 +107,8 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
               <tr key={item.id} className="min-h-[28px] border-b border-gray-200">
                 <td className="border-r-2 border-black py-2.5 px-3">{item.quantity}</td>
                 <td className="border-r-2 border-black py-2.5 px-3 text-left font-sans italic text-slate-700">{item.description}</td>
-                <td className="border-r-2 border-black py-2.5 px-3 text-right">{item.rate.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td className="py-2.5 px-3 text-right">{item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="border-r-2 border-black py-2.5 px-3 text-right">{(Number(item.rate) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="py-2.5 px-3 text-right">{(Number(item.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             ))
           ) : (
@@ -131,17 +131,17 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
           <tr className="font-bold border-t-2 border-black bg-emerald-50/20">
             <td colSpan={2} className="border-r-2 border-black"></td>
             <td className="border-r-2 border-black py-3 px-3 text-right uppercase text-emerald-900">Subtotal</td>
-            <td className="py-3 px-3 text-right">{data.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <td className="py-3 px-3 text-right">{(Number(data.subtotal) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
           </tr>
           <tr className="border-t border-black bg-white">
             <td colSpan={2} className="border-r-2 border-black"></td>
             <td className="border-r-2 border-black py-3 px-3 text-right font-bold uppercase text-emerald-900 bg-emerald-50/50">VAT {data.vatRate || 5}%</td>
-            <td className="py-3 px-3 text-right border-b-2 border-black">{data.vatAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <td className="py-3 px-3 text-right border-b-2 border-black">{(Number(data.vatAmount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
           </tr>
           <tr className="bg-[#064e3b] text-white font-bold border-2 border-black">
             <td colSpan={2} className="border-r-2 border-emerald-800"></td>
             <td className="border-r-2 border-emerald-800 py-3 px-3 text-right uppercase tracking-widest text-lg">Total AED</td>
-            <td className="py-3 px-3 text-right text-lg border-double border-b-4 border-white">{data.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <td className="py-3 px-3 text-right text-lg border-double border-b-4 border-white">{(Number(data.totalAmount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
           </tr>
         </tbody>
       </table>

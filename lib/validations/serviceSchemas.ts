@@ -15,12 +15,14 @@ export const baseFinancialsSchema = z.object({
   payment_method: z.string().default('Bank Transfer'),
 });
 
-export const baseServiceSchema = z.object({
+export const baseServiceFields = z.object({
   customerId: z.string().optional().nullable().or(z.literal('')),
   isNewCustomer: z.boolean().default(false),
   newCustomer: customerSchema.optional().nullable(),
   status: z.string().default('Open'),
-}).superRefine((data, ctx) => {
+});
+
+const refineCustomerSelection = (data: any, ctx: z.RefinementCtx) => {
   if (!data.isNewCustomer && (!data.customerId || data.customerId.trim() === '')) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -35,9 +37,11 @@ export const baseServiceSchema = z.object({
       path: ['newCustomer', 'name'],
     });
   }
-});
+};
 
-export const uaeVisaSchema = baseServiceSchema.extend({
+export const baseServiceSchema = baseServiceFields.superRefine(refineCustomerSelection);
+
+export const uaeVisaSchema = baseServiceFields.extend({
   category: z.string().default('Visit Visa (30 Days)'),
   details: z.object({
     visa_issued_date: z.string().optional().nullable().or(z.literal('')),
@@ -52,9 +56,9 @@ export const uaeVisaSchema = baseServiceSchema.extend({
     remark: z.string().optional().nullable().or(z.literal('')),
   }).passthrough(),
   financials: baseFinancialsSchema,
-});
+}).superRefine(refineCustomerSelection);
 
-export const airTicketSchema = baseServiceSchema.extend({
+export const airTicketSchema = baseServiceFields.extend({
   category: z.string().default('One Way'),
   details: z.object({
     travel_date: z.string().optional().nullable().or(z.literal('')),
@@ -73,9 +77,9 @@ export const airTicketSchema = baseServiceSchema.extend({
     remark: z.string().optional().nullable().or(z.literal('')),
   }).passthrough(),
   financials: baseFinancialsSchema,
-});
+}).superRefine(refineCustomerSelection);
 
-export const otherVisaSchema = baseServiceSchema.extend({
+export const otherVisaSchema = baseServiceFields.extend({
   category: z.string().default('Other Visa'),
   details: z.object({
     visa_supplier: z.string().optional().nullable().or(z.literal('')),
@@ -89,9 +93,9 @@ export const otherVisaSchema = baseServiceSchema.extend({
     remark: z.string().optional().nullable().or(z.literal('')),
   }).passthrough(),
   financials: baseFinancialsSchema,
-});
+}).superRefine(refineCustomerSelection);
 
-export const tourPackageSchema = baseServiceSchema.extend({
+export const tourPackageSchema = baseServiceFields.extend({
   category: z.string().default('Tour Package'),
   details: z.object({
     travel_date: z.string().optional().nullable().or(z.literal('')),
@@ -104,9 +108,9 @@ export const tourPackageSchema = baseServiceSchema.extend({
     remark: z.string().optional().nullable().or(z.literal('')),
   }).passthrough(),
   financials: baseFinancialsSchema,
-});
+}).superRefine(refineCustomerSelection);
 
-export const customServiceSchema = baseServiceSchema.extend({
+export const customServiceSchema = baseServiceFields.extend({
   category: z.string().min(1, 'Service name is required'),
   details: z.object({
     description: z.string().optional().nullable().or(z.literal('')),
@@ -121,7 +125,7 @@ export const customServiceSchema = baseServiceSchema.extend({
     remark: z.string().optional().nullable().or(z.literal('')),
   }).passthrough(),
   financials: baseFinancialsSchema,
-});
+}).superRefine(refineCustomerSelection);
 
 export type UAEVisaFormValues = z.infer<typeof uaeVisaSchema>;
 export type AirTicketFormValues = z.infer<typeof airTicketSchema>;

@@ -44,7 +44,7 @@ export const getCachedSuppliersAndRates = unstable_cache(
       const supabase = await createClient();
       const [suppliersRes, rateCardsRes] = await Promise.all([
         supabase.from('suppliers').select('id, name, services, contact_person, phone, email').order('name', { ascending: true }),
-        supabase.from('rate_cards').select('*').order('sort_order', { ascending: true })
+        supabase.from('rate_cards').select('id, visa_type, section, sort_order, supplier_costs, selling_price, sub_agent_price, other_agent_price, remark, required_documents, created_at, updated_at').order('sort_order', { ascending: true })
       ]);
 
       const suppliers = suppliersRes.data || [];

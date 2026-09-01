@@ -26,7 +26,7 @@ export async function getSettings() {
     .from('settings')
     .select('id, user_id, company_name, company_address, bank_name, bank_branch, bank_iban, bank_account_no')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   return data
 }
