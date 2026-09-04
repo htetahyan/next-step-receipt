@@ -183,3 +183,21 @@ h1, h2, h3, .font-serif {
   }
 }
 
+/* App-Like Compact Table & Sticky Header */
+.table-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  backdrop-filter: blur(8px);
+}
+
+.table-compact th {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.table-compact td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+

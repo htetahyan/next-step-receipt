@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy, LayoutGrid, List, Layers, Edit3, Pencil, Check } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, Plus, Filter, ChevronDown, Shield, X, Eye, Trash2, Loader2, PlusCircle, CheckCircle, AlertTriangle, Download, Phone, Calendar, FileSpreadsheet, Copy, LayoutGrid, List, Layers, Edit3, Pencil, Check, MessageCircle, SlidersHorizontal, Command } from 'lucide-react';
 import Link from 'next/link';
 import { deleteCustomerService, quickUpdateService, updateServiceRefId } from '@/app/actions/services';
 import { autoCloseExpiredVisas } from '@/app/actions/auto-close-visas';
@@ -70,6 +70,67 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; ref: string; name: string } | null>(null);
   const [autoClosing, setAutoClosing] = useState(false);
+
+  // Desktop App Density & Smart Expiry Banner State
+  const [density, setDensity] = useState<'compact' | 'normal'>('compact');
+  const [isAlertsExpanded, setIsAlertsExpanded] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Load density preference from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('uae_visa_density');
+      if (saved === 'compact' || saved === 'normal') {
+        setDensity(saved);
+      }
+    } catch {}
+  }, []);
+
+  const toggleDensity = () => {
+    setDensity(prev => {
+      const next = prev === 'compact' ? 'normal' : 'compact';
+      try {
+        localStorage.setItem('uae_visa_density', next);
+      } catch {}
+      return next;
+    });
+  };
+
+  // WhatsApp reminder message builder
+  const getWhatsAppUrl = (phoneVal: string, nameVal: string, refVal: string, expiryVal: string) => {
+    if (!phoneVal) return null;
+    const clean = String(phoneVal).replace(/[^0-9]/g, '');
+    if (!clean) return null;
+    const text = `Hello ${nameVal || 'Customer'},\nRegarding your UAE Visit Visa (Ref: ${refVal || ''}, Expiry: ${expiryVal || 'N/A'}). Please let us know if you need to extend or renew.\nBest regards,\nNextStep Travel`;
+    return `https://wa.me/${clean}?text=${encodeURIComponent(text)}`;
+  };
+
+  // Keyboard Shortcuts (/ for search, d for density, Escape for reset)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'SELECT';
+
+      if (e.key === '/' && !isInput) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if (e.key === 'd' && !isInput && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        toggleDensity();
+      } else if (e.key === 'Escape') {
+        if (isDrawerOpen) setIsDrawerOpen(false);
+        else if (search) setSearch('');
+        else if (statusFilter !== 'all' || expiryFilter !== 'all' || supplierFilter !== 'all') {
+          setStatusFilter('all');
+          setExpiryFilter('all');
+          setSupplierFilter('all');
+          setCategoryFilter('all');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawerOpen, search, statusFilter, expiryFilter, supplierFilter]);
 
   const handleAutoClose = async () => {
     setAutoClosing(true);
@@ -300,6 +361,28 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
     return { totalAmount, totalReceiving, totalSupplierCost, totalProfit, count: filtered.length };
   }, [filtered]);
 
+  // Status counts for quick segment tabs
+  const statusCounts = useMemo(() => {
+    let open = 0, inProgress = 0, closed = 0, cancelled = 0, refund = 0;
+    services.forEach(s => {
+      if (s.category === 'Tour Package' || String(s.category).toLowerCase().includes('tour package')) return;
+      if (s.status === 'Open') open++;
+      else if (s.status === 'In Progress') inProgress++;
+      else if (s.status === 'Closed') closed++;
+      else if (s.status === 'Cancelled') cancelled++;
+      else if (s.status === 'Refund Pending') refund++;
+    });
+    const nonTourCount = services.filter(s => s.category !== 'Tour Package' && !String(s.category).toLowerCase().includes('tour package')).length;
+    return {
+      all: nonTourCount,
+      open,
+      inProgress,
+      closed,
+      cancelled,
+      refund,
+    };
+  }, [services]);
+
   // Smart Expiry Alerts: Group by person (passport / name / customer_id), find latest active visa per person
   const expiryAlertData = useMemo(() => {
     const byPerson = new Map<string, any[]>();
@@ -487,49 +570,68 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
   };
 
   return (
-    <div className="space-y-6 pb-16">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-6">
-        <div>
-          <h1 className="text-3xl font-serif font-normal tracking-tight flex items-center gap-3">
-            <Shield className="w-7 h-7 text-[#D97757] opacity-80" />
-            UAE Visa Tracker
-          </h1>
-          <p className="text-sm opacity-60 mt-1 font-mono">{summary.count} records</p>
+    <div className="space-y-3.5 pb-16">
+      {/* App Command Bar (Header) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--card-border)] pb-3.5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-[#D97757]/10 text-[#D97757] border border-[#D97757]/20">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">
+                UAE Visa Tracker
+              </h1>
+              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--sidebar-bg)] border border-[var(--card-border)] opacity-75">
+                {summary.count} records
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Table Density Switcher */}
+          <button
+            onClick={toggleDensity}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-2.5 py-1.5 text-xs font-semibold hover:bg-[var(--sidebar-bg)] transition-all shadow-xs cursor-pointer"
+            title="Toggle Density: Compact / Normal (Hotkey: D)"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#D97757]" />
+            <span>{density === 'compact' ? 'Compact' : 'Normal'}</span>
+            <kbd className="hidden sm:inline-block text-[9px] font-mono px-1 py-0.2 rounded bg-[var(--card-border)] opacity-60">D</kbd>
+          </button>
+
           {/* Export Dropdown Menu */}
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="inline-flex items-center gap-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-2.5 text-sm font-medium hover:bg-[var(--sidebar-bg)] transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--sidebar-bg)] transition-all shadow-xs cursor-pointer"
             >
-              <FileSpreadsheet className="h-4 w-4 text-green-600" />
-              <span>Export (.xlsx)</span>
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              <FileSpreadsheet className="h-3.5 w-3.5 text-green-600" />
+              <span>Export</span>
+              <ChevronDown className="h-3 w-3 opacity-60" />
             </button>
 
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[var(--card-border)] bg-[var(--background)] p-1.5 shadow-xl z-50 text-xs">
-                <div className="px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wider opacity-50 border-b border-[var(--card-border)] mb-1">
+              <div className="absolute right-0 mt-2 w-60 rounded-xl border border-[var(--card-border)] bg-[var(--background)] p-1.5 shadow-xl z-50 text-xs">
+                <div className="px-3 py-1.5 font-semibold text-[10px] uppercase tracking-wider opacity-50 border-b border-[var(--card-border)] mb-1">
                   Export Options
                 </div>
                 <button
                   onClick={() => exportData(filtered, 'UAE_Visa_Filtered', 'xlsx')}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium cursor-pointer"
                 >
-                  <span>Export Filtered List (.xlsx)</span>
-                  <span className="font-mono text-[10px] opacity-60">{filtered.length}</span>
+                  <span>Export Filtered List</span>
+                  <span className="font-mono text-[10px] opacity-60">.xlsx</span>
                 </button>
                 <button
                   onClick={() => {
                     const thisMonthItems = services.filter(s => getExpiryInfo(s).isExpiringThisMonth);
                     exportData(thisMonthItems, `UAE_Visa_Expiring_${dateInfo.currentMonthName}`, 'xlsx');
                   }}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium text-amber-600 dark:text-amber-400"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium text-amber-600 dark:text-amber-400 cursor-pointer"
                 >
-                  <span>Expiring This Month ({dateInfo.currentMonthName})</span>
+                  <span>Expiring This Month</span>
                   <span className="font-mono text-[10px] opacity-80">.xlsx</span>
                 </button>
                 <button
@@ -537,25 +639,25 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                     const nextMonthItems = services.filter(s => getExpiryInfo(s).isExpiringNextMonth);
                     exportData(nextMonthItems, `UAE_Visa_Expiring_${dateInfo.nextMonthName}`, 'xlsx');
                   }}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium text-blue-600 dark:text-blue-400"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium text-blue-600 dark:text-blue-400 cursor-pointer"
                 >
-                  <span>Expiring Next Month ({dateInfo.nextMonthName})</span>
+                  <span>Expiring Next Month</span>
                   <span className="font-mono text-[10px] opacity-80">.xlsx</span>
                 </button>
                 <button
                   onClick={() => exportData(services, 'UAE_Visa_All_Records', 'xlsx')}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium cursor-pointer"
                 >
-                  <span>Export All Records (.xlsx)</span>
-                  <span className="font-mono text-[10px] opacity-60">{services.length}</span>
+                  <span>Export All Records</span>
+                  <span className="font-mono text-[10px] opacity-60">.xlsx</span>
                 </button>
                 <div className="border-t border-[var(--card-border)] my-1" />
                 <button
                   onClick={() => exportData(filtered, 'UAE_Visa_Filtered', 'csv')}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium opacity-80"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium opacity-80 cursor-pointer"
                 >
-                  <span>Export as CSV (.csv)</span>
-                  <span className="font-mono text-[10px] opacity-60">CSV</span>
+                  <span>Export as CSV</span>
+                  <span className="font-mono text-[10px] opacity-60">.csv</span>
                 </button>
               </div>
             )}
@@ -564,229 +666,322 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
           <button
             onClick={handleAutoClose}
             disabled={autoClosing}
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--card-border)] px-4 py-2.5 text-sm font-medium transition-all hover:bg-[var(--sidebar-bg)] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--card-border)] px-3 py-1.5 text-xs font-medium transition-all hover:bg-[var(--sidebar-bg)] disabled:opacity-50 cursor-pointer"
             title="Close all visas where expiry date has passed"
           >
-            {autoClosing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 opacity-70" />}
-            {autoClosing ? 'Closing...' : 'Auto-Close Expired'}
+            {autoClosing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />}
+            <span>Auto-Close</span>
           </button>
 
           <Link
             href="/dashboard/uae-visa/new"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] transition-all hover:opacity-90 shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#D97757] px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:opacity-90 shadow-sm"
           >
-            <Plus className="h-4 w-4" />
-            New Visa Record
+            <Plus className="h-3.5 w-3.5" />
+            <span>New Visa</span>
           </Link>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Amount', value: summary.totalAmount, color: 'text-slate-900 dark:text-white' },
-          { label: 'Receiving', value: summary.totalReceiving, color: 'text-blue-600' },
-          { label: 'Supplier Cost', value: summary.totalSupplierCost, color: 'text-amber-600' },
-          { label: 'Gross Profit', value: summary.totalProfit, color: summary.totalProfit >= 0 ? 'text-green-600' : 'text-red-600' },
-        ].map(card => (
-          <div key={card.label} className="card-anthropic p-5">
-            <div className="text-xs uppercase tracking-wider opacity-50 mb-2">{card.label}</div>
-            <div className={`text-xl font-mono font-bold ${card.color}`}>
-              {card.value.toLocaleString()} <span className="text-xs font-normal opacity-60">AED</span>
-            </div>
+      {/* Compact Metric Ribbon (Replaces 4 large KPI cards to save ~120px) */}
+      <div className="card-anthropic px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap divide-x divide-[var(--card-border)]">
+          <div className="flex items-center gap-1.5">
+            <span className="opacity-50 uppercase tracking-wider font-semibold text-[10px]">Total:</span>
+            <span className="font-mono font-bold text-sm">{summary.totalAmount.toLocaleString()} <span className="text-[10px] font-normal opacity-60">AED</span></span>
           </div>
-        ))}
+          <div className="flex items-center gap-1.5 pl-3 sm:pl-4">
+            <span className="opacity-50 uppercase tracking-wider font-semibold text-[10px]">Receiving:</span>
+            <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">{summary.totalReceiving.toLocaleString()} <span className="text-[10px] font-normal opacity-60">AED</span></span>
+          </div>
+          <div className="flex items-center gap-1.5 pl-3 sm:pl-4">
+            <span className="opacity-50 uppercase tracking-wider font-semibold text-[10px]">Supplier Cost:</span>
+            <span className="font-mono font-bold text-sm text-amber-600 dark:text-amber-400">{summary.totalSupplierCost.toLocaleString()} <span className="text-[10px] font-normal opacity-60">AED</span></span>
+          </div>
+          <div className="flex items-center gap-1.5 pl-3 sm:pl-4">
+            <span className="opacity-50 uppercase tracking-wider font-semibold text-[10px]">Gross Profit:</span>
+            <span className={`font-mono font-bold text-sm ${summary.totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}`}>
+              {summary.totalProfit >= 0 ? `+${summary.totalProfit.toLocaleString()}` : summary.totalProfit.toLocaleString()} <span className="text-[10px] font-normal opacity-60">AED</span>
+            </span>
+          </div>
+        </div>
+
+        {/* 1-Click Status Filter Shortcuts */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {expiryAlertData.expiredList.length > 0 && (
+            <button
+              onClick={() => {
+                setExpiryFilter(expiryFilter === 'expired' ? 'all' : 'expired');
+                setStatusFilter('all');
+              }}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-bold font-mono transition-all flex items-center gap-1 cursor-pointer ${
+                expiryFilter === 'expired'
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'bg-red-500/10 text-red-600 hover:bg-red-500/20'
+              }`}
+              title="Click to view Expired Visas in table"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+              <span>{expiryAlertData.expiredList.length} Expired</span>
+            </button>
+          )}
+          {expiryAlertData.thisMonthList.length > 0 && (
+            <button
+              onClick={() => {
+                setExpiryFilter(expiryFilter === 'this_month' ? 'all' : 'this_month');
+                setStatusFilter('all');
+              }}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-bold font-mono transition-all flex items-center gap-1 cursor-pointer ${
+                expiryFilter === 'this_month'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
+              }`}
+              title="Click to view Visas expiring this month in table"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span>{expiryAlertData.thisMonthList.length} This Month</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Smart Expiry Alerts Panel */}
+      {/* Collapsible Smart Expiry Ticker Banner (Saves ~280px vertical space) */}
       {expiryAlertData.allAlerts.length > 0 && (
-        <div className="rounded-xl border border-amber-300/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-4 space-y-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/50 dark:border-amber-900/30 pb-3">
-            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-semibold text-sm">
-              <AlertTriangle className="w-5 h-5 text-amber-600 animate-pulse" />
-              <span>Smart Expiry Tracker</span>
-              <span className="text-xs font-normal opacity-75">({expiryAlertData.allAlerts.length} clients need attention)</span>
+        <div className="rounded-xl border border-amber-300/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 p-3 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold">
+              <AlertTriangle className="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
+              <span>
+                Smart Expiry Tracker: <strong className="font-mono text-amber-700 dark:text-amber-400">{expiryAlertData.allAlerts.length}</strong> clients need attention
+              </span>
+              <span className="opacity-60 font-normal hidden md:inline">
+                ({expiryAlertData.thisMonthList.length} this month, {expiryAlertData.nextMonthList.length} next month, {expiryAlertData.expiredList.length} expired)
+              </span>
             </div>
 
-            {/* Quick Export & Filter Tabs */}
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex p-0.5 bg-amber-100/80 dark:bg-amber-900/40 rounded-lg text-xs font-medium">
-                <button
-                  onClick={() => setExpiryTab('all')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
-                    expiryTab === 'all' ? 'bg-white dark:bg-amber-800 text-amber-900 dark:text-amber-100 shadow-xs' : 'opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  All ({expiryAlertData.allAlerts.length})
-                </button>
-                <button
-                  onClick={() => setExpiryTab('this_month')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
-                    expiryTab === 'this_month' ? 'bg-amber-500 text-white shadow-xs' : 'opacity-70 hover:opacity-100 text-amber-900 dark:text-amber-200'
-                  }`}
-                >
-                  This Month ({expiryAlertData.thisMonthList.length})
-                </button>
-                <button
-                  onClick={() => setExpiryTab('next_month')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
-                    expiryTab === 'next_month' ? 'bg-blue-600 text-white shadow-xs' : 'opacity-70 hover:opacity-100 text-amber-900 dark:text-amber-200'
-                  }`}
-                >
-                  Next Month ({expiryAlertData.nextMonthList.length})
-                </button>
-                <button
-                  onClick={() => setExpiryTab('expired')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${
-                    expiryTab === 'expired' ? 'bg-red-600 text-white shadow-xs' : 'opacity-70 hover:opacity-100 text-amber-900 dark:text-amber-200'
-                  }`}
-                >
-                  Expired ({expiryAlertData.expiredList.length})
-                </button>
-              </div>
-
-              {/* Direct Export Buttons for Expiring Months */}
               <button
                 onClick={() => {
-                  const items = expiryAlertData.thisMonthList.map(a => a.service);
-                  exportData(items, `Expiring_This_Month_${dateInfo.currentMonthName}`, 'xlsx');
+                  setExpiryFilter(expiryFilter === 'in_30_days' ? 'all' : 'in_30_days');
+                  setStatusFilter('all');
                 }}
-                className="px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-100/60 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 hover:bg-amber-200 text-xs font-medium flex items-center gap-1 transition-colors"
-                title="Export Visas Expiring This Month to Excel"
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                  expiryFilter === 'in_30_days'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-amber-200/60 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 hover:bg-amber-300/60'
+                }`}
               >
-                <Download className="w-3 h-3 text-amber-700 dark:text-amber-400" />
-                This Month (.xlsx)
+                {expiryFilter === 'in_30_days' ? 'Showing Expiring ✕' : 'Filter in Table'}
               </button>
+
               <button
-                onClick={() => {
-                  const items = expiryAlertData.nextMonthList.map(a => a.service);
-                  exportData(items, `Expiring_Next_Month_${dateInfo.nextMonthName}`, 'xlsx');
-                }}
-                className="px-2.5 py-1 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 hover:bg-blue-100 text-xs font-medium flex items-center gap-1 transition-colors"
-                title="Export Visas Expiring Next Month to Excel"
+                onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
+                className="px-2.5 py-1 rounded-md border border-amber-300 dark:border-amber-800 bg-white dark:bg-amber-950 text-amber-900 dark:text-amber-200 text-xs font-semibold hover:bg-amber-50 dark:hover:bg-amber-900 transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <Download className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                Next Month (.xlsx)
+                <span>{isAlertsExpanded ? 'Hide Cards' : 'View Cards'}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isAlertsExpanded ? 'rotate-180' : ''}`} />
               </button>
             </div>
           </div>
 
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {displayedAlerts.map(({ service: s, daysLeft, isExpired, isThisMonth, isNextMonth, totalRecords }) => {
-              const cust = s.customers;
-              const details = s.details as any;
-              const phoneNum = cust?.phone || details?.phone;
+          {/* Expandable Cards Grid */}
+          {isAlertsExpanded && (
+            <div className="pt-3 border-t border-amber-200/60 dark:border-amber-900/40 space-y-3">
+              {/* Quick Export & Filter Tabs inside expanded cards */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="inline-flex p-0.5 bg-amber-100/80 dark:bg-amber-900/40 rounded-lg text-xs font-medium">
+                  <button
+                    onClick={() => setExpiryTab('all')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      expiryTab === 'all' ? 'bg-white dark:bg-amber-800 text-amber-900 dark:text-amber-100 shadow-xs' : 'opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    All ({expiryAlertData.allAlerts.length})
+                  </button>
+                  <button
+                    onClick={() => setExpiryTab('this_month')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      expiryTab === 'this_month' ? 'bg-amber-500 text-white shadow-xs' : 'opacity-70 hover:opacity-100 text-amber-900 dark:text-amber-200'
+                    }`}
+                  >
+                    This Month ({expiryAlertData.thisMonthList.length})
+                  </button>
+                  <button
+                    onClick={() => setExpiryTab('next_month')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      expiryTab === 'next_month' ? 'bg-blue-600 text-white shadow-xs' : 'opacity-70 hover:opacity-100 text-amber-900 dark:text-amber-200'
+                    }`}
+                  >
+                    Next Month ({expiryAlertData.nextMonthList.length})
+                  </button>
+                  <button
+                    onClick={() => setExpiryTab('expired')}
+                    className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                      expiryTab === 'expired' ? 'bg-red-600 text-white shadow-xs' : 'opacity-70 hover:opacity-100 text-amber-900 dark:text-amber-200'
+                    }`}
+                  >
+                    Expired ({expiryAlertData.expiredList.length})
+                  </button>
+                </div>
 
-              return (
-                <div
-                  key={s.id}
-                  className={`p-3 rounded-lg border text-xs flex flex-col justify-between gap-2 transition-all ${
-                    isExpired
-                      ? 'bg-red-100/80 dark:bg-red-950/50 border-red-300 dark:border-red-800 text-red-950 dark:text-red-100'
-                      : isThisMonth
-                      ? 'bg-amber-100/60 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100'
-                      : isNextMonth
-                      ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100'
-                      : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-bold text-sm line-clamp-1">{cust?.name || details?.customer_name || 'Unknown Customer'}</div>
-                      
-                      {/* Customer Contact Info: Passport & Phone */}
-                      <div className="text-[11px] opacity-80 font-mono space-y-0.5 mt-0.5">
-                        <div>Passport: <span className="font-semibold">{cust?.passport_no || details?.passport_no || '—'}</span></div>
-                        {phoneNum && (
-                          <div className="flex items-center gap-1 font-sans text-slate-800 dark:text-slate-200 font-medium">
-                            <Phone className="w-3 h-3 text-[#D97757]" />
-                            <a href={`tel:${phoneNum}`} className="hover:underline text-[#D97757] font-semibold">{phoneNum}</a>
-                          </div>
-                        )}
-                      </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      const items = expiryAlertData.thisMonthList.map(a => a.service);
+                      exportData(items, `Expiring_This_Month_${dateInfo.currentMonthName}`, 'xlsx');
+                    }}
+                    className="px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 hover:bg-amber-100 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3 h-3 text-amber-700" />
+                    This Month (.xlsx)
+                  </button>
+                  <button
+                    onClick={() => {
+                      const items = expiryAlertData.nextMonthList.map(a => a.service);
+                      exportData(items, `Expiring_Next_Month_${dateInfo.nextMonthName}`, 'xlsx');
+                    }}
+                    className="px-2.5 py-1 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 hover:bg-blue-100 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3 h-3 text-blue-600" />
+                    Next Month (.xlsx)
+                  </button>
+                </div>
+              </div>
 
-                      {totalRecords > 1 && (
-                        <div className="text-[10px] font-medium text-blue-600 dark:text-blue-400 mt-1">
-                          {totalRecords} visa extensions on record
-                        </div>
-                      )}
-                    </div>
+              {/* Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {displayedAlerts.map(({ service: s, daysLeft, isExpired, isThisMonth, isNextMonth, totalRecords }) => {
+                  const cust = s.customers;
+                  const details = s.details as any;
+                  const phoneNum = cust?.phone || details?.phone;
 
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                  return (
+                    <div
+                      key={s.id}
+                      className={`p-3 rounded-lg border text-xs flex flex-col justify-between gap-2 transition-all ${
                         isExpired
-                          ? 'bg-red-600 text-white animate-pulse'
+                          ? 'bg-red-100/80 dark:bg-red-950/50 border-red-300 dark:border-red-800 text-red-950 dark:text-red-100'
                           : isThisMonth
-                          ? 'bg-amber-500 text-white'
+                          ? 'bg-amber-100/60 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100'
                           : isNextMonth
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-500 text-white'
+                          ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100'
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                       }`}
                     >
-                      {isExpired
-                        ? `EXPIRED (${Math.abs(daysLeft)}d ago)`
-                        : isThisMonth
-                        ? `This Month (${daysLeft}d left)`
-                        : isNextMonth
-                        ? `Next Month (${daysLeft}d left)`
-                        : `${daysLeft}d left`}
-                    </span>
-                  </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-bold text-sm line-clamp-1">{cust?.name || details?.customer_name || 'Unknown Customer'}</div>
+                          
+                          <div className="text-[11px] opacity-80 font-mono space-y-0.5 mt-0.5">
+                            <div>Passport: <span className="font-semibold">{cust?.passport_no || details?.passport_no || '—'}</span></div>
+                            {phoneNum && (
+                              <div className="flex items-center gap-1.5 font-sans text-slate-800 dark:text-slate-200 font-medium">
+                                <Phone className="w-3 h-3 text-[#D97757]" />
+                                <a href={`tel:${phoneNum}`} className="hover:underline text-[#D97757] font-semibold">{phoneNum}</a>
+                                {getWhatsAppUrl(phoneNum, cust?.name || details?.customer_name, s.reference_id, details?.visa_expiry_date) && (
+                                  <a
+                                    href={getWhatsAppUrl(phoneNum, cust?.name || details?.customer_name, s.reference_id, details?.visa_expiry_date)!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-0.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 transition-colors"
+                                    title="WhatsApp client"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
 
-                  <div className="flex items-center justify-between text-[11px] border-t border-black/5 dark:border-white/10 pt-2 mt-1">
-                    <div className="font-mono">
-                      Expiry: <span className="font-bold">{details?.visa_expiry_date || '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Link
-                        href={`/dashboard/uae-visa/new?customerId=${cust?.id || s.customer_id || ''}`}
-                        className="px-2.5 py-1 rounded-md bg-[#D97757] text-white hover:bg-[#c26243] font-semibold transition-colors flex items-center gap-1 text-[11px] shadow-xs"
-                      >
-                        <PlusCircle className="w-3.5 h-3.5" /> Extend
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                          {totalRecords > 1 && (
+                            <div className="text-[10px] font-medium text-blue-600 dark:text-blue-400 mt-1">
+                              {totalRecords} visa extensions on record
+                            </div>
+                          )}
+                        </div>
 
-            {displayedAlerts.length === 0 && (
-              <div className="col-span-full py-8 text-center opacity-60 text-xs font-serif">
-                No visa expiry alerts found for the selected tab.
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                            isExpired
+                              ? 'bg-red-600 text-white animate-pulse'
+                              : isThisMonth
+                              ? 'bg-amber-500 text-white'
+                              : isNextMonth
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-500 text-white'
+                          }`}
+                        >
+                          {isExpired
+                            ? `EXPIRED (${Math.abs(daysLeft)}d ago)`
+                            : isThisMonth
+                            ? `This Month (${daysLeft}d left)`
+                            : isNextMonth
+                            ? `Next Month (${daysLeft}d left)`
+                            : `${daysLeft}d left`}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] border-t border-black/5 dark:border-white/10 pt-2 mt-1">
+                        <div className="font-mono">
+                          Expiry: <span className="font-bold">{details?.visa_expiry_date || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/dashboard/uae-visa/new?customerId=${cust?.id || s.customer_id || ''}`}
+                            className="px-2.5 py-1 rounded-md bg-[#D97757] text-white hover:bg-[#c26243] font-semibold transition-colors flex items-center gap-1 text-[11px] shadow-xs"
+                          >
+                            <PlusCircle className="w-3.5 h-3.5" /> Extend
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {displayedAlerts.length === 0 && (
+                  <div className="col-span-full py-6 text-center opacity-60 text-xs font-serif">
+                    No visa expiry alerts found for the selected tab.
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Odoo Control Panel & Search Bar */}
-      <div className="card-anthropic p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
+      <div className="card-anthropic p-3.5 space-y-2.5 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 justify-between">
           {/* Search Box */}
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
             <input
+              ref={searchRef}
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name, passport, phone, ref ID, supplier..."
-              className="w-full pl-10 pr-10 py-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
+              placeholder="Search name, passport, phone, ref ID, supplier... (Press / to focus)"
+              className="w-full pl-9 pr-14 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
             />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80">
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {search && (
+                <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80 p-0.5 cursor-pointer">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1 rounded bg-[var(--sidebar-bg)] border border-[var(--card-border)] opacity-50">
+                /
+              </kbd>
+            </div>
           </div>
 
           {/* Odoo View Mode Toggles & Action Controls */}
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             {/* View Mode Switcher */}
-            <div className="inline-flex p-1 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg">
+            <div className="inline-flex p-0.5 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === 'list'
                     ? 'bg-[var(--card-bg)] text-[#D97757] shadow-xs'
                     : 'opacity-65 hover:opacity-100'
@@ -798,7 +993,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === 'kanban'
                     ? 'bg-[#D97757] text-white shadow-xs'
                     : 'opacity-65 hover:opacity-100'
@@ -812,19 +1007,86 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
 
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
                 showFilters || statusFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || expiryFilter !== 'all'
                   ? 'border-[#D97757] text-[#D97757] bg-[#D97757]/5'
                   : 'border-[var(--card-border)] hover:bg-[var(--sidebar-bg)]'
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
-              Filters
+              <span>Filters</span>
               {(statusFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || expiryFilter !== 'all') && (
-                <span className="w-2 h-2 rounded-full bg-[#D97757]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D97757]" />
               )}
             </button>
           </div>
+        </div>
+
+        {/* Quick Status Segment Tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto pt-1 border-t border-[var(--card-border)] text-xs">
+          {[
+            { id: 'all', label: 'All Visas', count: statusCounts.all },
+            { id: 'Open', label: 'Open', count: statusCounts.open },
+            { id: 'In Progress', label: 'In Progress', count: statusCounts.inProgress },
+            { id: 'expiring_soon', label: 'Expiring Soon', count: expiryAlertData.thisMonthList.length + expiryAlertData.nextMonthList.length },
+            { id: 'expired_active', label: 'Expired', count: expiryAlertData.expiredList.length },
+            { id: 'Closed', label: 'Closed', count: statusCounts.closed },
+          ].map(tab => {
+            const isSelected = (
+              (tab.id === 'all' && statusFilter === 'all' && expiryFilter === 'all') ||
+              (tab.id === 'expiring_soon' && (expiryFilter === 'this_month' || expiryFilter === 'in_30_days')) ||
+              (tab.id === 'expired_active' && expiryFilter === 'expired') ||
+              (statusFilter === tab.id && expiryFilter === 'all')
+            );
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (tab.id === 'all') {
+                    setStatusFilter('all');
+                    setExpiryFilter('all');
+                  } else if (tab.id === 'expiring_soon') {
+                    setStatusFilter('all');
+                    setExpiryFilter('in_30_days');
+                  } else if (tab.id === 'expired_active') {
+                    setStatusFilter('all');
+                    setExpiryFilter('expired');
+                  } else {
+                    setStatusFilter(tab.id);
+                    setExpiryFilter('all');
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-md font-medium transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#D97757] text-white shadow-xs font-semibold'
+                    : 'bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)] opacity-80 hover:opacity-100'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className={`px-1.5 py-0.2 rounded-full font-mono text-[10px] ${
+                  isSelected ? 'bg-white/25 text-white' : 'bg-[var(--background)] opacity-70'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+
+          {(statusFilter !== 'all' || expiryFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || search) && (
+            <button
+              onClick={() => {
+                setStatusFilter('all');
+                setExpiryFilter('all');
+                setSupplierFilter('all');
+                setCategoryFilter('all');
+                setSearch('');
+              }}
+              className="ml-auto text-[11px] text-[#D97757] hover:underline shrink-0 font-medium px-2 py-1 cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
 
         {showFilters && (
@@ -925,22 +1187,22 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
       ) : (
         /* List / Tree View */
         <div className="card-anthropic overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-[10px] uppercase tracking-wider opacity-70">
+          <div className="overflow-x-auto max-h-[calc(100vh-230px)] relative">
+            <table className="w-full text-left">
+              <thead className="sticky top-0 z-10 border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] backdrop-blur-md uppercase tracking-wider opacity-90 shadow-xs">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Ref ID</th>
-                  <th className="px-4 py-3 font-medium">Customer / Phone</th>
-                  <th className="px-4 py-3 font-medium">Mode / Category</th>
-                  <th className="px-4 py-3 font-medium">Supplier</th>
-                  <th className="px-4 py-3 font-medium">Duration</th>
-                  <th className="px-4 py-3 font-medium">Visa Expiry</th>
-                  <th className="px-4 py-3 font-medium text-right">Amount</th>
-                  <th className="px-4 py-3 font-medium text-right">Receiving</th>
-                  <th className="px-4 py-3 font-medium text-right">Supplier Cost</th>
-                  <th className="px-4 py-3 font-medium">Payment</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium text-right">Actions</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Ref ID</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Customer / Phone</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Mode / Category</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Supplier</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Duration</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Visa Expiry</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold text-right`}>Amount</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold text-right`}>Receiving</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold text-right`}>Supplier Cost</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Payment</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold`}>Status</th>
+                  <th className={`${density === 'compact' ? 'px-3 py-2 text-[10px]' : 'px-4 py-3 text-xs'} font-semibold text-right`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--card-border)]">
@@ -950,6 +1212,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                   const fin = service.financials as any;
                   const { expiryStr, isExpiringThisMonth, isExpiringNextMonth, isExpired, daysRemaining } = getExpiryInfo(service);
                   const phoneNum = customer?.phone || details?.phone;
+                  const cellPad = density === 'compact' ? 'px-3 py-1.5' : 'px-4 py-2.5';
 
                   return (
                     <tr
@@ -967,7 +1230,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                       }`}
                     >
                       <td 
-                        className="px-4 py-3"
+                        className={cellPad}
                         onClick={(e) => {
                           if (canEdit) {
                             e.stopPropagation();
@@ -1024,17 +1287,20 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                       </td>
                       
                       {/* Customer & Phone Details */}
-                      <td className="px-4 py-3">
+                      <td className={cellPad}>
                         <div>
-                          <div className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-[#D97757] transition-colors flex items-center gap-2">
-                            <span>{customer?.name || details?.customer_name || '—'}</span>
+                          <div className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-[#D97757] transition-colors flex items-center gap-1.5">
+                            <span className={density === 'compact' ? 'text-xs' : 'text-sm'}>{customer?.name || details?.customer_name || '—'}</span>
                             {details?.passengers && details.passengers.length > 1 && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono">
+                              <span 
+                                className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono cursor-help shrink-0"
+                                title={`Travelers (${details.passengers.length}):\n${details.passengers.map((p: any, i: number) => `${i + 1}. ${p.name || 'Pax'} (${p.passport_no || 'No Pass'})`).join('\n')}`}
+                              >
                                 {details.passengers.length} Pax
                               </span>
                             )}
                           </div>
-                          {details?.passengers && details.passengers.length > 1 && (
+                          {details?.passengers && details.passengers.length > 1 && density === 'normal' && (
                             <div className="text-[11px] text-[#D97757] opacity-90 truncate max-w-[260px] font-sans mt-0.5" title={details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}>
                               Travelers: {details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}
                             </div>
@@ -1044,10 +1310,22 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                             {phoneNum && (
                               <>
                                 <span className="opacity-30">•</span>
-                                <span className="text-[#D97757] font-sans font-semibold flex items-center gap-0.5">
+                                <span className="text-[#D97757] font-sans font-semibold flex items-center gap-1">
                                   <Phone className="w-2.5 h-2.5" />
                                   {phoneNum}
                                 </span>
+                                {getWhatsAppUrl(phoneNum, customer?.name || details?.customer_name, service.reference_id, expiryStr) && (
+                                  <a
+                                    href={getWhatsAppUrl(phoneNum, customer?.name || details?.customer_name, service.reference_id, expiryStr)!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className="p-0.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 transition-colors inline-flex items-center"
+                                    title="Send WhatsApp reminder"
+                                  >
+                                    <MessageCircle className="w-3 h-3" />
+                                  </a>
+                                )}
                               </>
                             )}
                             {details?.handled_by && (
@@ -1062,15 +1340,15 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 text-xs font-medium">{service.category}</td>
-                      <td className="px-4 py-3 text-xs">{details?.visa_supplier || '—'}</td>
-                      <td className="px-4 py-3 text-xs">{details?.visa_duration || '—'}</td>
+                      <td className={`${cellPad} ${density === 'compact' ? 'text-xs' : 'text-sm'} font-medium`}>{service.category}</td>
+                      <td className={`${cellPad} ${density === 'compact' ? 'text-xs' : 'text-sm'}`}>{details?.visa_supplier || '—'}</td>
+                      <td className={`${cellPad} ${density === 'compact' ? 'text-xs' : 'text-sm'}`}>{details?.visa_duration || '—'}</td>
                       
                       {/* Expiry Column */}
-                      <td className="px-4 py-3 text-xs">
+                      <td className={`${cellPad} ${density === 'compact' ? 'text-xs' : 'text-sm'}`}>
                         {expiryStr ? (
                           <div className="flex flex-col gap-0.5">
-                            <div className={`font-mono text-xs font-semibold ${
+                            <div className={`font-mono font-semibold ${density === 'compact' ? 'text-xs' : 'text-sm'} ${
                               isExpired
                                 ? 'text-red-600 dark:text-red-400'
                                 : isExpiringThisMonth 
@@ -1082,7 +1360,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                               {expiryStr}
                             </div>
                             {(isExpiringThisMonth || isExpiringNextMonth || isExpired) && (
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider font-mono w-max ${
+                              <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase tracking-wider font-mono w-max ${
                                 isExpired
                                   ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 animate-pulse'
                                   : isExpiringThisMonth 
@@ -1102,12 +1380,12 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                         )}
                       </td>
 
-                      <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.amount || 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-blue-600">{Number(fin?.receiving_amount || 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-amber-600">{Number(fin?.supplier_cost || 0).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-xs capitalize">{fin?.payment_method || details?.payment_method || '—'}</td>
+                      <td className={`${cellPad} text-right font-mono ${density === 'compact' ? 'text-xs' : 'text-sm'}`}>{Number(fin?.amount || 0).toLocaleString()}</td>
+                      <td className={`${cellPad} text-right font-mono ${density === 'compact' ? 'text-xs' : 'text-sm'} font-semibold text-blue-600`}>{Number(fin?.receiving_amount || 0).toLocaleString()}</td>
+                      <td className={`${cellPad} text-right font-mono ${density === 'compact' ? 'text-xs' : 'text-sm'} text-amber-600`}>{Number(fin?.supplier_cost || 0).toLocaleString()}</td>
+                      <td className={`${cellPad} ${density === 'compact' ? 'text-xs' : 'text-sm'} capitalize`}>{fin?.payment_method || details?.payment_method || '—'}</td>
                       
-                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <td className={cellPad} onClick={e => e.stopPropagation()}>
                         <select
                           value={service.status}
                           onChange={async (e) => {
@@ -1121,7 +1399,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                               toast.error(res.error || 'Failed to update status');
                             }
                           }}
-                          className={`inline-block px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-wider border border-transparent hover:border-[var(--card-border)] bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#D97757]/40 ${STATUS_COLORS[service.status] || 'bg-gray-100 text-gray-600'}`}
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border border-transparent hover:border-[var(--card-border)] bg-transparent cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#D97757]/40 ${STATUS_COLORS[service.status] || 'bg-gray-100 text-gray-600'}`}
                         >
                           <option value="Open">Open</option>
                           <option value="In Progress">In Progress</option>
@@ -1131,7 +1409,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                         </select>
                       </td>
                       
-                      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                      <td className={`${cellPad} text-right`} onClick={e => e.stopPropagation()}>
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {/* Quick Edit Drawer Trigger */}
                           <button
@@ -1139,7 +1417,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                               setSelectedService(service);
                               setIsDrawerOpen(true);
                             }}
-                            className="p-1.5 rounded hover:bg-[var(--card-border)] text-[#D97757] transition-colors"
+                            className="p-1 rounded hover:bg-[var(--card-border)] text-[#D97757] transition-colors cursor-pointer"
                             title="Quick Edit Drawer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -1148,7 +1426,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                           {/* Extend Quick Action */}
                           <Link
                             href={`/dashboard/uae-visa/new?customerId=${service.customer_id}`}
-                            className="p-1.5 rounded hover:bg-[var(--card-border)] text-blue-600 hover:text-blue-700 transition-colors"
+                            className="p-1 rounded hover:bg-[var(--card-border)] text-blue-600 hover:text-blue-700 transition-colors"
                             title="Extend Visa"
                           >
                             <PlusCircle className="w-3.5 h-3.5" />
@@ -1168,7 +1446,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                                   }
                                 }
                               }}
-                              className="p-1.5 rounded hover:bg-[var(--card-border)] text-green-600 hover:text-green-700 transition-colors"
+                              className="p-1 rounded hover:bg-[var(--card-border)] text-green-600 hover:text-green-700 transition-colors cursor-pointer"
                               title="Clear/Close Visa"
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
@@ -1177,7 +1455,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
 
                           <Link
                             href={`/dashboard/uae-visa/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`}
-                            className="p-1.5 rounded hover:bg-[var(--card-border)] transition-colors"
+                            className="p-1 rounded hover:bg-[var(--card-border)] transition-colors"
                             title="Duplicate"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -1191,7 +1469,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                                 name: customer?.name || (details as any)?.customer_name || 'Visa Record'
                               })}
                               disabled={deletingId === service.id}
-                              className="p-1.5 rounded hover:bg-[var(--card-border)] hover:text-red-500 transition-colors"
+                              className="p-1 rounded hover:bg-[var(--card-border)] hover:text-red-500 transition-colors cursor-pointer"
                               title="Delete"
                             >
                               {deletingId === service.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}

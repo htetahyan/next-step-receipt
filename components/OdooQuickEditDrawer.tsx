@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, Shield, User, DollarSign, Calendar, FileText, CheckCircle, PlusCircle, Copy, Trash2, Loader2, Phone, ExternalLink, Eye, Download, Image as ImageIcon, Paperclip } from 'lucide-react';
+import { X, Save, Shield, User, DollarSign, Calendar, FileText, CheckCircle, PlusCircle, Copy, Trash2, Loader2, Phone, ExternalLink, Eye, Download, Image as ImageIcon, Paperclip, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { quickUpdateService, deleteCustomerService } from '@/app/actions/services';
@@ -38,6 +38,7 @@ export default function OdooQuickEditDrawer({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'documents' | 'passengers' | 'all'>('overview');
 
   // Form State
   const [referenceId, setReferenceId] = useState('');
@@ -131,6 +132,12 @@ export default function OdooQuickEditDrawer({
   const numReceiving = Number(receivingAmount) || 0;
   const numSupplierCost = Number(supplierCost) || 0;
   const grossProfit = numReceiving - numSupplierCost;
+
+  // WhatsApp reminder URL
+  const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+  const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+    `Hello ${customerName || 'Customer'},\nRegarding your UAE Visit Visa (Ref: ${referenceId || service?.reference_id || ''}, Expiry: ${visaExpiryDate || 'N/A'}). Please let us know if you need any assistance with extension or renewals.\nBest regards,\nNextStep Travel & Tourism`
+  )}` : null;
 
   const handleStageChange = async (nextStatus: string) => {
     if (nextStatus === status) return;
@@ -306,96 +313,195 @@ export default function OdooQuickEditDrawer({
               );
             })}
           </div>
+
+          {/* Segmented Navigation Tabs */}
+          <div className="flex items-center gap-1 border-b border-[var(--card-border)] -mb-3 pt-2 text-xs overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`px-3 py-1.5 font-medium border-b-2 transition-all cursor-pointer ${
+                activeTab === 'overview'
+                  ? 'border-[#D97757] text-[#D97757] font-semibold'
+                  : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+            >
+              Overview & Visa
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('financials')}
+              className={`px-3 py-1.5 font-medium border-b-2 transition-all cursor-pointer ${
+                activeTab === 'financials'
+                  ? 'border-[#D97757] text-[#D97757] font-semibold'
+                  : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+            >
+              Financials
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('documents')}
+              className={`px-3 py-1.5 font-medium border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'documents'
+                  ? 'border-[#D97757] text-[#D97757] font-semibold'
+                  : 'border-transparent opacity-60 hover:opacity-100'
+              }`}
+            >
+              <span>Documents</span>
+              {documents.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#D97757]/15 text-[#D97757] font-mono font-bold">
+                  {documents.length}
+                </span>
+              )}
+            </button>
+            {service.details?.passengers && service.details.passengers.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('passengers')}
+                className={`px-3 py-1.5 font-medium border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'passengers'
+                    ? 'border-[#D97757] text-[#D97757] font-semibold'
+                    : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                <span>Travelers</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#D97757]/15 text-[#D97757] font-mono font-bold">
+                  {service.details.passengers.length}
+                </span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('all')}
+              className={`px-3 py-1.5 font-medium border-b-2 transition-all cursor-pointer ml-auto text-[11px] ${
+                activeTab === 'all'
+                  ? 'border-[#D97757] text-[#D97757] font-semibold'
+                  : 'border-transparent opacity-40 hover:opacity-100'
+              }`}
+            >
+              View All
+            </button>
+          </div>
         </div>
 
         {/* Content Body - Scrollable */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 text-sm">
           
           {/* Section 1: Customer Info */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757] border-b border-[var(--card-border)] pb-1.5">
-              <User className="w-4 h-4" />
-              <span>Customer Information</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Full Name</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                  placeholder="Customer Name"
-                  className="w-full input-anthropic px-3 py-2 text-sm"
-                />
+          {(activeTab === 'overview' || activeTab === 'all') && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-1.5">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757]">
+                  <User className="w-4 h-4" />
+                  <span>Customer Information</span>
+                </div>
+                {waUrl && (
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors shadow-xs"
+                    title="Send WhatsApp Visa Message"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp Client</span>
+                  </a>
+                )}
               </div>
 
-              <div>
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Passport No</label>
-                <input
-                  type="text"
-                  value={passportNo}
-                  onChange={e => setPassportNo(e.target.value)}
-                  placeholder="Passport #"
-                  className="w-full input-anthropic px-3 py-2 text-sm font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Phone Number</label>
-                <div className="relative">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Full Name</label>
                   <input
                     type="text"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="Mobile / WhatsApp"
+                    value={customerName}
+                    onChange={e => setCustomerName(e.target.value)}
+                    placeholder="Customer Name"
+                    className="w-full input-anthropic px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Passport No</label>
+                  <input
+                    type="text"
+                    value={passportNo}
+                    onChange={e => setPassportNo(e.target.value)}
+                    placeholder="Passport #"
                     className="w-full input-anthropic px-3 py-2 text-sm font-mono"
                   />
-                  {phone && (
-                    <a
-                      href={`tel:${phone}`}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#D97757] hover:opacity-80"
-                      title="Call Customer"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Phone Number</label>
+                  <div className="flex items-center gap-1.5">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="Mobile / WhatsApp"
+                        className="w-full input-anthropic px-3 py-2 text-sm font-mono"
+                      />
+                      {phone && (
+                        <a
+                          href={`tel:${phone}`}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#D97757] hover:opacity-80"
+                          title="Call Customer"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
+                    {waUrl && (
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center shrink-0 shadow-xs"
+                        title="Open WhatsApp Chat with Client"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Multi-Pax Travelers Section */}
-            {service.details?.passengers && service.details.passengers.length > 1 && (
-              <div className="mt-3 p-3 rounded-lg bg-[var(--sidebar-bg)] border border-[var(--card-border)] space-y-2">
-                <div className="text-xs font-semibold text-[#D97757] flex items-center justify-between">
-                  <span>Travelers / Passengers ({service.details.passengers.length} Pax)</span>
-                  <span className="text-[10px] opacity-60 font-mono">Group Booking</span>
-                </div>
-                <div className="divide-y divide-[var(--card-border)] text-xs">
-                  {service.details.passengers.map((pax: any, i: number) => (
-                    <div key={pax.id || i} className="py-1.5 flex items-center justify-between font-mono">
-                      <div>
-                        <span className="font-semibold">{i + 1}. {pax.name}</span>
-                        {pax.nationality && <span className="opacity-60 ml-2">({pax.nationality})</span>}
-                      </div>
-                      <div className="text-[11px] opacity-80">
-                        {pax.passport_no ? `Pass: ${pax.passport_no}` : ''}
-                        {pax.ticket_no ? ` · Tkt: ${pax.ticket_no}` : ''}
-                        {pax.visa_app_no ? ` · App: ${pax.visa_app_no}` : ''}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* Multi-Pax Travelers Section */}
+          {(activeTab === 'passengers' || activeTab === 'all' || activeTab === 'overview') && service.details?.passengers && service.details.passengers.length > 1 && (
+            <div className="p-3 rounded-lg bg-[var(--sidebar-bg)] border border-[var(--card-border)] space-y-2">
+              <div className="text-xs font-semibold text-[#D97757] flex items-center justify-between">
+                <span>Travelers / Passengers ({service.details.passengers.length} Pax)</span>
+                <span className="text-[10px] opacity-60 font-mono">Group Booking</span>
               </div>
-            )}
-          </div>
+              <div className="divide-y divide-[var(--card-border)] text-xs">
+                {service.details.passengers.map((pax: any, i: number) => (
+                  <div key={pax.id || i} className="py-1.5 flex items-center justify-between font-mono">
+                    <div>
+                      <span className="font-semibold">{i + 1}. {pax.name}</span>
+                      {pax.nationality && <span className="opacity-60 ml-2">({pax.nationality})</span>}
+                    </div>
+                    <div className="text-[11px] opacity-80">
+                      {pax.passport_no ? `Pass: ${pax.passport_no}` : ''}
+                      {pax.ticket_no ? ` · Tkt: ${pax.ticket_no}` : ''}
+                      {pax.visa_app_no ? ` · App: ${pax.visa_app_no}` : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Section 2: Visa Details */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757] border-b border-[var(--card-border)] pb-1.5">
-              <Shield className="w-4 h-4" />
-              <span>Visa & Service Details</span>
-            </div>
+          {(activeTab === 'overview' || activeTab === 'all') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757] border-b border-[var(--card-border)] pb-1.5">
+                <Shield className="w-4 h-4" />
+                <span>Visa & Service Details</span>
+              </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -490,157 +596,164 @@ export default function OdooQuickEditDrawer({
               </div>
             </div>
           </div>
+        )}
 
-          {/* Section 3: Financials */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757] border-b border-[var(--card-border)] pb-1.5">
-              <DollarSign className="w-4 h-4" />
-              <span>Financial Metrics & Accounting</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Total Amount (AED)</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  className="w-full input-anthropic px-3 py-2 text-sm font-mono"
-                />
+        {/* Section 3: Financials */}
+          {(activeTab === 'financials' || activeTab === 'all') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757] border-b border-[var(--card-border)] pb-1.5">
+                <DollarSign className="w-4 h-4" />
+                <span>Financial Metrics & Accounting</span>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Receiving (AED)</label>
-                <input
-                  type="number"
-                  value={receivingAmount}
-                  onChange={e => setReceivingAmount(e.target.value)}
-                  className="w-full input-anthropic px-3 py-2 text-sm font-mono text-blue-600 font-semibold"
-                />
-              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Total Amount (AED)</label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
+                    className="w-full input-anthropic px-3 py-2 text-sm font-mono"
+                  />
+                </div>
 
-              <div>
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Supplier Cost (AED)</label>
-                <input
-                  type="number"
-                  value={supplierCost}
-                  onChange={e => setSupplierCost(e.target.value)}
-                  className="w-full input-anthropic px-3 py-2 text-sm font-mono text-amber-600 font-semibold"
-                />
-              </div>
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Receiving (AED)</label>
+                  <input
+                    type="number"
+                    value={receivingAmount}
+                    onChange={e => setReceivingAmount(e.target.value)}
+                    className="w-full input-anthropic px-3 py-2 text-sm font-mono text-blue-600 font-semibold"
+                  />
+                </div>
 
-              <div>
-                <label className="text-xs font-semibold opacity-70 mb-1 block">Gross Profit</label>
-                <div className={`px-3 py-2 rounded-lg font-mono text-sm font-bold border ${
-                  grossProfit >= 0
-                    ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                    : 'bg-red-500/10 text-red-600 border-red-500/20'
-                }`}>
-                  {grossProfit.toLocaleString()} AED
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Supplier Cost (AED)</label>
+                  <input
+                    type="number"
+                    value={supplierCost}
+                    onChange={e => setSupplierCost(e.target.value)}
+                    className="w-full input-anthropic px-3 py-2 text-sm font-mono text-amber-600 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold opacity-70 mb-1 block">Gross Profit</label>
+                  <div className={`px-3 py-2 rounded-lg font-mono text-sm font-bold border ${
+                    grossProfit >= 0
+                      ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                      : 'bg-red-500/10 text-red-600 border-red-500/20'
+                  }`}>
+                    {grossProfit.toLocaleString()} AED
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label className="text-xs font-semibold opacity-70 mb-1 block">Payment Method</label>
-              <select
-                value={paymentMethod}
-                onChange={e => setPaymentMethod(e.target.value)}
-                className="w-full input-anthropic px-3 py-2 text-sm"
-              >
-                <option value="cash">Cash</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="card">Credit / Debit Card</option>
-                <option value="cheque">Cheque</option>
-                <option value="credit">On Credit</option>
-              </select>
+              <div>
+                <label className="text-xs font-semibold opacity-70 mb-1 block">Payment Method</label>
+                <select
+                  value={paymentMethod}
+                  onChange={e => setPaymentMethod(e.target.value)}
+                  className="w-full input-anthropic px-3 py-2 text-sm"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="card">Credit / Debit Card</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="credit">On Credit</option>
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Section 4: Remarks / Notes */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold opacity-70 block">Notes & Internal Remarks</label>
-            <textarea
-              rows={3}
-              value={comments}
-              onChange={e => setComments(e.target.value)}
-              placeholder="Add any internal comments or specific requirements..."
-              className="w-full input-anthropic p-3 text-sm"
-            />
-          </div>
+          {(activeTab === 'overview' || activeTab === 'all') && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold opacity-70 block">Notes & Internal Remarks</label>
+              <textarea
+                rows={3}
+                value={comments}
+                onChange={e => setComments(e.target.value)}
+                placeholder="Add any internal comments or specific requirements..."
+                className="w-full input-anthropic p-3 text-sm"
+              />
+            </div>
+          )}
 
           {/* Section 5: Documents & Attachments */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-1.5">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757]">
-                <Paperclip className="w-4 h-4" />
-                <span>Documents & Attachments ({documents.length})</span>
+          {(activeTab === 'documents' || activeTab === 'all') && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-1.5">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-bold text-[#D97757]">
+                  <Paperclip className="w-4 h-4" />
+                  <span>Documents & Attachments ({documents.length})</span>
+                </div>
+                {service?.customer_id && (
+                  <button
+                    type="button"
+                    onClick={() => setIsDocModalOpen(true)}
+                    className="text-xs font-semibold text-[#D97757] hover:underline flex items-center gap-1"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" /> Manage / Upload
+                  </button>
+                )}
               </div>
-              {service?.customer_id && (
-                <button
-                  type="button"
-                  onClick={() => setIsDocModalOpen(true)}
-                  className="text-xs font-semibold text-[#D97757] hover:underline flex items-center gap-1"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" /> Manage / Upload
-                </button>
-              )}
-            </div>
 
-            {documents.length === 0 ? (
-              <div className="text-xs opacity-50 py-3 text-center border border-dashed border-[var(--card-border)] rounded-lg">
-                No files attached to this service record.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {documents.map((doc, idx) => {
-                  const url = doc.file_url || doc.fileUrl;
-                  const isImg = url ? isImageFile(url, doc.title) : false;
-                  return (
-                    <div
-                      key={doc.id || idx}
-                      onClick={() => {
-                        setViewerIndex(idx);
-                        setIsViewerOpen(true);
-                      }}
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)] transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {isImg ? <ImageIcon className="w-4 h-4 text-[#D97757] shrink-0" /> : <FileText className="w-4 h-4 text-[#D97757] shrink-0" />}
-                        <span className="text-xs font-medium truncate group-hover:text-[#D97757] transition-colors">{doc.title}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setViewerIndex(idx);
-                            setIsViewerOpen(true);
-                          }}
-                          className="p-1 rounded hover:bg-[#D97757]/10 text-[#D97757]"
-                          title="Preview Document"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        {url && (
+              {documents.length === 0 ? (
+                <div className="text-xs opacity-50 py-3 text-center border border-dashed border-[var(--card-border)] rounded-lg">
+                  No files attached to this service record.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {documents.map((doc, idx) => {
+                    const url = doc.file_url || doc.fileUrl;
+                    const isImg = url ? isImageFile(url, doc.title) : false;
+                    return (
+                      <div
+                        key={doc.id || idx}
+                        onClick={() => {
+                          setViewerIndex(idx);
+                          setIsViewerOpen(true);
+                        }}
+                        className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)] transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {isImg ? <ImageIcon className="w-4 h-4 text-[#D97757] shrink-0" /> : <FileText className="w-4 h-4 text-[#D97757] shrink-0" />}
+                          <span className="text-xs font-medium truncate group-hover:text-[#D97757] transition-colors">{doc.title}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              downloadDocumentFile(url, doc.title);
+                            onClick={() => {
+                              setViewerIndex(idx);
+                              setIsViewerOpen(true);
                             }}
-                            className="p-1 rounded hover:bg-[var(--card-bg)] opacity-70 hover:opacity-100"
-                            title="Direct Download"
+                            className="p-1 rounded hover:bg-[#D97757]/10 text-[#D97757]"
+                            title="Preview Document"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
-                        )}
+                          {url && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadDocumentFile(url, doc.title);
+                              }}
+                              className="p-1 rounded hover:bg-[var(--card-bg)] opacity-70 hover:opacity-100"
+                              title="Direct Download"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Action Footer */}
