@@ -32,7 +32,7 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (query.length >= 2 && isOpen) {
+      if (query.trim().length >= 1 && isOpen) {
         setIsLoading(true)
         const results = await searchCustomers(query)
         setSuggestions(results)
@@ -40,7 +40,7 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
       } else {
         setSuggestions([])
       }
-    }, 300)
+    }, 200)
 
     return () => clearTimeout(timer)
   }, [query, isOpen])
@@ -109,10 +109,15 @@ export default function CustomerAutocomplete({ onSelect, defaultValue, placehold
                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${selectedIndex === index ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800'}`}>
                           {customer.name[0]}
                        </div>
-                       <div>
+                        <div>
                           <div className={`font-bold text-sm ${selectedIndex === index ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{customer.name}</div>
-                          <div className={`text-[10px] ${selectedIndex === index ? 'text-emerald-100' : 'text-slate-500'}`}>{customer.email || 'No email registered'}</div>
-                       </div>
+                          <div className={`text-[10px] ${selectedIndex === index ? 'text-emerald-100' : 'text-slate-500'} flex items-center gap-2 flex-wrap`}>
+                            {customer.passport_no && <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">Pass: {customer.passport_no}</span>}
+                            {customer.phone && <span>· Tel: {customer.phone}</span>}
+                            {customer.email && <span>· {customer.email}</span>}
+                            {!customer.passport_no && !customer.phone && !customer.email && <span>No additional details</span>}
+                          </div>
+                        </div>
                     </div>
                     {selectedIndex === index && <Check className="h-4 w-4" />}
                   </button>

@@ -131,22 +131,91 @@ export async function deleteCustomer(id: string) {
   }
 }
 
+export async function getCustomerById(id: string) {
+  try {
+    if (!id) return null;
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('customers')
+      .select('id, name, email, phone, passport_no, metadata, created_at')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getCustomerById error:', error);
+      return null;
+    }
+    return data || null;
+  } catch (error) {
+    console.error('getCustomerById caught error:', error);
+    return null;
+  }
+}
+
 export async function searchCustomers(query: string) {
   try {
-    const q = query.trim();
-    if (!q) return [];
+    const raw = query.trim();
+    if (!raw) return [];
 
-    const supabase = await createClient()
-    const { data } = await supabase
+    const supabase = await createClient();
+
+    // Sanitize string to prevent PostgREST URL syntax errors (commas, parentheses, colons break .or syntax)
+    const sanitized = raw.replace(/[,():;'"*]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!sanitized) return [];
+
+    const alphanumeric = sanitized.replace(/[^a-zA-Z0-9]/g, '');
+    const digitsOnly = sanitized.replace(/\D/g, '');
+
+    // Build targeted conditions for PostgREST .or() filter
+    const orConditions: string[] = [
+      `name.ilike.%${sanitized}%`,
+      `passport_no.ilike.%${sanitized}%`,
+      `phone.ilike.%${sanitized}%`,
+      `email.ilike.%${sanitized}%`,
+    ];
+
+    // If alphanumeric stripped string is different (e.g. passport "A 123" -> "A123"), match it
+    if (alphanumeric && alphanumeric !== sanitized && alphanumeric.length >= 3) {
+      orConditions.push(`passport_no.ilike.%${alphanumeric}%`);
+    }
+
+    // If digitsOnly has 4+ digits (e.g. local phone number suffix "1234567"), match it
+    if (digitsOnly && digitsOnly.length >= 4 && digitsOnly !== sanitized) {
+      orConditions.push(`phone.ilike.%${digitsOnly}%`);
+      orConditions.push(`passport_no.ilike.%${digitsOnly}%`);
+    }
+
+    // If multiple words were typed (e.g. "Mohamed Ali"), also match individual words in name
+    const words = sanitized.split(' ').filter(w => w.length >= 2);
+    if (words.length > 1) {
+      words.forEach(word => {
+        orConditions.push(`name.ilike.%${word}%`);
+      });
+    }
+
+    const { data, error } = await supabase
       .from('customers')
       .select('id, name, email, phone, passport_no, metadata')
-      .or(`name.ilike.%${q}%,passport_no.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
+      .or(orConditions.join(','))
       .order('created_at', { ascending: false })
-      .limit(15);
+      .limit(30);
+
+    if (error) {
+      console.error('searchCustomers Supabase .or error:', error);
+      // Fallback to simple name search if complex filter fails
+      const { data: fallbackData } = await supabase
+        .from('customers')
+        .select('id, name, email, phone, passport_no, metadata')
+        .ilike('name', `%${sanitized}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      return fallbackData || [];
+    }
 
     return data || [];
   } catch (error) {
-    return []
+    console.error('searchCustomers caught error:', error);
+    return [];
   }
 }
 
