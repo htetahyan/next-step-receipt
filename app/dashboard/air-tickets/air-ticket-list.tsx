@@ -65,8 +65,21 @@ export default function AirTicketList({
       const q = search.toLowerCase();
       const c = s.customers;
       const d = s.details as any;
-      return [c?.name, c?.passport_no, s.reference_id, d?.destination, d?.handled_by]
-        .some(v => v && String(v).toLowerCase().includes(q));
+      return [
+        c?.name,
+        c?.passport_no,
+        c?.phone,
+        s.reference_id,
+        d?.airline,
+        d?.sector,
+        d?.pnr,
+        d?.ticket_no,
+        d?.destination,
+        d?.handled_by,
+        ...(d?.passengers || []).map((p: any) => p.name),
+        ...(d?.passengers || []).map((p: any) => p.passport_no),
+        ...(d?.passengers || []).map((p: any) => p.ticket_no),
+      ].some(v => v && String(v).toLowerCase().includes(q));
     });
   }, [services, search, categoryFilter, statusFilter]);
 
@@ -368,7 +381,19 @@ export default function AirTicketList({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-sm">{customer?.name}</div>
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        <span>{customer?.name}</span>
+                        {details?.passengers && details.passengers.length > 1 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono">
+                            {details.passengers.length} Pax
+                          </span>
+                        )}
+                      </div>
+                      {details?.passengers && details.passengers.length > 1 && (
+                        <div className="text-[11px] text-[#D97757] opacity-90 truncate max-w-[220px] font-sans mt-0.5" title={details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}>
+                          Travelers: {details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}
+                        </div>
+                      )}
                       <div className="text-[11px] opacity-50 font-mono">{customer?.passport_no || '—'}</div>
                     </td>
                     <td className="px-4 py-3 text-xs font-medium">{details?.destination || '—'}</td>

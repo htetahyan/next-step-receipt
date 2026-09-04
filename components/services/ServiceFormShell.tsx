@@ -17,6 +17,7 @@ import DocumentModal from '@/components/DocumentModal';
 import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 import { StaffAdditionalInfoFields } from './fields/StaffAdditionalInfoFields';
+import { PassengerRoster, Passenger } from './fields/PassengerRoster';
 import { UserProfile } from '@/lib/auth-permissions';
 import { RateCard } from '@/app/actions/rate-cards';
 
@@ -67,6 +68,12 @@ export function ServiceFormShell<T extends Record<string, any>>({
   const [refId, setRefId] = useState(initialData?.reference_id || '');
   const [showDocs, setShowDocs] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+
+  const initialPassengers: Passenger[] =
+    (initialData?.details as any)?.passengers ||
+    (duplicateData?.details as any)?.passengers ||
+    [];
+  const [passengers, setPassengers] = useState<Passenger[]>(initialPassengers);
 
   useEffect(() => {
     if (!initialData) {
@@ -150,14 +157,22 @@ export function ServiceFormShell<T extends Record<string, any>>({
       const receivingAmount = Number(data.financials?.amount || 0) - Number(data.financials?.discount || 0);
       const balance = receivingAmount - Number(data.financials?.supplier_cost || 0) - Number(data.financials?.refund || 0);
 
+      const isMultiPax = passengers.length > 1;
+      const effectivePaxCount = isMultiPax ? passengers.length : (Number(data.details?.pax_count) || 1);
+
       const payload = {
         customerId,
         referenceId: refId ? refId.trim() : null,
         category: data.category,
         status: data.status || 'Open',
-        details: data.details || {},
+        details: {
+          ...(data.details || {}),
+          pax_count: effectivePaxCount,
+          passengers: isMultiPax ? passengers : ((data.details as any)?.passengers || []),
+        },
         financials: {
           ...(data.financials || {}),
+          pax_count: effectivePaxCount,
           receiving_amount: receivingAmount,
           balance,
         },
@@ -280,7 +295,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
           {/* Customer Selection Card */}
           <div className="card-anthropic p-6">
             <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">
-              Customer
+              Customer / Billing Entity
             </h3>
             <CustomerSelector
               customers={customers}
@@ -291,6 +306,23 @@ export function ServiceFormShell<T extends Record<string, any>>({
               }
             />
           </div>
+
+          {/* Travelers / Passengers Roster (Multi-Pax Support) */}
+          <PassengerRoster
+            passengers={passengers}
+            onChange={(updated) => {
+              setPassengers(updated);
+              (methods.setValue as any)('details.pax_count', updated.length > 1 ? updated.length : 1);
+            }}
+            serviceCategory={title || (defaultValues as any)?.category || ''}
+            primaryCustomer={{
+              name: initialData?.customers?.name || methods.watch('_selectedCustomerName' as any) || customers.find((c) => c.id === methods.watch('customerId' as any))?.name,
+              passport_no: customers.find((c) => c.id === methods.watch('customerId' as any))?.passport_no,
+            }}
+            onPassportScanned={(file) => {
+              setStagedFiles((prev) => [...prev, file]);
+            }}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Left Column: Category Specific Details + Staff Info */}

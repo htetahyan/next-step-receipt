@@ -250,6 +250,8 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
           details?.visa_supplier,
           details?.handled_by,
           details?.referred_by,
+          ...(details?.passengers || []).map((p: any) => p.name),
+          ...(details?.passengers || []).map((p: any) => p.passport_no),
         ].some(v => v && String(v).toLowerCase().includes(q));
         if (!matches) return false;
       }
@@ -1024,9 +1026,19 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
                       {/* Customer & Phone Details */}
                       <td className="px-4 py-3">
                         <div>
-                          <div className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-[#D97757] transition-colors">
-                            {customer?.name || details?.customer_name || '—'}
+                          <div className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-[#D97757] transition-colors flex items-center gap-2">
+                            <span>{customer?.name || details?.customer_name || '—'}</span>
+                            {details?.passengers && details.passengers.length > 1 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono">
+                                {details.passengers.length} Pax
+                              </span>
+                            )}
                           </div>
+                          {details?.passengers && details.passengers.length > 1 && (
+                            <div className="text-[11px] text-[#D97757] opacity-90 truncate max-w-[260px] font-sans mt-0.5" title={details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}>
+                              Travelers: {details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}
+                            </div>
+                          )}
                           <div className="text-[11px] opacity-70 font-mono flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span>Pass: {customer?.passport_no || details?.passport_no || '—'}</span>
                             {phoneNum && (

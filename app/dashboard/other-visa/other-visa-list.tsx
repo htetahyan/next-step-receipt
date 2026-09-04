@@ -75,8 +75,18 @@ export default function OtherVisaList({
       if (categoryFilter !== 'all' && s.category !== categoryFilter) return false;
       if (!search) return true;
       const q = search.toLowerCase();
-      return [c?.name, c?.passport_no, c?.email, s.reference_id, d?.destination]
-        .some(v => v && String(v).toLowerCase().includes(q));
+      return [
+        c?.name,
+        c?.passport_no,
+        c?.phone,
+        c?.email,
+        s.reference_id,
+        d?.destination,
+        d?.visa_supplier,
+        d?.handled_by,
+        ...(d?.passengers || []).map((p: any) => p.name),
+        ...(d?.passengers || []).map((p: any) => p.passport_no),
+      ].some(v => v && String(v).toLowerCase().includes(q));
     });
   }, [services, search, categoryFilter]);
 
@@ -370,7 +380,19 @@ export default function OtherVisaList({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-sm">{customer?.name}</div>
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        <span>{customer?.name}</span>
+                        {details?.passengers && details.passengers.length > 1 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono">
+                            {details.passengers.length} Pax
+                          </span>
+                        )}
+                      </div>
+                      {details?.passengers && details.passengers.length > 1 && (
+                        <div className="text-[11px] text-[#D97757] opacity-90 truncate max-w-[220px] font-sans mt-0.5" title={details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}>
+                          Travelers: {details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}
+                        </div>
+                      )}
                       <div className="text-[11px] opacity-50 font-mono">{customer?.passport_no || '—'} · {customer?.email || ''}</div>
                     </td>
                     <td className="px-4 py-3 text-sm">{COUNTRY_EMOJI[service.category] || '🌍'} {details?.destination || '—'}</td>

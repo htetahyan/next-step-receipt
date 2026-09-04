@@ -67,12 +67,16 @@ export default function TourPackageList({ initialServices, customers, profile }:
         const matches = [
           customer?.name,
           customer?.phone,
+          customer?.passport_no,
           s.reference_id,
+          details?.destination,
           details?.supplier_name,
           details?.tour_plans,
           details?.handled_by,
           details?.referred_by,
           details?.remark,
+          ...(details?.passengers || []).map((p: any) => p.name),
+          ...(details?.passengers || []).map((p: any) => p.passport_no),
         ].some(v => v && String(v).toLowerCase().includes(q));
         if (!matches) return false;
       }
@@ -366,7 +370,19 @@ export default function TourPackageList({ initialServices, customers, profile }:
                     </td>
                     <td className="px-4 py-3">{details?.travel_date || '—'}</td>
                     <td className="px-4 py-3 font-medium">
-                      <div>{cust?.name || '—'}</div>
+                      <div className="flex items-center gap-2">
+                        <span>{cust?.name || '—'}</span>
+                        {details?.passengers && details.passengers.length > 1 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono">
+                            {details.passengers.length} Pax
+                          </span>
+                        )}
+                      </div>
+                      {details?.passengers && details.passengers.length > 1 && (
+                        <div className="text-[11px] text-[#D97757] opacity-90 truncate max-w-[200px] font-sans font-normal mt-0.5" title={details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}>
+                          Travelers: {details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}
+                        </div>
+                      )}
                       {details?.handled_by && (
                         <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-normal">
                           By: {details.handled_by}

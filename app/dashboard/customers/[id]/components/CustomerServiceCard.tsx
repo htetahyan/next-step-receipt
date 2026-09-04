@@ -141,7 +141,14 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="font-serif text-lg">{service.category}</div>
+          <div className="font-serif text-lg flex items-center gap-2">
+            <span>{service.category}</span>
+            {details?.passengers && details.passengers.length > 1 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-sans font-semibold font-mono">
+                {details.passengers.length} Pax
+              </span>
+            )}
+          </div>
           {isEditing ? (
             <input
               type="text"
@@ -483,6 +490,25 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
         </div>
       ) : (
         <>
+          {/* Multi-Pax Travelers Roster */}
+          {details?.passengers && details.passengers.length > 1 && (
+            <div className="p-3 rounded-lg bg-[var(--background)] border border-[var(--card-border)] space-y-1.5 text-xs">
+              <div className="font-semibold text-[#D97757] text-[11px] flex items-center justify-between">
+                <span>Travelers ({details.passengers.length} Pax):</span>
+                <span className="opacity-60 font-mono">Group Booking</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {details.passengers.map((pax: any, i: number) => (
+                  <div key={pax.id || i} className="px-2 py-1 rounded bg-[var(--anthropic-surface)] border border-[var(--card-border)] font-mono text-[11px]">
+                    <span className="font-semibold">{i + 1}. {pax.name}</span>
+                    {pax.passport_no && <span className="opacity-70 ml-1">({pax.passport_no})</span>}
+                    {pax.ticket_no && <span className="text-[#D97757] ml-1">Tkt: {pax.ticket_no}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Service Details Grid */}
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs opacity-80 border-t border-[var(--card-border)] pt-3">
             {isAirTicket ? (

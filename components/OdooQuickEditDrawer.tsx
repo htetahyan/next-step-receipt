@@ -363,6 +363,31 @@ export default function OdooQuickEditDrawer({
                 </div>
               </div>
             </div>
+
+            {/* Multi-Pax Travelers Section */}
+            {service.details?.passengers && service.details.passengers.length > 1 && (
+              <div className="mt-3 p-3 rounded-lg bg-[var(--sidebar-bg)] border border-[var(--card-border)] space-y-2">
+                <div className="text-xs font-semibold text-[#D97757] flex items-center justify-between">
+                  <span>Travelers / Passengers ({service.details.passengers.length} Pax)</span>
+                  <span className="text-[10px] opacity-60 font-mono">Group Booking</span>
+                </div>
+                <div className="divide-y divide-[var(--card-border)] text-xs">
+                  {service.details.passengers.map((pax: any, i: number) => (
+                    <div key={pax.id || i} className="py-1.5 flex items-center justify-between font-mono">
+                      <div>
+                        <span className="font-semibold">{i + 1}. {pax.name}</span>
+                        {pax.nationality && <span className="opacity-60 ml-2">({pax.nationality})</span>}
+                      </div>
+                      <div className="text-[11px] opacity-80">
+                        {pax.passport_no ? `Pass: ${pax.passport_no}` : ''}
+                        {pax.ticket_no ? ` · Tkt: ${pax.ticket_no}` : ''}
+                        {pax.visa_app_no ? ` · App: ${pax.visa_app_no}` : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section 2: Visa Details */}
