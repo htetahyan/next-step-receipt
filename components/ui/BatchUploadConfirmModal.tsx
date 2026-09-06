@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AlertTriangle, X, FileText, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 export interface UploadBatchItem {
@@ -30,14 +30,32 @@ export default function BatchUploadConfirmModal({
   totalSizeBytes,
   totalSizeFormatted,
 }: BatchUploadConfirmModalProps) {
+  // ESC key listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || items.length === 0) return null;
 
   const hasExtraLargeFiles = items.some(item => item.sizeBytes > 10 * 1024 * 1024);
 
   return (
-    <div className="modal-backdrop z-[10000]" onClick={onClose}>
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200" 
+        onClick={onClose} 
+      />
+
+      {/* Modal Container */}
       <div
-        className="modal-container max-w-lg w-full scale-in-center p-0 overflow-hidden"
+        className="relative w-full max-w-lg bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl shadow-2xl z-10 scale-in-center overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -13,6 +13,8 @@ import {
   Loader2,
   AlertCircle,
   Lock,
+  User,
+  Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -79,6 +81,17 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
       setLoading(false);
     }
   }, [isAdmin]);
+
+  // ESC key listener for modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && modalOpen) {
+        setModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalOpen]);
 
   const openCreateModal = () => {
     setEditingUser(null);
@@ -330,72 +343,92 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
       {/* Permission Configuration Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-[var(--card-border)] bg-[var(--background)] shadow-2xl overflow-hidden">
+          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-2xl overflow-hidden scale-in-center">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[var(--card-border)] px-6 py-4 bg-[var(--sidebar-bg)]">
-              <div>
-                <h3 className="font-serif font-semibold text-base text-[var(--foreground)]">
-                  {editingUser ? `Edit Permissions: ${editingUser.email}` : 'Add New Team Member'}
-                </h3>
-                <p className="text-xs opacity-60">
-                  Configure account details and granular module capabilities.
-                </p>
+            <div className="flex items-center justify-between border-b border-[var(--card-border)] px-5 py-4 bg-[var(--sidebar-bg)] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#D97757]/10 border border-[#D97757]/20 flex items-center justify-center text-[#D97757]">
+                  {editingUser ? <Shield className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
+                </div>
+                <div>
+                  <h3 className="font-serif font-semibold text-base text-[var(--foreground)]">
+                    {editingUser ? `Edit Permissions: ${editingUser.email}` : 'Add New Team Member'}
+                  </h3>
+                  <p className="text-xs opacity-60">
+                    Configure account details and granular module capabilities.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-[var(--card-border)] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100 cursor-pointer"
               >
-                <X className="w-5 h-5 opacity-60" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-[11px] uppercase font-semibold tracking-wider opacity-70 mb-1.5">
-                    Full Name
+                    Full Name <span className="text-[#D97757]">*</span>
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    placeholder="e.g. Sarah Connor"
-                    className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden"
-                  />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                      <User className="w-3.5 h-3.5 text-[#D97757]" />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                      placeholder="e.g. Sarah Connor"
+                      className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] uppercase font-semibold tracking-wider opacity-70 mb-1.5">
-                    Email Address
+                    Email Address <span className="text-[#D97757]">*</span>
                   </label>
-                  <input
-                    type="email"
-                    required
-                    disabled={!!editingUser}
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="sarah@nextstep.ae"
-                    className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden disabled:opacity-50"
-                  />
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                      <Mail className="w-3.5 h-3.5" />
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      disabled={!!editingUser}
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="sarah@nextstep.ae"
+                      className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden disabled:opacity-50"
+                    />
+                  </div>
                 </div>
 
                 {!editingUser && (
                   <div>
                     <label className="block text-[11px] uppercase font-semibold tracking-wider opacity-70 mb-1.5">
-                      Initial Password
+                      Initial Password <span className="text-[#D97757]">*</span>
                     </label>
-                    <input
-                      type="password"
-                      required
-                      minLength={6}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
-                      className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden"
-                    />
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                        <Lock className="w-3.5 h-3.5" />
+                      </div>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="Minimum 6 characters"
+                        className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden"
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -403,14 +436,19 @@ export default function UserManagement({ currentUserProfile }: { currentUserProf
                   <label className="block text-[11px] uppercase font-semibold tracking-wider opacity-70 mb-1.5">
                     Account Role
                   </label>
-                  <select
-                    value={role}
-                    onChange={e => setRole(e.target.value as UserRole)}
-                    className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden"
-                  >
-                    <option value="staff">Staff (Granular Permissions)</option>
-                    <option value="admin">Administrator (Full Access)</option>
-                  </select>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                      <Shield className="w-3.5 h-3.5 text-[#D97757]" />
+                    </div>
+                    <select
+                      value={role}
+                      onChange={e => setRole(e.target.value as UserRole)}
+                      className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--background)] pl-9 pr-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757] outline-hidden"
+                    >
+                      <option value="staff">Staff (Granular Permissions)</option>
+                      <option value="admin">Administrator (Full Access)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

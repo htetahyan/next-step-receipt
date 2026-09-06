@@ -28,59 +28,81 @@ export default async function PortalPage({ params }: { params: Promise<{ custome
   }
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Welcome back, {customer?.name || "Customer"}!</h2>
-        <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Below you can view and download all your past invoices. If you have any questions, please contact us.
-        </p>
+    <div className="space-y-6">
+      {/* Welcome Card */}
+      <div className="card-anthropic p-6 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-[var(--foreground)]">
+              Welcome back, {customer?.name || "Valued Client"}!
+            </h2>
+            <p className="text-xs sm:text-sm opacity-60 mt-1">
+              View and download your official invoices, payment receipts, and booking records.
+            </p>
+          </div>
+          {customer?.passport_no && (
+            <div className="flex items-center gap-2 bg-[var(--sidebar-bg)] border border-[var(--card-border)] px-3 py-1.5 rounded-xl text-xs font-mono shrink-0 self-start sm:self-auto">
+              <span className="opacity-50 text-[10px] uppercase font-sans">Passport:</span>
+              <span className="font-bold text-[#D97757]">{customer.passport_no}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
-        <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800 flex justify-between items-center">
-            <h3 className="text-base font-semibold leading-6 text-slate-900 dark:text-white">Your Invoices</h3>
+      {/* Invoices List */}
+      <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] shadow-xs overflow-hidden">
+        <div className="border-b border-[var(--card-border)] px-6 py-4 bg-[var(--sidebar-bg)] flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#D97757]" />
+            <h3 className="text-sm font-serif font-semibold text-[var(--foreground)]">
+              Your Invoices & Receipts ({invoices.length})
+            </h3>
+          </div>
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] uppercase tracking-wider text-[10px] opacity-70 font-mono">
               <tr>
-                <th scope="col" className="px-6 py-4">Invoice</th>
-                <th scope="col" className="px-6 py-4">Amount</th>
-                <th scope="col" className="px-6 py-4">Payment Method</th>
-                <th scope="col" className="px-6 py-4">Date</th>
-                <th scope="col" className="px-6 py-4 text-right">Action</th>
+                <th scope="col" className="px-6 py-3.5">Invoice #</th>
+                <th scope="col" className="px-6 py-3.5">Amount</th>
+                <th scope="col" className="px-6 py-3.5">Method</th>
+                <th scope="col" className="px-6 py-3.5">Date</th>
+                <th scope="col" className="px-6 py-3.5 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+            <tbody className="divide-y divide-[var(--card-border)]">
               {invoices.map((invoice) => (
-                <tr key={invoice.id} className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-4 w-4 text-slate-400" />
-                      <span className="font-medium text-slate-900 dark:text-white">{invoice.invoice_number}</span>
+                <tr key={invoice.id} className="hover:bg-[var(--sidebar-bg)] transition-colors">
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <FileText className="h-4 w-4 text-[#D97757] opacity-70" />
+                      <span className="font-mono font-bold text-[var(--foreground)]">{invoice.invoice_number}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-medium">AED {(Number(invoice.total_amount) || 0).toLocaleString()}</td>
-                  <td className="px-6 py-4">
-                     <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 uppercase">
+                  <td className="px-6 py-3.5 font-bold font-mono text-[var(--foreground)]">
+                    AED {(Number(invoice.total_amount) || 0).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 uppercase">
                       {invoice.payment_method || 'Paid'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">{invoice.date || '—'}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-3.5 opacity-70 font-mono text-[11px]">{invoice.date || '—'}</td>
+                  <td className="px-6 py-3.5 text-right">
                     <Link
                       href={`/dashboard/invoices/${invoice.id}`}
-                      className="text-emerald-700 hover:text-emerald-600 inline-flex items-center gap-1 text-sm font-medium"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97757] hover:opacity-80 transition-opacity"
                     >
-                      <Download className="w-4 h-4" /> View / PDF
+                      <Download className="w-3.5 h-3.5" /> View / PDF
                     </Link>
                   </td>
                 </tr>
               ))}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    No invoices found.
+                  <td colSpan={5} className="px-6 py-12 text-center opacity-50 italic">
+                    No invoices found on your account.
                   </td>
                 </tr>
               )}

@@ -55,6 +55,17 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
     }
   }, [isOpen, fetchDocuments]);
 
+  // Handle ESC key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !isViewerOpen && !deleteTarget) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isViewerOpen, deleteTarget, onClose]);
+
   if (!isOpen) return null;
 
   const handleConfirmDelete = async () => {
@@ -83,23 +94,41 @@ export default function DocumentModal({ isOpen, onClose, customerId, serviceId, 
 
   return (
     <>
-      <div className="modal-backdrop" onClick={onClose}>
-        <div className="modal-container max-w-2xl max-h-[90vh] scale-in-center" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200" 
+          onClick={onClose} 
+        />
+
+        {/* Modal Container */}
+        <div 
+          className="relative w-full max-w-2xl max-h-[90vh] bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl shadow-2xl z-10 scale-in-center overflow-hidden flex flex-col" 
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
-          <div className="p-6 border-b border-[var(--card-border)] flex items-center justify-between flex-shrink-0 bg-[var(--sidebar-bg)]">
-            <div>
-              <h3 className="text-xl font-serif text-[var(--foreground)] flex items-center gap-2">
-                <FileText className="h-5 w-5 text-[#D97757]" />
-                Documents Manager
-              </h3>
-              <p className="text-sm opacity-60 mt-1">Files attached to {customerName}</p>
+          <div className="p-5 border-b border-[var(--card-border)] flex items-center justify-between bg-[var(--sidebar-bg)] shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#D97757]/10 border border-[#D97757]/20 flex items-center justify-center text-[#D97757]">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-serif font-semibold text-[var(--foreground)]">
+                  Documents Manager
+                </h3>
+                <p className="text-xs opacity-60">Files attached to {customerName}</p>
+              </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-[var(--card-border)] rounded-full transition-colors">
-              <X className="h-6 w-6 opacity-50" />
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="p-1.5 hover:bg-[var(--card-border)] rounded-lg transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6">
+          <div className="p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar space-y-5">
             <DocumentUploadZone customerId={customerId} serviceId={serviceId} onUploadSuccess={fetchDocuments} />
 
             {/* List Section */}

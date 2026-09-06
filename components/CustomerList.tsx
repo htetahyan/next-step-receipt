@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Plus, User, Mail, Phone, Calendar, MoreHorizontal, Edit2, Trash2, Loader2, X, FileText, ArrowRight, Scan, UploadCloud, CheckCircle2, Search } from 'lucide-react'
+import { Plus, User, Mail, Phone, Calendar, MoreHorizontal, Edit2, Trash2, Loader2, X, FileText, ArrowRight, Scan, UploadCloud, CheckCircle2, Search, Globe, CreditCard } from 'lucide-react'
 import { updateCustomer, deleteCustomer, addCustomer } from '@/app/actions/customers'
 import { addDocument } from '@/app/actions/documents'
 import { getPresignedUrl } from '@/app/actions/r2'
@@ -38,6 +38,17 @@ export default function CustomerList({
   const [isScanning, setIsScanning] = useState(false)
   const [passportFile, setPassportFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ESC key listener for modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isModalOpen) {
+        setIsModalOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isModalOpen])
 
   const handleScanPassport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -352,136 +363,205 @@ export default function CustomerList({
       </div>
 
       {isModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-container max-w-lg scale-in-center overflow-y-auto" onClick={e => e.stopPropagation()}>
-             <div className="p-8 space-y-6">
-                <div className="flex items-center justify-between border-b border-[var(--card-border)] pb-4">
-                   <div className="space-y-1">
-                      <h3 className="text-xl font-serif">
-                         {currentCustomer ? 'Update Profile' : 'New Client Profile'}
-                      </h3>
-                   </div>
-                   <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-[var(--card-border)] rounded-full transition-colors">
-                      <X className="h-5 w-5 opacity-50" />
-                   </button>
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200" 
+            onClick={() => setIsModalOpen(false)} 
+          />
+
+          {/* Modal Container */}
+          <div 
+            className="relative w-full max-w-lg max-h-[90vh] bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl shadow-2xl z-10 scale-in-center overflow-hidden flex flex-col" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-[var(--card-border)] flex items-center justify-between bg-[var(--sidebar-bg)] shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#D97757]/10 border border-[#D97757]/20 flex items-center justify-center text-[#D97757]">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-serif font-semibold text-[var(--foreground)]">
+                    {currentCustomer ? 'Update Client Profile' : 'New Client Profile'}
+                  </h3>
+                  <p className="text-xs opacity-60">Client personal and passport details</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsModalOpen(false)} 
+                className="p-1.5 hover:bg-[var(--card-border)] rounded-lg transition-colors opacity-70 hover:opacity-100 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+              {!currentCustomer && (
+                <div className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl p-3.5 flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-xs font-semibold flex items-center gap-2">
+                      {passportFile && !isScanning ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Scan className="w-4 h-4 text-[#D97757]" />} 
+                      {passportFile && !isScanning ? 'Passport Attached' : 'AI Passport Scanner'}
+                    </h4>
+                    <p className="text-[11px] opacity-60 mt-0.5 line-clamp-1">
+                      {passportFile ? passportFile.name : 'Upload passport photo to auto-extract fields'}
+                    </p>
+                  </div>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={fileInputRef} 
+                    onChange={handleScanPassport} 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isScanning}
+                    className="px-3 py-1.5 bg-[var(--background)] border border-[var(--card-border)] text-xs font-medium rounded-lg hover:opacity-80 transition-colors shadow-xs disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    {isScanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5 text-[#D97757]" />}
+                    {isScanning ? 'Scanning...' : (passportFile ? 'Rescan' : 'Upload')}
+                  </button>
+                </div>
+              )}
+
+              <form id="customer-form" onSubmit={handleSubmit} className="space-y-4">
+                {/* Basic Contact */}
+                <div className="space-y-3">
+                  <h4 className="text-[11px] font-semibold opacity-50 uppercase tracking-wider">
+                    Basic Contact
+                  </h4>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5 opacity-80">
+                      Full Name <span className="text-[#D97757]">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none opacity-40">
+                        <User className="w-4 h-4 text-[#D97757]" />
+                      </div>
+                      <input 
+                        name="name" 
+                        defaultValue={currentCustomer?.name} 
+                        required 
+                        autoFocus
+                        placeholder="e.g. John Doe"
+                        className="input-anthropic w-full pl-10 pr-3 py-2.5 text-xs font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5 opacity-80">Email Address</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                          <Mail className="w-3.5 h-3.5" />
+                        </div>
+                        <input 
+                          type="email" 
+                          name="email" 
+                          defaultValue={currentCustomer?.email} 
+                          placeholder="client@example.com"
+                          className="input-anthropic w-full pl-9 pr-3 py-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5 opacity-80">Phone / WhatsApp</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                          <Phone className="w-3.5 h-3.5" />
+                        </div>
+                        <input 
+                          name="phone" 
+                          defaultValue={currentCustomer?.phone} 
+                          placeholder="+971 50 123 4567"
+                          className="input-anthropic w-full pl-9 pr-3 py-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {!currentCustomer && (
-                  <div className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg p-4 flex items-center justify-between">
+                {/* Passport Info */}
+                <div className="space-y-3 pt-2 border-t border-[var(--card-border)]">
+                  <h4 className="text-[11px] font-semibold opacity-50 uppercase tracking-wider">
+                    Passport & Identity
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <h4 className="text-sm font-medium flex items-center gap-2">
-                        {passportFile && !isScanning ? <CheckCircle2 className="w-4 h-4 text-green-600" /> : <Scan className="w-4 h-4 opacity-70" />} 
-                        {passportFile && !isScanning ? 'Passport Scanned & Attached' : 'AI Auto-fill'}
-                      </h4>
-                      <p className="text-xs opacity-60 mt-1">
-                        {passportFile ? passportFile.name : 'Upload a passport image to extract details.'}
-                      </p>
+                      <label className="block text-xs font-medium mb-1.5 opacity-80">Passport No</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                          <CreditCard className="w-3.5 h-3.5" />
+                        </div>
+                        <input 
+                          name="passport_no" 
+                          defaultValue={currentCustomer?.passportNo} 
+                          placeholder="e.g. A12345678"
+                          className="input-anthropic w-full pl-9 pr-3 py-2 text-xs uppercase"
+                        />
+                      </div>
                     </div>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      ref={fileInputRef} 
-                      onChange={handleScanPassport} 
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isScanning}
-                      className="px-3 py-1.5 bg-[var(--background)] border border-[var(--card-border)] text-xs font-medium rounded hover:opacity-80 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                      {isScanning ? 'Scanning...' : (passportFile ? 'Rescan' : 'Upload')}
-                    </button>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5 opacity-80">Nationality</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                          <Globe className="w-3.5 h-3.5" />
+                        </div>
+                        <input 
+                          name="nationality" 
+                          defaultValue={currentCustomer?.metadata?.nationality} 
+                          placeholder="e.g. British"
+                          className="input-anthropic w-full pl-9 pr-3 py-2 text-xs uppercase"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5 opacity-80">Date of Birth</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                          <Calendar className="w-3.5 h-3.5" />
+                        </div>
+                        <input 
+                          name="dob" 
+                          type="date"
+                          defaultValue={currentCustomer?.metadata?.dob} 
+                          className="input-anthropic w-full pl-9 pr-3 py-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1.5 opacity-80">Expiry Date</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none opacity-40">
+                          <Calendar className="w-3.5 h-3.5" />
+                        </div>
+                        <input 
+                          name="expiry_date" 
+                          type="date"
+                          defaultValue={currentCustomer?.metadata?.expiry_date} 
+                          className="input-anthropic w-full pl-9 pr-3 py-2 text-xs"
+                        />
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
 
-                <form id="customer-form" onSubmit={handleSubmit} className="space-y-6">
-                   
-                   <div className="space-y-4">
-                      <h4 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-2 border-b border-[var(--card-border)]">Basic Contact</h4>
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Full Name</label>
-                           <input 
-                             name="name" 
-                             defaultValue={currentCustomer?.name} 
-                             required 
-                             autoFocus
-                             className="input-anthropic w-full px-4 py-3 text-sm"
-                           />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                             <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Email</label>
-                             <input 
-                               type="email" 
-                               name="email" 
-                               defaultValue={currentCustomer?.email} 
-                               className="input-anthropic w-full px-4 py-3 text-sm"
-                             />
-                          </div>
-                          <div className="space-y-2">
-                             <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Phone</label>
-                             <input 
-                               name="phone" 
-                               defaultValue={currentCustomer?.phone} 
-                               className="input-anthropic w-full px-4 py-3 text-sm"
-                             />
-                          </div>
-                        </div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-4 pt-2">
-                      <h4 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-2 border-b border-[var(--card-border)]">Passport Information</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Passport No</label>
-                           <input 
-                             name="passport_no" 
-                             defaultValue={currentCustomer?.passportNo} 
-                             className="input-anthropic w-full px-4 py-3 text-sm uppercase"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Nationality</label>
-                           <input 
-                             name="nationality" 
-                             defaultValue={currentCustomer?.metadata?.nationality} 
-                             className="input-anthropic w-full px-4 py-3 text-sm uppercase"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Date of Birth</label>
-                           <input 
-                             name="dob" 
-                             type="date"
-                             defaultValue={currentCustomer?.metadata?.dob} 
-                             className="input-anthropic w-full px-4 py-3 text-sm"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <label className="text-xs uppercase tracking-wider font-medium opacity-70 px-1">Expiry Date</label>
-                           <input 
-                             name="expiry_date" 
-                             type="date"
-                             defaultValue={currentCustomer?.metadata?.expiry_date} 
-                             className="input-anthropic w-full px-4 py-3 text-sm"
-                           />
-                        </div>
-                      </div>
-                   </div>
-
-                   <button 
-                     type="submit" 
-                     disabled={isSaving}
-                     className="w-full flex items-center justify-center gap-3 rounded-md bg-[#D97757] px-6 py-3.5 text-sm font-medium text-[#F5F4EF] hover:opacity-90 disabled:opacity-50 transition-all"
-                   >
-                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : currentCustomer ? 'Save Changes' : (passportFile ? 'Save Profile & Attach Passport' : 'Confirm Registration')}
-                   </button>
-                </form>
-             </div>
+                <div className="pt-2">
+                  <button 
+                    type="submit" 
+                    disabled={isSaving}
+                    className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-[#D97757] px-5 py-3 text-xs font-semibold text-[#F5F4EF] hover:opacity-90 disabled:opacity-50 transition-all shadow-xs cursor-pointer"
+                  >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : currentCustomer ? 'Save Changes' : (passportFile ? 'Save Profile & Attach Passport' : 'Confirm Registration')}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
