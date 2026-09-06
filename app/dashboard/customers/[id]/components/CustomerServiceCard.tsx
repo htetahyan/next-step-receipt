@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Pencil, Check, X, ExternalLink } from 'lucide-react';
+import { Pencil, Check, X, ExternalLink, Shield, Plane, Map, Globe, Wrench, Calendar, Tag, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { quickUpdateService } from '@/app/actions/services';
 import { parseFinancialNumber } from '@/lib/financialUtils';
@@ -136,67 +136,87 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
     }
   };
 
+  const getCategoryIcon = () => {
+    if (isUAEVisa) return <Shield className="w-4 h-4 text-[#D97757]" />;
+    if (isAirTicket) return <Plane className="w-4 h-4 text-blue-500" />;
+    if (isTourPackage) return <Map className="w-4 h-4 text-emerald-500" />;
+    if (isOtherVisa) return <Globe className="w-4 h-4 text-purple-500" />;
+    return <Wrench className="w-4 h-4 text-orange-500" />;
+  };
+
+  const getStatusColor = (status: string) => {
+    if (status === 'Closed') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+    if (status === 'In Progress') return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
+    if (status === 'Cancelled') return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20';
+    return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+  };
+
   return (
-    <div className="p-6 rounded-xl bg-[var(--anthropic-surface)] border border-[var(--card-border)] space-y-4 relative">
+    <div className="p-4 sm:p-5 rounded-2xl bg-[var(--card-bg)] border border-[var(--card-border)] hover:border-[var(--card-border)]/90 shadow-xs space-y-3.5 relative transition-all">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="font-serif text-lg flex items-center gap-2">
-            <span>{service.category}</span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-[var(--sidebar-bg)] border border-[var(--card-border)] shrink-0">
+            {getCategoryIcon()}
+          </div>
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <span className="font-serif text-base font-medium truncate">{service.category}</span>
             {details?.passengers && details.passengers.length > 1 && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-sans font-semibold font-mono">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono">
                 {details.passengers.length} Pax
               </span>
             )}
+            {isEditing ? (
+              <input
+                type="text"
+                value={editForm.reference_id}
+                onChange={e => setEditForm({ ...editForm, reference_id: e.target.value.toUpperCase() })}
+                placeholder="Ref ID"
+                className="text-xs font-mono text-[#D97757] bg-[var(--background)] px-2 py-0.5 rounded font-semibold border border-[var(--card-border)] w-24 uppercase focus:outline-none focus:ring-1 focus:ring-[#D97757]"
+                title="Edit Reference ID"
+              />
+            ) : (
+              service.reference_id && (
+                <span className="text-xs font-mono text-[#D97757] bg-[#D97757]/10 border border-[#D97757]/20 px-2 py-0.5 rounded font-semibold">
+                  {service.reference_id}
+                </span>
+              )
+            )}
           </div>
-          {isEditing ? (
-            <input
-              type="text"
-              value={editForm.reference_id}
-              onChange={e => setEditForm({ ...editForm, reference_id: e.target.value.toUpperCase() })}
-              placeholder="Ref ID"
-              className="text-xs font-mono text-[#D97757] bg-[var(--background)] px-2 py-0.5 rounded font-semibold border border-[var(--card-border)] w-24 uppercase focus:outline-none focus:ring-1 focus:ring-[#D97757]"
-              title="Edit Reference ID"
-            />
-          ) : (
-            service.reference_id && (
-              <span className="text-xs font-mono text-[#D97757] bg-[#D97757]/10 px-2 py-0.5 rounded font-semibold">
-                {service.reference_id}
-              </span>
-            )
-          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {!isEditing && (
-            <div className="text-[10px] uppercase tracking-widest px-2.5 py-1 rounded bg-[var(--background)] opacity-80 border border-[var(--card-border)] font-bold">
-              {service.status}
-            </div>
+            <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border font-mono font-bold ${getStatusColor(service.status)}`}>
+              {service.status || 'Open'}
+            </span>
           )}
           {!isEditing ? (
             <div className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={() => setIsEditing(true)}
-                className="p-1.5 rounded-md hover:bg-[var(--background)] text-gray-500 hover:text-[#D97757] transition-colors"
+                className="p-1.5 rounded-md hover:bg-[var(--sidebar-bg)] text-gray-500 hover:text-[#D97757] transition-colors cursor-pointer"
                 title="Quick Edit"
               >
-                <Pencil className="w-4 h-4" />
+                <Pencil className="w-3.5 h-3.5" />
               </button>
               <Link
                 href={editUrl}
-                className="p-1.5 rounded-md hover:bg-[var(--background)] text-gray-500 hover:text-[#D97757] transition-colors"
+                className="p-1.5 rounded-md hover:bg-[var(--sidebar-bg)] text-gray-500 hover:text-[#D97757] transition-colors cursor-pointer"
                 title="Full Edit Page"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-3.5 h-3.5" />
               </Link>
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => setIsEditing(false)}
-              className="p-1.5 rounded-md hover:bg-[var(--background)] text-gray-500 hover:text-red-500 transition-colors"
+              className="p-1.5 rounded-md hover:bg-[var(--sidebar-bg)] text-gray-500 hover:text-red-500 transition-colors cursor-pointer"
               title="Cancel Edit"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -646,48 +666,35 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
             )}
           </div>
 
-          {/* Financials Summary */}
-          <div className="mt-4 pt-4 border-t border-[var(--card-border)] bg-[var(--background)] p-3 rounded-lg text-xs space-y-1.5 font-mono">
-            <div className="flex justify-between">
-              <span className="opacity-60">Amount / Rate:</span>
-              <span>{amount.toLocaleString()} AED</span>
+          {/* Financials Summary Pill Bar */}
+          <div className="mt-3 pt-3 border-t border-[var(--card-border)] flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-1 rounded-lg bg-[var(--sidebar-bg)] border border-[var(--card-border)] text-[11px]">
+                <span className="opacity-50 mr-1">Receiving:</span>
+                <strong className="text-[var(--foreground)]">{receiving.toLocaleString()} AED</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-[var(--sidebar-bg)] border border-[var(--card-border)] text-[11px]">
+                <span className="opacity-50 mr-1">Cost:</span>
+                <span className="opacity-80">{supplierCost.toLocaleString()} AED</span>
+              </span>
+              {discount > 0 && (
+                <span className="px-2 py-1 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 text-[11px]">
+                  Disc: -{discount.toLocaleString()} AED
+                </span>
+              )}
+              {balance !== 0 && (
+                <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold ${balance > 0 ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-blue-500/10 text-blue-600 border-blue-500/20'}`}>
+                  <span className="opacity-70 mr-1">Balance:</span>
+                  {balance.toLocaleString()} AED
+                </span>
+              )}
             </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-red-500">
-                <span className="opacity-60">Discount / Agent Fee:</span>
-                <span>-{discount.toLocaleString()} AED</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold text-blue-600">
-              <span className="opacity-70">Receiving Amount:</span>
-              <span>{receiving.toLocaleString()} AED</span>
+
+            <div className="flex items-center gap-1.5">
+              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${profit >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
+                Profit: {profit >= 0 ? `+${profit.toLocaleString()}` : profit.toLocaleString()} AED
+              </span>
             </div>
-            <div className="flex justify-between text-amber-600">
-              <span className="opacity-70">Supplier Cost:</span>
-              <span>{supplierCost.toLocaleString()} AED</span>
-            </div>
-            {refund > 0 && (
-              <div className="flex justify-between text-red-500">
-                <span className="opacity-70">Refund:</span>
-                <span>-{refund.toLocaleString()} AED</span>
-              </div>
-            )}
-            <div className="flex justify-between font-bold border-t border-black/10 dark:border-white/10 pt-1.5 text-green-600">
-              <span>Gross Profit (GP):</span>
-              <span>{profit.toLocaleString()} AED</span>
-            </div>
-            {(fin.payment_method || details.payment_method) && (
-              <div className="flex justify-between text-[11px] opacity-60 pt-1">
-                <span>Payment Method:</span>
-                <span>{fin.payment_method || details.payment_method}</span>
-              </div>
-            )}
-            {balance !== 0 && (
-              <div className="flex justify-between text-[11px] opacity-60">
-                <span>Balance:</span>
-                <span>{balance.toLocaleString()} AED</span>
-              </div>
-            )}
           </div>
         </>
       )}
