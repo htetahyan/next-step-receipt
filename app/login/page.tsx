@@ -34,7 +34,9 @@ export default function LoginPage() {
           <form action={action} className="space-y-6">
             <div className="space-y-4">
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+                <div className="absolute left-4 inset-y-0 flex items-center pointer-events-none">
+                  <Mail className="w-5 h-5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+                </div>
                 <input 
                   type="email" 
                   name="email"
@@ -44,7 +46,9 @@ export default function LoginPage() {
                 />
               </div>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+                <div className="absolute left-4 inset-y-0 flex items-center pointer-events-none">
+                  <Lock className="w-5 h-5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+                </div>
                 <input 
                   type="password" 
                   name="password"

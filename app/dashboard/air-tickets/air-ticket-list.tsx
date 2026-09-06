@@ -196,42 +196,42 @@ export default function AirTicketList({
   };
 
   return (
-    <div className="space-y-6 pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-6">
+    <div className="space-y-4 pb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--card-border)] pb-3">
         <div>
-          <h1 className="text-3xl font-serif font-normal tracking-tight flex items-center gap-3">
-            <Plane className="w-7 h-7 text-[#D97757] opacity-80" />
+          <h1 className="text-xl font-serif font-normal tracking-tight flex items-center gap-2">
+            <Plane className="w-5 h-5 text-[#D97757] opacity-80" />
             Air Tickets
           </h1>
-          <p className="text-sm opacity-60 mt-1 font-mono">{summary.count} records</p>
+          <p className="text-xs opacity-60 font-mono mt-0.5">{summary.count} records</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Export Dropdown Menu */}
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="inline-flex items-center gap-2 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-4 py-2.5 text-sm font-medium hover:bg-[var(--sidebar-bg)] transition-all shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 h-8.5 text-xs font-medium hover:bg-[var(--sidebar-bg)] transition-all shadow-xs"
             >
-              <FileSpreadsheet className="h-4 w-4 text-green-600" />
-              <span>Export (.xlsx)</span>
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              <FileSpreadsheet className="h-3.5 w-3.5 text-green-600" />
+              <span>Export</span>
+              <ChevronDown className="h-3 w-3 opacity-60" />
             </button>
 
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[var(--card-border)] bg-[var(--background)] p-1.5 shadow-xl z-50 text-xs">
-                <div className="px-3 py-1.5 font-semibold text-[11px] uppercase tracking-wider opacity-50 border-b border-[var(--card-border)] mb-1">
+              <div className="absolute right-0 mt-1.5 w-56 rounded-xl border border-[var(--card-border)] bg-[var(--background)] p-1.5 shadow-xl z-50 text-xs">
+                <div className="px-3 py-1 font-semibold text-[10px] uppercase tracking-wider opacity-50 border-b border-[var(--card-border)] mb-1">
                   Export Options
                 </div>
                 <button
                   onClick={() => exportData(filtered, 'Air_Tickets_Filtered', 'xlsx')}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium"
                 >
                   <span>Export Filtered List (.xlsx)</span>
                   <span className="font-mono text-[10px] opacity-60">{filtered.length}</span>
                 </button>
                 <button
                   onClick={() => exportData(services, 'Air_Tickets_All_Records', 'xlsx')}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium"
                 >
                   <span>Export All Records (.xlsx)</span>
                   <span className="font-mono text-[10px] opacity-60">{services.length}</span>
@@ -239,7 +239,7 @@ export default function AirTicketList({
                 <div className="border-t border-[var(--card-border)] my-1" />
                 <button
                   onClick={() => exportData(filtered, 'Air_Tickets_Filtered', 'csv')}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium opacity-80"
+                  className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium opacity-80"
                 >
                   <span>Export as CSV (.csv)</span>
                   <span className="font-mono text-[10px] opacity-60">CSV</span>
@@ -249,41 +249,55 @@ export default function AirTicketList({
           </div>
 
           {canCreate && (
-            <Link href="/dashboard/air-tickets/new" className="inline-flex items-center gap-2 rounded-lg bg-[#D97757] px-5 py-2.5 text-sm font-medium text-[#F5F4EF] hover:opacity-90 shadow-sm cursor-pointer">
-              <Plus className="h-4 w-4" /> New Ticket Record
+            <Link href="/dashboard/air-tickets/new" className="inline-flex items-center gap-1.5 rounded-lg bg-[#D97757] px-3.5 h-8.5 text-xs font-medium text-[#F5F4EF] hover:opacity-90 shadow-sm cursor-pointer">
+              <Plus className="h-3.5 w-3.5" /> New Ticket
             </Link>
           )}
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Summary Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {[
           { label: 'Total Amount', value: summary.totalAmount, color: 'text-slate-900 dark:text-white' },
           { label: 'Receiving', value: summary.totalReceiving, color: 'text-blue-600' },
           { label: 'Supplier Cost', value: summary.totalSupplierCost, color: 'text-amber-600' },
           { label: 'Gross Profit', value: summary.totalProfit, color: summary.totalProfit >= 0 ? 'text-green-600' : 'text-red-600' },
         ].map(card => (
-          <div key={card.label} className="card-anthropic p-5">
-            <div className="text-xs uppercase tracking-wider opacity-50 mb-2">{card.label}</div>
-            <div className={`text-xl font-mono font-bold ${card.color || ''}`}>{card.value.toLocaleString()} <span className="text-xs font-normal opacity-60">AED</span></div>
+          <div key={card.label} className="card-anthropic p-3">
+            <div className="text-[10px] uppercase tracking-wider opacity-50 mb-1">{card.label}</div>
+            <div className={`text-base font-mono font-bold ${card.color || ''}`}>{card.value.toLocaleString()} <span className="text-[10px] font-normal opacity-60">AED</span></div>
           </div>
         ))}
       </div>
 
       {/* Search and Filters */}
-      <div className="card-anthropic p-4 flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, passport, route, ref ID..." className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]" />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80"><X className="w-4 h-4" /></button>}
+      <div className="card-anthropic p-3 flex flex-col sm:flex-row items-center gap-2.5">
+        <div className="relative flex-1 w-full">
+          <div className="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 opacity-40" />
+          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, passport, route, ref ID..."
+            className="w-full pl-9 pr-9 h-8.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
+          />
+          {search && (
+            <div className="absolute right-2.5 inset-y-0 flex items-center">
+              <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80 p-0.5 cursor-pointer flex items-center justify-center">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <select
             value={categoryFilter}
             onChange={e => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
+            className="h-8.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
           >
             <option value="all">All Types</option>
             <option value="Air Ticket">Air Ticket</option>
@@ -294,7 +308,7 @@ export default function AirTicketList({
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
+            className="h-8.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
           >
             <option value="all">All Statuses</option>
             <option value="Open">Open</option>
@@ -307,21 +321,21 @@ export default function AirTicketList({
 
       {/* Table */}
       <div className="card-anthropic overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-[10px] uppercase tracking-wider opacity-70">
+        <div className="overflow-x-auto max-h-[calc(100vh-230px)] relative">
+          <table className="w-full text-left">
+            <thead className="sticky top-0 z-10 border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] backdrop-blur-md text-[10px] uppercase tracking-wider opacity-90 shadow-xs">
               <tr>
-                <th className="px-4 py-3 font-medium">Ref ID</th>
-                <th className="px-4 py-3 font-medium">Customer</th>
-                <th className="px-4 py-3 font-medium">Route / Destination</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Booking Date</th>
-                <th className="px-4 py-3 font-medium text-right">Amount</th>
-                <th className="px-4 py-3 font-medium text-right">Airline Cost</th>
-                <th className="px-4 py-3 font-medium">Payment</th>
-                <th className="px-4 py-3 font-medium">Handled By</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium text-right">Actions</th>
+                <th className="px-3 py-2 font-semibold">Ref ID</th>
+                <th className="px-3 py-2 font-semibold">Customer</th>
+                <th className="px-3 py-2 font-semibold">Route / Destination</th>
+                <th className="px-3 py-2 font-semibold">Type</th>
+                <th className="px-3 py-2 font-semibold">Booking Date</th>
+                <th className="px-3 py-2 font-semibold text-right">Amount</th>
+                <th className="px-3 py-2 font-semibold text-right">Airline Cost</th>
+                <th className="px-3 py-2 font-semibold">Payment</th>
+                <th className="px-3 py-2 font-semibold">Handled By</th>
+                <th className="px-3 py-2 font-semibold">Status</th>
+                <th className="px-3 py-2 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--card-border)]">
@@ -331,7 +345,7 @@ export default function AirTicketList({
                 const fin = service.financials as any;
                 return (
                   <tr key={service.id} className="hover:bg-[var(--sidebar-bg)] transition-colors group">
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-1.5 text-xs">
                       {editingRefId?.id === service.id ? (
                         <div className="flex items-center gap-1">
                           <input
@@ -380,33 +394,31 @@ export default function AirTicketList({
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-sm flex items-center gap-2">
+                    <td className="px-3 py-1.5 text-xs">
+                      <div className="font-medium text-xs flex items-center gap-1.5">
                         <span>{customer?.name}</span>
                         {details?.passengers && details.passengers.length > 1 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono">
+                          <span 
+                            className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#D97757]/15 text-[#D97757] font-semibold font-mono cursor-help shrink-0"
+                            title={`Travelers (${details.passengers.length}):\n${details.passengers.map((p: any, i: number) => `${i + 1}. ${p.name || 'Pax'} (${p.passport_no || 'No Pass'})`).join('\n')}`}
+                          >
                             {details.passengers.length} Pax
                           </span>
                         )}
                       </div>
-                      {details?.passengers && details.passengers.length > 1 && (
-                        <div className="text-[11px] text-[#D97757] opacity-90 truncate max-w-[220px] font-sans mt-0.5" title={details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}>
-                          Travelers: {details.passengers.map((p: any) => p.name).filter(Boolean).join(', ')}
-                        </div>
-                      )}
                       <div className="text-[11px] opacity-50 font-mono">{customer?.passport_no || '—'}</div>
                     </td>
-                    <td className="px-4 py-3 text-xs font-medium">{details?.destination || '—'}</td>
-                    <td className="px-4 py-3 text-xs">{service.category}</td>
-                    <td className="px-4 py-3 text-xs font-mono">{details?.booking_date || '—'}</td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.amount || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">{Number(fin?.supplier_cost || 0).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs">{fin?.payment_method || '—'}</td>
-                    <td className="px-4 py-3 text-xs">{details?.handled_by || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-1.5 text-xs font-medium">{details?.destination || '—'}</td>
+                    <td className="px-3 py-1.5 text-xs">{service.category}</td>
+                    <td className="px-3 py-1.5 text-xs font-mono">{details?.booking_date || '—'}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-xs">{Number(fin?.amount || 0).toLocaleString()}</td>
+                    <td className="px-3 py-1.5 text-right font-mono text-xs">{Number(fin?.supplier_cost || 0).toLocaleString()}</td>
+                    <td className="px-3 py-1.5 text-xs">{fin?.payment_method || '—'}</td>
+                    <td className="px-3 py-1.5 text-xs">{details?.handled_by || '—'}</td>
+                    <td className="px-3 py-1.5">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${STATUS_COLORS[service.status] || 'bg-gray-100 text-gray-600'}`}>{service.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-1.5 text-right">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {canCreate && (
                           <Link href={`/dashboard/air-tickets/new?duplicate=${service.id}&customerId=${service.customer_id || ''}`} className="p-1.5 rounded hover:bg-[var(--card-border)] cursor-pointer" title="Duplicate"><Copy className="w-3.5 h-3.5" /></Link>

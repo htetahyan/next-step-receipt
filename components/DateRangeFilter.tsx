@@ -38,7 +38,9 @@ export default function DateRangeFilter() {
                <option key={r.value} value={r.value} className="bg-white dark:bg-slate-900">{r.label}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 pointer-events-none" />
+          <div className="absolute right-0 inset-y-0 flex items-center pointer-events-none">
+            <ChevronDown className="h-4 w-4 text-emerald-500" />
+          </div>
        </div>
     </div>
   )

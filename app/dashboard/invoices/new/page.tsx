@@ -332,7 +332,9 @@ export default function NewInvoicePage() {
                         selected={field.value ? new Date(field.value.split('-').reverse().join('-')) : null}
                         dateFormat="dd-MM-yyyy"
                       />
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      <div className="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                      </div>
                     </div>
                   )}
                 />

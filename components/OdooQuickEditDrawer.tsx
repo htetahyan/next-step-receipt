@@ -446,7 +446,7 @@ export default function OdooQuickEditDrawer({
                       {phone && (
                         <a
                           href={`tel:${phone}`}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#D97757] hover:opacity-80"
+                          className="absolute right-2.5 inset-y-0 flex items-center text-[#D97757] hover:opacity-80"
                           title="Call Customer"
                         >
                           <Phone className="w-3.5 h-3.5" />

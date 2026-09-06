@@ -194,113 +194,132 @@ export default function CustomerList({
   }, [filtered, currentPage])
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-8">
+    <div className="space-y-4 pb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--card-border)] pb-3">
         <div>
-          <h1 className="text-3xl font-serif font-normal tracking-tight">Client Directory</h1>
-          <p className="text-sm opacity-60 mt-2 font-mono">Total records: {filtered.length}</p>
+          <h1 className="text-xl font-serif font-normal tracking-tight flex items-center gap-2">
+            <User className="w-5 h-5 text-[#D97757] opacity-80" />
+            Client Directory
+          </h1>
+          <p className="text-xs opacity-60 mt-0.5 font-mono">Total records: {filtered.length}</p>
         </div>
         <button 
           onClick={handleAdd}
-          className="inline-flex items-center gap-2 rounded-md bg-[#D97757] px-4 py-2 text-sm font-medium text-[#F5F4EF] transition-all hover:opacity-90"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#D97757] px-3.5 h-8.5 text-xs font-medium text-[#F5F4EF] transition-all hover:opacity-90 shadow-xs cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
           Add Customer
         </button>
       </div>
 
       {/* Search Filter Bar */}
-      <div className="bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl p-4 flex items-center gap-3 shadow-xs">
-        <Search className="h-5 w-5 opacity-40" />
-        <input 
-          type="text"
-          placeholder="Search by client name, email, phone, or passport number..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="bg-transparent border-0 outline-none w-full text-sm font-medium focus:ring-0 placeholder:opacity-50 text-[var(--foreground)]"
-        />
-        {search && (
-          <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80">
-            <X className="w-4 h-4" />
-          </button>
-        )}
+      <div className="card-anthropic p-2.5 sm:p-3 shadow-xs">
+        <div className="relative w-full">
+          <div className="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 opacity-40" />
+          </div>
+          <input 
+            type="text"
+            placeholder="Search by client name, email, phone, or passport number..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-9 h-8.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
+          />
+          {search && (
+            <div className="absolute right-2.5 inset-y-0 flex items-center">
+              <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80 p-0.5 cursor-pointer flex items-center justify-center">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="card-anthropic overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-xs uppercase opacity-70">
+        <div className="overflow-x-auto max-h-[calc(100vh-230px)] relative">
+          <table className="w-full text-left">
+            <thead className="sticky top-0 z-10 border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] backdrop-blur-md text-[10px] uppercase tracking-wider opacity-90 shadow-xs">
               <tr>
-                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Client Information</th>
-                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Contact Details</th>
-                <th scope="col" className="px-6 py-4 font-medium tracking-wider">Joined</th>
-                <th scope="col" className="px-6 py-4 text-right font-medium tracking-wider">Manage</th>
+                <th scope="col" className="px-4 py-2 font-semibold">Client Information</th>
+                <th scope="col" className="px-4 py-2 font-semibold">Contact Details</th>
+                <th scope="col" className="px-4 py-2 font-semibold">Joined</th>
+                <th scope="col" className="px-4 py-2 text-right font-semibold">Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--card-border)]">
               {paginatedItems?.map((customer) => (
-                <tr key={customer.id} className="hover:bg-[var(--sidebar-bg)] transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--card-border)]">
-                        <User className="h-4 w-4 opacity-70" />
+                <tr key={customer.id} className="hover:bg-[var(--sidebar-bg)] transition-colors group">
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-full bg-[var(--card-border)] text-xs font-semibold">
+                        {customer.name?.charAt(0)?.toUpperCase() || <User className="h-3.5 w-3.5 opacity-70" />}
                       </div>
-                      <div className="font-serif text-lg">{customer.name}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1.5 opacity-80">
-                      <div className="flex items-center gap-2 text-xs font-mono">
-                        <Mail className="h-3.5 w-3.5 opacity-50" />
-                        <span className="truncate max-w-[180px]">{customer.email || '—'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs font-mono">
-                        <Phone className="h-3.5 w-3.5 opacity-50" />
-                        <span>{customer.phone || '—'}</span>
+                      <div>
+                        <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 group-hover:text-[#D97757] transition-colors">{customer.name}</div>
+                        {customer.passport_no && (
+                          <div className="text-[11px] font-mono opacity-60">Pass: {customer.passport_no}</div>
+                        )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 opacity-70 text-xs font-mono">
-                      <Calendar className="h-3.5 w-3.5 opacity-50" />
+                  <td className="px-4 py-2">
+                    <div className="space-y-0.5 opacity-80">
+                      {customer.email && (
+                        <div className="flex items-center gap-1.5 text-xs font-mono">
+                          <Mail className="h-3 w-3 opacity-50" />
+                          <span className="truncate max-w-[180px]">{customer.email}</span>
+                        </div>
+                      )}
+                      {customer.phone && (
+                        <div className="flex items-center gap-1.5 text-xs font-mono">
+                          <Phone className="h-3 w-3 opacity-50" />
+                          <span>{customer.phone}</span>
+                        </div>
+                      )}
+                      {!customer.email && !customer.phone && <span className="opacity-40 text-xs">—</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1.5 opacity-70 text-xs font-mono">
+                      <Calendar className="h-3 w-3 opacity-50" />
                       <span>{new Date(customer.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex justify-end gap-1">
                       <button 
                         onClick={() => setDocCustomer(customer)}
-                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
+                        className="p-1 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100 cursor-pointer"
                         title="Documents"
                       >
-                        <FileText className="h-4 w-4" />
+                        <FileText className="h-3.5 w-3.5" />
                       </button>
                       <Link 
                         href={`/dashboard/customers/${customer.id}`}
-                        className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
+                        className="p-1 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100 cursor-pointer"
                         title="Open Customer Hub"
                       >
-                        <ArrowRight className="h-4 w-4" />
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
-                       {canEdit && (
-                         <button 
+                      {canEdit && (
+                        <button 
                           onClick={() => handleEdit(customer)}
-                          className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100"
+                          className="p-1 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:opacity-100 cursor-pointer"
                           title="Edit Customer"
                         >
-                          <Edit2 className="h-4 w-4" />
+                          <Edit2 className="h-3.5 w-3.5" />
                         </button>
-                       )}
-                       {canDelete && (
+                      )}
+                      {canDelete && (
                         <button 
                           disabled={isDeleting === customer.id}
                           onClick={() => setDeleteTarget({ id: customer.id, name: customer.name })}
-                          className="p-2 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:text-red-500"
+                          className="p-1 rounded-md hover:bg-[var(--card-border)] transition-colors opacity-70 hover:text-red-500 cursor-pointer"
                           title="Delete Customer"
                         >
-                          {isDeleting === customer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          {isDeleting === customer.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                         </button>
-                       )}
+                      )}
                     </div>
                   </td>
                 </tr>

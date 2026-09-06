@@ -66,23 +66,23 @@ export default function SuppliersPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-4 pb-8 animate-in fade-in duration-500">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--card-border)] pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-[var(--card-border)] pb-3">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-serif text-[var(--foreground)]">Suppliers & Rates</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-serif text-[var(--foreground)]">Suppliers & Rates</h1>
           </div>
-          <p className="text-sm opacity-60 mt-1.5 ml-1">Manage suppliers, service rates, and compare pricing across providers</p>
+          <p className="text-xs opacity-60 mt-0.5 ml-0.5">Manage suppliers, service rates, and compare pricing across providers</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {canCreate && activeTab === 'suppliers' && (
             <button
               onClick={() => { setEditingSupplier(null); setIsModalOpen(true); }}
-              className="flex items-center gap-2 px-5 py-3 bg-[#D97757] hover:opacity-90 text-[#F5F4EF] font-medium rounded-lg shadow-sm transition-all cursor-pointer"
+              className="flex items-center gap-1.5 h-8.5 px-3.5 bg-[#D97757] hover:opacity-90 text-[#F5F4EF] text-xs font-medium rounded-lg shadow-sm transition-all cursor-pointer"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-3.5 w-3.5" />
               Add New Supplier
             </button>
           )}
@@ -90,23 +90,23 @@ export default function SuppliersPage() {
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex items-center gap-1 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl p-1.5 w-fit">
+      <div className="flex items-center gap-1 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg p-1 w-fit">
         <button
           onClick={() => setActiveTab('suppliers')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
             activeTab === 'suppliers' ? 'bg-[var(--background)] shadow-sm text-[var(--foreground)]' : 'text-[var(--foreground)] opacity-50 hover:opacity-80'
           }`}
         >
-          <LayoutGrid className="w-4 h-4" />
+          <LayoutGrid className="w-3.5 h-3.5" />
           Suppliers
         </button>
         <button
           onClick={() => setActiveTab('ratecard')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
             activeTab === 'ratecard' ? 'bg-[var(--background)] shadow-sm text-[var(--foreground)]' : 'text-[var(--foreground)] opacity-50 hover:opacity-80'
           }`}
         >
-          <Table2 className="w-4 h-4" />
+          <Table2 className="w-3.5 h-3.5" />
           Rate Card
         </button>
       </div>

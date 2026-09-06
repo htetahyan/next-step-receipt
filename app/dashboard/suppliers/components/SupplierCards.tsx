@@ -10,7 +10,8 @@ import {
   Mail, 
   Tag, 
   Edit2, 
-  Trash2 
+  Trash2,
+  X
 } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 
@@ -76,11 +77,11 @@ export default function SupplierCards({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Search Bar */}
       <div className="relative max-w-md w-full">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-gray-400" />
+        <div className="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-[var(--muted)]" />
         </div>
         <input
           type="text"
@@ -90,8 +91,21 @@ export default function SupplierCards({
             setCurrentPage(1); // Reset to page 1 on search
           }}
           placeholder="Search suppliers..."
-          className="block w-full pl-10 pr-3 py-2 border border-[var(--card-border)] rounded-lg bg-[var(--background)] text-[var(--foreground)] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#D97757] focus:border-[#D97757] sm:text-sm transition-colors"
+          className="block w-full pl-9 pr-8 h-8.5 border border-[var(--card-border)] rounded-lg bg-[var(--background)] text-[var(--foreground)] placeholder-[var(--muted)] text-xs focus:outline-none focus:ring-1 focus:ring-[#D97757] focus:border-[#D97757] transition-colors"
         />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => {
+              onSearchChange('');
+              setCurrentPage(1);
+            }}
+            className="absolute right-2.5 inset-y-0 flex items-center text-[var(--muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+            title="Clear search"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {loading ? (

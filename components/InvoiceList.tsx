@@ -77,108 +77,110 @@ export default function InvoiceList({
   }, [filtered, currentPage])
 
   return (
-    <div className="rounded-xl border border-[#e2e8f0] bg-white shadow-sm dark:border-[#1e293b] dark:bg-[#0f172a] overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+    <div className="card-anthropic overflow-hidden">
+        <div className="p-3 border-b border-[var(--card-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
            <div className="relative max-w-sm flex-1 w-full">
-             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-               <Search className="h-4 w-4 text-slate-400" />
+             <div className="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+               <Search className="h-4 w-4 opacity-40" />
              </div>
              <input 
                type="text" 
                placeholder="Search invoices by number or client..." 
                value={search}
                onChange={(e) => setSearch(e.target.value)}
-               className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 sm:text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-white transition-all" 
+               className="w-full pl-9 pr-9 h-8.5 text-xs rounded-lg border border-[var(--card-border)] bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]" 
               />
               {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80">
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="absolute right-2.5 inset-y-0 flex items-center">
+                  <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80 p-0.5 cursor-pointer flex items-center justify-center">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               )}
            </div>
 
-           <div className="flex flex-wrap gap-2 items-center w-full md:w-auto">
+           <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
              <div className="flex items-center gap-1.5 text-xs">
-               <span className="opacity-60">From:</span>
+               <span className="opacity-60 text-[11px]">From:</span>
                <input
                  type="date"
                  value={startDate}
                  onChange={e => setStartDate(e.target.value)}
-                 className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+                 className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-2 h-8 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
                />
              </div>
 
              <div className="flex items-center gap-1.5 text-xs">
-               <span className="opacity-60">To:</span>
+               <span className="opacity-60 text-[11px]">To:</span>
                <input
                  type="date"
                  value={endDate}
                  onChange={e => setEndDate(e.target.value)}
-                 className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+                 className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-2 h-8 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20"
                />
              </div>
 
              {(startDate || endDate) && (
                <button
                  onClick={() => { setStartDate(''); setEndDate(''); }}
-                 className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-red-500 font-semibold"
+                 className="px-2 h-8 rounded-lg hover:bg-[var(--sidebar-bg)] text-xs text-red-500 font-semibold cursor-pointer"
                  title="Clear Date Filters"
                >
                  Clear
                </button>
              )}
-           </div>
 
-           <div className="text-xs font-mono opacity-60 flex-shrink-0">Total: {filtered.length} matching</div>
+             <div className="text-[11px] font-mono opacity-60 flex-shrink-0 ml-1">Total: {filtered.length}</div>
+           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-600 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+        <div className="overflow-x-auto max-h-[calc(100vh-230px)] relative">
+          <table className="w-full text-left">
+            <thead className="sticky top-0 z-10 border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] backdrop-blur-md text-[10px] uppercase tracking-wider opacity-90 shadow-xs">
               <tr>
-                <th className="px-6 py-5 font-bold">Invoice NO.</th>
-                <th className="px-6 py-5 font-bold">Client Name</th>
-                <th className="px-6 py-5 font-bold">Amount (AED)</th>
-                <th className="px-6 py-5 font-bold">Issue Date</th>
-                <th className="px-6 py-5 text-right font-bold">Actions</th>
+                <th className="px-4 py-2 font-semibold">Invoice NO.</th>
+                <th className="px-4 py-2 font-semibold">Client Name</th>
+                <th className="px-4 py-2 font-semibold">Amount (AED)</th>
+                <th className="px-4 py-2 font-semibold">Issue Date</th>
+                <th className="px-4 py-2 text-right font-semibold">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-[var(--card-border)]">
               {paginatedItems.map((invoice: any) => (
-                <tr key={invoice.id} className="group hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 shadow-sm">
-                        <FileText className="h-5 w-5" />
+                <tr key={invoice.id} className="group hover:bg-[var(--sidebar-bg)] transition-colors">
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7.5 w-7.5 items-center justify-center rounded-lg bg-[#D97757]/10 text-[#D97757] font-semibold text-xs">
+                        <FileText className="h-3.5 w-3.5" />
                       </div>
-                      <span className="font-bold text-slate-900 dark:text-white">{invoice.invoice_number}</span>
+                      <span className="font-mono font-bold text-xs text-[#D97757]">{invoice.invoice_number}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                     <span className="font-medium text-slate-700 dark:text-slate-300">{invoice.customer?.name}</span>
+                  <td className="px-4 py-2 text-xs font-medium">
+                     <span>{invoice.customer?.name || '—'}</span>
                   </td>
-                  <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
+                  <td className="px-4 py-2 text-xs font-mono font-bold">
                     {(Number(invoice.total_amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
-                  <td className="px-6 py-4">
-                     <div className="text-slate-500">{invoice.date}</div>
+                  <td className="px-4 py-2 text-xs font-mono opacity-70">
+                     <div>{invoice.date}</div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 isolate">
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex justify-end gap-1">
                       <Link 
                         href={`/dashboard/invoices/${invoice.id}`}
-                        className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all font-bold"
+                        className="p-1 rounded-md text-slate-400 hover:text-[#D97757] hover:bg-[var(--sidebar-bg)] transition-all cursor-pointer"
                         title="View & Download"
                       >
-                        <Eye className="h-5 w-5" />
+                        <Eye className="h-3.5 w-3.5" />
                       </Link>
                       {canDelete && (
                         <button 
                           disabled={isDeleting === invoice.id}
                           onClick={() => setDeleteTarget({ id: invoice.id, number: invoice.invoice_number })}
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50 cursor-pointer"
+                          className="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-[var(--sidebar-bg)] transition-all disabled:opacity-50 cursor-pointer"
                           title="Delete Permanently"
                         >
-                          {isDeleting === invoice.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+                          {isDeleting === invoice.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                         </button>
                       )}
                     </div>

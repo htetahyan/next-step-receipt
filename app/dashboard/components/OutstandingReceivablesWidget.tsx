@@ -45,12 +45,12 @@ export function OutstandingReceivablesWidget({ services }: OutstandingReceivable
   if (pendingItems.length === 0) return null;
 
   return (
-    <div className="card-anthropic p-6 flex flex-col justify-between shadow-sm border-amber-500/20 bg-amber-500/5">
+    <div className="card-anthropic p-4 flex flex-col justify-between shadow-sm border-amber-500/20 bg-amber-500/5">
       <div>
-        <div className="flex items-center justify-between pb-4 border-b border-amber-500/20 mb-4">
+        <div className="flex items-center justify-between pb-2.5 border-b border-amber-500/20 mb-3">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <h3 className="text-base font-serif font-normal text-amber-900 dark:text-amber-200">
+            <h3 className="text-sm font-serif font-medium text-amber-900 dark:text-amber-200">
               Outstanding Balances
             </h3>
           </div>
@@ -59,7 +59,7 @@ export function OutstandingReceivablesWidget({ services }: OutstandingReceivable
           </span>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {pendingItems.slice(0, 4).map((item) => (
             <div
               key={item.id}
@@ -93,7 +93,7 @@ export function OutstandingReceivablesWidget({ services }: OutstandingReceivable
         </div>
       </div>
 
-      <div className="pt-4 mt-4 border-t border-amber-500/20 flex items-center justify-between text-xs opacity-70 font-mono">
+      <div className="pt-2.5 mt-3 border-t border-amber-500/20 flex items-center justify-between text-xs opacity-70 font-mono">
         <span>{pendingItems.length} Unsettled Accounts</span>
         <Link href="/dashboard/invoices" className="text-[#D97757] hover:underline">
           Invoices ledger →

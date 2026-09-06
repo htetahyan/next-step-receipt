@@ -15,7 +15,8 @@ import {
   Tag, 
   Filter,
   DollarSign,
-  Wrench
+  Wrench,
+  X
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { parseFinancialNumber } from '@/lib/financialUtils';
@@ -177,13 +178,13 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
   return (
     <div className="card-anthropic overflow-hidden shadow-sm">
       {/* Header & Controls */}
-      <div className="p-6 border-b border-[var(--card-border)] space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <Sparkles className="w-5 h-5 text-[#D97757]" />
+      <div className="p-3.5 sm:p-4 border-b border-[var(--card-border)] space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#D97757]" />
             <div>
-              <h3 className="text-base font-serif font-medium">Recent Services Ledger</h3>
-              <p className="text-xs opacity-50 font-mono mt-0.5">
+              <h3 className="text-sm font-serif font-medium">Recent Services Ledger</h3>
+              <p className="text-[11px] opacity-50 font-mono">
                 Last {services.length} active & completed bookings with live profit telemetry
               </p>
             </div>
@@ -191,14 +192,26 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
 
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+              <div className="absolute left-2.5 inset-y-0 flex items-center pointer-events-none">
+                <Search className="w-3.5 h-3.5 opacity-40" />
+              </div>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search ref, customer, route, staff..."
-                className="input-anthropic pl-8 pr-3 py-1.5 text-xs w-56 sm:w-64"
+                className="input-anthropic pl-8 pr-7 h-8 text-xs w-56 sm:w-64"
               />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 inset-y-0 flex items-center text-[var(--muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -253,15 +266,15 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
         <table className="w-full text-left text-sm">
           <thead className="border-b border-[var(--card-border)] bg-[var(--sidebar-bg)] text-[10px] uppercase tracking-wider opacity-70 font-mono">
             <tr>
-              <th className="px-6 py-3 font-medium">Ref & Type</th>
-              <th className="px-6 py-3 font-medium">Service Details</th>
-              <th className="px-6 py-3 font-medium">Customer</th>
-              <th className="px-6 py-3 font-medium">Booked Date</th>
-              <th className="px-6 py-3 font-medium">Status</th>
-              <th className="px-6 py-3 text-right font-medium">Receiving (AED)</th>
-              <th className="px-6 py-3 text-right font-medium">Cost (AED)</th>
-              <th className="px-6 py-3 text-right font-medium">Gross Profit</th>
-              <th className="px-6 py-3 text-right font-medium">Action</th>
+              <th className="px-3.5 py-2 font-medium">Ref & Type</th>
+              <th className="px-3.5 py-2 font-medium">Service Details</th>
+              <th className="px-3.5 py-2 font-medium">Customer</th>
+              <th className="px-3.5 py-2 font-medium">Booked Date</th>
+              <th className="px-3.5 py-2 font-medium">Status</th>
+              <th className="px-3.5 py-2 text-right font-medium">Receiving (AED)</th>
+              <th className="px-3.5 py-2 text-right font-medium">Cost (AED)</th>
+              <th className="px-3.5 py-2 text-right font-medium">Gross Profit</th>
+              <th className="px-3.5 py-2 text-right font-medium">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--card-border)]">
@@ -285,7 +298,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
               return (
                 <tr key={srv.id} className="hover:bg-[var(--sidebar-bg)] transition-colors group">
                   {/* Ref & Category Icon */}
-                  <td className="px-6 py-3.5 whitespace-nowrap">
+                  <td className="px-3.5 py-1.5 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       {getCategoryIcon(srv.category)}
                       <Link
@@ -298,14 +311,14 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                   </td>
 
                   {/* Specific Service Details */}
-                  <td className="px-6 py-3.5 max-w-xs">
+                  <td className="px-3.5 py-1.5 max-w-xs">
                     <div className="font-medium text-xs truncate" title={serviceLabel}>
                       {serviceLabel}
                     </div>
                   </td>
 
                   {/* Customer */}
-                  <td className="px-6 py-3.5 whitespace-nowrap">
+                  <td className="px-3.5 py-1.5 whitespace-nowrap">
                     {srv.customer_id ? (
                       <Link
                         href={`/dashboard/customers/${srv.customer_id}`}
@@ -327,7 +340,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                   </td>
 
                   {/* Booked Date: created_at is primary, travel_date is secondary context */}
-                  <td className="px-6 py-3.5 whitespace-nowrap text-xs font-mono">
+                  <td className="px-3.5 py-1.5 whitespace-nowrap text-xs font-mono">
                     <div>
                       <div className="flex items-center gap-1 font-medium text-[var(--foreground)]">
                         <Calendar className="w-3 h-3 text-[#D97757]" />
@@ -342,7 +355,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                   </td>
 
                   {/* Status Badge */}
-                  <td className="px-6 py-3.5 whitespace-nowrap">
+                  <td className="px-3.5 py-1.5 whitespace-nowrap">
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
                         srv.status === 'Closed'
@@ -359,17 +372,17 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                   </td>
 
                   {/* Receiving Amount */}
-                  <td className="px-6 py-3.5 text-right font-mono text-xs font-semibold">
+                  <td className="px-3.5 py-1.5 text-right font-mono text-xs font-semibold">
                     {receiving.toLocaleString()} <span className="text-[10px] opacity-50">AED</span>
                   </td>
 
                   {/* Supplier Cost */}
-                  <td className="px-6 py-3.5 text-right font-mono text-xs opacity-70">
+                  <td className="px-3.5 py-1.5 text-right font-mono text-xs opacity-70">
                     {cost.toLocaleString()} <span className="text-[10px] opacity-50">AED</span>
                   </td>
 
                   {/* Net Gross Profit */}
-                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                  <td className="px-3.5 py-1.5 text-right whitespace-nowrap">
                     <span
                       className={`inline-flex items-center font-mono text-xs font-bold px-2 py-0.5 rounded ${
                         isProfitPositive
@@ -382,7 +395,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                   </td>
 
                   {/* Action Link */}
-                  <td className="px-6 py-3.5 text-right whitespace-nowrap">
+                  <td className="px-3.5 py-1.5 text-right whitespace-nowrap">
                     <Link
                       href={serviceUrl}
                       className="text-xs text-[#D97757] hover:underline font-mono inline-flex items-center gap-0.5 opacity-80 group-hover:opacity-100"

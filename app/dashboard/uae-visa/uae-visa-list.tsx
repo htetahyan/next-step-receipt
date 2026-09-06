@@ -954,34 +954,36 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
         <div className="flex flex-col sm:flex-row items-center gap-2.5 justify-between">
           {/* Search Box */}
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
+            <div className="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 opacity-40" />
+            </div>
             <input
               ref={searchRef}
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search name, passport, phone, ref ID, supplier... (Press / to focus)"
-              className="w-full pl-9 pr-14 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
+              className="w-full pl-9 pr-14 h-8.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 focus:border-[#D97757]"
             />
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <div className="absolute right-2.5 inset-y-0 flex items-center gap-1">
               {search && (
-                <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80 p-0.5 cursor-pointer">
+                <button onClick={() => setSearch('')} className="opacity-40 hover:opacity-80 p-0.5 cursor-pointer flex items-center justify-center">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
-              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1 rounded bg-[var(--sidebar-bg)] border border-[var(--card-border)] opacity-50">
+              <kbd className="hidden sm:inline-flex items-center justify-center text-[10px] font-mono px-1 h-4.5 rounded bg-[var(--sidebar-bg)] border border-[var(--card-border)] opacity-50">
                 /
               </kbd>
             </div>
           </div>
 
           {/* Odoo View Mode Toggles & Action Controls */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
             {/* View Mode Switcher */}
-            <div className="inline-flex p-0.5 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg">
+            <div className="inline-flex p-0.5 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-lg h-8.5 items-center">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 h-7.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === 'list'
                     ? 'bg-[var(--card-bg)] text-[#D97757] shadow-xs'
                     : 'opacity-65 hover:opacity-100'
@@ -993,7 +995,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 h-7.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === 'kanban'
                     ? 'bg-[#D97757] text-white shadow-xs'
                     : 'opacity-65 hover:opacity-100'
@@ -1007,7 +1009,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
 
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 h-8.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
                 showFilters || statusFilter !== 'all' || supplierFilter !== 'all' || categoryFilter !== 'all' || expiryFilter !== 'all'
                   ? 'border-[#D97757] text-[#D97757] bg-[#D97757]/5'
                   : 'border-[var(--card-border)] hover:bg-[var(--sidebar-bg)]'
