@@ -79,26 +79,60 @@ export default async function Dashboard({
       endDate = endOfDay(now);
   }
 
+  const SERVICE_SELECT =
+    'id, customer_id, reference_id, category, status, details, financials, created_at, customer:customers(id, name, passport_no)';
+
   let allServices: any[] = [];
+  let recent20Services: any[] = [];
   let totalCustomersCount = 0;
+  let activeBookingsCount = 0;
+  let closedBookingsCount = 0;
 
   try {
-    const [servicesRes, customersRes] = await Promise.all([
+    const kpiQuery = supabase
+      .from('customer_services')
+      .select(SERVICE_SELECT)
+      .order('created_at', { ascending: false });
+
+    if (range !== 'all') {
+      kpiQuery.gte('created_at', startDate.toISOString());
+      if (endDate) kpiQuery.lte('created_at', endDate.toISOString());
+    }
+
+    const [kpiRes, activeRes, closedCountRes, customersRes, recentRes] = await Promise.all([
+      kpiQuery,
       supabase
         .from('customer_services')
-        .select('id, customer_id, reference_id, category, status, details, financials, created_at, customer:customers(id, name, passport_no)')
+        .select(SERVICE_SELECT)
+        .in('status', ['Open', 'In Progress'])
         .order('created_at', { ascending: false }),
-      supabase.from('customers').select('*', { count: 'exact', head: true }),
+      supabase
+        .from('customer_services')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'Closed'),
+      supabase.from('customers').select('id', { count: 'exact', head: true }),
+      supabase
+        .from('customer_services')
+        .select(SERVICE_SELECT)
+        .order('created_at', { ascending: false })
+        .limit(20),
     ]);
 
-    if (servicesRes.data) allServices = servicesRes.data;
+    const merged = new Map<string, any>();
+    for (const row of [...(kpiRes.data || []), ...(activeRes.data || [])]) {
+      merged.set(row.id, row);
+    }
+    allServices = Array.from(merged.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
     if (customersRes.count) totalCustomersCount = customersRes.count;
+    activeBookingsCount = (activeRes.data || []).length;
+    closedBookingsCount = closedCountRes.count || 0;
+    if (recentRes.data) recent20Services = recentRes.data;
   } catch (err) {
     console.error('Error fetching dashboard dataset:', err);
   }
-
-  // Top 20 Recent Services for the Ledger
-  const recent20Services = allServices.slice(0, 20);
 
   const parseDateToTimestamp = (dateVal: any): number => {
     if (!dateVal) return 0;
@@ -144,8 +178,6 @@ export default async function Dashboard({
   let totalReceiving = 0;
   let totalCost = 0;
   let totalBookingsCount = 0;
-  let activeBookingsCount = 0;
-  let closedBookingsCount = 0;
 
   const categoryDistribution: Record<string, { count: number; volume: number }> = {
     'UAE Visa': { count: 0, volume: 0 },
@@ -168,12 +200,6 @@ export default async function Dashboard({
     const fin = (srv.financials as any) || {};
     const cust = srv.customer as any;
     const cat = String(srv.category || '').toLowerCase();
-
-    if (srv.status === 'Open' || srv.status === 'In Progress') {
-      activeBookingsCount++;
-    } else if (srv.status === 'Closed') {
-      closedBookingsCount++;
-    }
 
     let mainCategory = 'Other Visas';
     if (cat.includes('uae') || cat.includes('inside') || cat.includes('a2a') || cat.includes('bus') || cat.includes('visit visa')) {

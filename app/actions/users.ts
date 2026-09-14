@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminSupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
@@ -17,8 +18,9 @@ import { getSiteUrl } from '@/lib/site-url';
 
 /**
  * Get current authenticated user and their RBAC profile (Server Action).
+ * Cached per request so layout + actions don't repeat the auth/profile lookups.
  */
-export async function getCurrentUserProfile(): Promise<UserProfile | null> {
+export const getCurrentUserProfile = cache(async function getCurrentUserProfile(): Promise<UserProfile | null> {
   const supabase = await createClient();
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
 
@@ -64,7 +66,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
       permissions: DEFAULT_ADMIN_PERMISSIONS,
     };
   }
-}
+});
 
 /**
  * Verify permission or throw an Unauthorized error

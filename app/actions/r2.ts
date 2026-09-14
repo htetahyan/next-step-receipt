@@ -3,8 +3,12 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+let s3Client: S3Client | null = null;
+
 export async function getS3Client() {
-  return new S3Client({
+  if (s3Client) return s3Client;
+
+  s3Client = new S3Client({
     region: 'auto',
     endpoint: process.env.CLOUDFLARE_R2_ENDPOINT!,
     credentials: {
@@ -12,6 +16,8 @@ export async function getS3Client() {
       secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
     },
   });
+
+  return s3Client;
 }
 
 export async function getPresignedUrl(fileName: string, contentType: string) {
@@ -19,12 +25,14 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
     const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
     if (!bucketName) throw new Error("Missing R2 Bucket Name");
 
-    const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const safeName = (fileName || 'document').replace(/[^a-zA-Z0-9.-]/g, '_');
+    const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${safeName}`;
+    const resolvedType = contentType || 'application/octet-stream';
 
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: uniqueFileName,
-      ContentType: contentType,
+      ContentType: resolvedType,
     });
 
     const s3Client = await getS3Client();

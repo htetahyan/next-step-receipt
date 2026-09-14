@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { addCustomerService } from '@/app/actions/services';
-import { getPresignedUrl } from '@/app/actions/r2';
-import { addDocument } from '@/app/actions/documents';
+import { addDocuments } from '@/app/actions/documents';
+import { uploadFileToR2, runWithConcurrency } from '@/lib/uploadToR2';
 import { getSuppliers } from '@/app/actions/suppliers';
 import {
   Loader2,
@@ -129,32 +129,6 @@ export default function NewServiceDialog({
     try {
       const formData = new FormData(e.currentTarget);
 
-      // 1. Upload files to Cloudflare R2 if any
-      const uploadedDocs = [];
-      if (files.length > 0) {
-        for (const file of files) {
-          const presignedRes = await getPresignedUrl(file.name, file.type);
-          if (presignedRes.success && presignedRes.uploadUrl) {
-            const uploadRes = await fetch(presignedRes.uploadUrl, {
-              method: 'PUT',
-              body: file,
-              headers: {
-                'Content-Type': file.type,
-              },
-            });
-            if (uploadRes.ok) {
-              uploadedDocs.push({
-                title: file.name,
-                file_url: presignedRes.publicUrl,
-                file_key: presignedRes.fileKey,
-                tag: category,
-              });
-            }
-          }
-        }
-      }
-
-      // 2. Prepare database payload
       const finalCategory = category === 'Other' ? customCategory || 'Other Service' : category;
       const numAmount = Number(amount || 0);
       const numCost = Number(supplierCost || 0);
@@ -167,7 +141,6 @@ export default function NewServiceDialog({
           travel_date: formData.get('travel_date'),
           passport_expiry: formData.get('passport_expiry'),
           notes: formData.get('notes'),
-          documents: uploadedDocs,
           visa_supplier: activeSupplier?.name || null,
         },
         financials: {
@@ -181,26 +154,45 @@ export default function NewServiceDialog({
       };
 
       const res = await addCustomerService(data);
-      if (res.success) {
-        const createdService = res.service || res.data;
-        if (createdService && uploadedDocs.length > 0) {
-          for (const doc of uploadedDocs) {
-            await addDocument({
-              customerId: customerId,
-              serviceId: createdService.id,
-              title: doc.title,
-              file_url: doc.file_url!,
-              file_key: doc.file_key!,
-              tag: finalCategory,
-            });
+      if (!res.success) {
+        toast.error(res.error || 'Failed to create service');
+        return;
+      }
+
+      const createdService = res.service || res.data;
+      if (createdService && files.length > 0) {
+        toast.info('Uploading documents...');
+        const uploadResults = await runWithConcurrency(files, 3, async (file) => {
+          const uploaded = await uploadFileToR2(file);
+          return {
+            customerId,
+            serviceId: createdService.id,
+            title: file.name,
+            file_url: uploaded.file_url,
+            file_key: uploaded.file_key,
+            tag: finalCategory,
+          };
+        });
+
+        const uploadedDocs = uploadResults
+          .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+          .map((r) => r.value);
+        const failedCount = uploadResults.filter((r) => r.status === 'rejected').length;
+
+        if (uploadedDocs.length > 0) {
+          const docRes = await addDocuments(uploadedDocs);
+          if (docRes.error) {
+            toast.error(`Service saved, but documents were not registered: ${docRes.error}`);
           }
         }
-        toast.success('Service created successfully');
-        onClose();
-        router.refresh();
-      } else {
-        toast.error(res.error || 'Failed to create service');
+        if (failedCount > 0) {
+          toast.error(`${failedCount} document${failedCount > 1 ? 's' : ''} failed to upload. Attach them from the record.`);
+        }
       }
+
+      toast.success('Service created successfully');
+      onClose();
+      router.refresh();
     } catch (err: any) {
       toast.error(err.message || 'An error occurred');
     } finally {

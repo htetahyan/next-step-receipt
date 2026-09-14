@@ -11,8 +11,8 @@ import { ZodType } from 'zod';
 
 import { addCustomerService, updateCustomerService, generateReferenceId } from '@/app/actions/services';
 import { addCustomer } from '@/app/actions/customers';
-import { addDocument } from '@/app/actions/documents';
-import { getPresignedUrl } from '@/app/actions/r2';
+import { addDocuments } from '@/app/actions/documents';
+import { uploadFileToR2, runWithConcurrency } from '@/lib/uploadToR2';
 import DocumentModal from '@/components/DocumentModal';
 import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
@@ -190,37 +190,37 @@ export function ServiceFormShell<T extends Record<string, any>>({
 
         if (serviceIdToUse && stagedFiles.length > 0) {
           toast.info('Uploading documents...');
-          for (const file of stagedFiles) {
-            try {
-              const urlRes = await getPresignedUrl(file.name, file.type);
-              if (!urlRes.success || !urlRes.uploadUrl) {
-                console.error('Failed to get presigned URL for', file.name);
-                continue;
-              }
-              const uploadRes = await fetch(urlRes.uploadUrl, {
-                method: 'PUT',
-                body: file,
-              });
-              if (uploadRes.ok) {
-                await addDocument({
-                  customerId: customerId,
-                  serviceId: serviceIdToUse,
-                  title: file.name,
-                  file_url: urlRes.publicUrl!,
-                  file_key: urlRes.fileKey!,
-                });
-              } else {
-                console.error('Failed to upload', file.name);
-              }
-            } catch (uploadErr) {
-              console.error('Upload error for', file.name, uploadErr);
+          const uploadResults = await runWithConcurrency(stagedFiles, 3, async (file) => {
+            const uploaded = await uploadFileToR2(file);
+            return {
+              customerId,
+              serviceId: serviceIdToUse,
+              title: file.name,
+              file_url: uploaded.file_url,
+              file_key: uploaded.file_key,
+              tag: 'General',
+            };
+          });
+
+          const uploadedDocs = uploadResults
+            .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+            .map((r) => r.value);
+          const failedCount = uploadResults.filter((r) => r.status === 'rejected').length;
+
+          if (uploadedDocs.length > 0) {
+            const docRes = await addDocuments(uploadedDocs);
+            if (docRes.error) {
+              toast.error(`Record saved, but documents were not registered: ${docRes.error}`);
             }
+          }
+
+          if (failedCount > 0) {
+            toast.error(`${failedCount} document${failedCount > 1 ? 's' : ''} failed to upload. You can attach them from the record.`);
           }
         }
 
         toast.success(initialData ? 'Record updated successfully' : 'Record created successfully');
         router.push(redirectPath);
-        router.refresh();
       } else {
         throw new Error(res.error || 'Failed to save record');
       }

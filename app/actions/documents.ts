@@ -1,57 +1,79 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { deleteFromR2, getPresignedReadUrl } from './r2';
 import { createClient } from '@/utils/supabase/server';
-import { requirePermission } from './users';
+import { getCurrentUserProfile, requirePermission } from './users';
+import { checkPermission, ModuleKey } from '@/lib/auth-permissions';
+import { revalidateAfter } from '@/lib/revalidate';
 
-function safeRevalidate(path: string) {
-  try {
-    revalidatePath(path);
-  } catch {
-    // Ignore revalidation error outside request scope
-  }
-}
+const DOC_WRITE_MODULES: ModuleKey[] = [
+  'customers',
+  'uae_visa',
+  'air_tickets',
+  'other_visa',
+  'tour_packages',
+  'custom_service',
+];
 
-export async function addDocument(data: {
+export type DocumentInsert = {
   customerId: string;
   serviceId?: string;
   title: string;
   file_url: string;
   file_key: string;
   tag?: string;
-}) {
+};
+
+async function requireDocumentWrite() {
+  const profile = await getCurrentUserProfile();
+  if (!profile) {
+    throw new Error('Unauthorized: Authentication required.');
+  }
+
+  const allowed = DOC_WRITE_MODULES.some(
+    (moduleKey) =>
+      checkPermission(profile, moduleKey, 'create') ||
+      checkPermission(profile, moduleKey, 'edit')
+  );
+
+  if (!allowed) {
+    throw new Error('Forbidden: You do not have permission to attach documents.');
+  }
+
+  return profile;
+}
+
+function toRow(data: DocumentInsert) {
+  return {
+    customer_id: data.customerId,
+    service_id: data.serviceId || null,
+    title: data.title,
+    file_url: data.file_url,
+    file_key: data.file_key,
+    tag: data.tag || 'General',
+  };
+}
+
+export async function addDocuments(docs: DocumentInsert[]) {
   try {
-    await requirePermission('customers', 'edit');
+    if (!docs.length) return { success: true };
+
+    await requireDocumentWrite();
     const supabase = await createClient();
 
-    const { error } = await supabase
-      .from('customer_documents')
-      .insert({
-        customer_id: data.customerId,
-        service_id: data.serviceId || null,
-        title: data.title,
-        file_url: data.file_url,
-        file_key: data.file_key,
-        tag: data.tag || 'General',
-      });
-
+    const { error } = await supabase.from('customer_documents').insert(docs.map(toRow));
     if (error) throw error;
 
-    safeRevalidate('/dashboard/customers');
-    if (data.serviceId) {
-      safeRevalidate('/dashboard/uae-visa');
-      safeRevalidate('/dashboard/air-tickets');
-      safeRevalidate('/dashboard/other-visa');
-      safeRevalidate('/dashboard/tour-packages');
-      safeRevalidate('/dashboard/custom-service');
-      safeRevalidate('/dashboard');
-    }
+    revalidateAfter(['/dashboard/customers']);
     return { success: true };
   } catch (error: any) {
-    console.error('Add document error:', error);
-    return { error: error.message || 'Failed to add document' };
+    console.error('Add documents error:', error);
+    return { error: error.message || 'Failed to add documents' };
   }
+}
+
+export async function addDocument(data: DocumentInsert) {
+  return addDocuments([data]);
 }
 
 export async function getDocuments(customerId: string, serviceId?: string) {
@@ -62,7 +84,7 @@ export async function getDocuments(customerId: string, serviceId?: string) {
       .from('customer_documents')
       .select('id, customer_id, service_id, title, file_url, file_key, tag, created_at')
       .eq('customer_id', customerId);
-    
+
     if (serviceId && serviceId !== 'all') {
       query = query.eq('service_id', serviceId);
     }
@@ -71,7 +93,6 @@ export async function getDocuments(customerId: string, serviceId?: string) {
 
     if (error) throw error;
 
-    // Attach signed read URLs for Cloudflare R2 files
     const docs = data || [];
     const signedDocs = await Promise.all(
       docs.map(async (doc: any) => {
@@ -96,23 +117,14 @@ export async function deleteDocument(id: string, fileKey: string) {
     await requirePermission('customers', 'delete');
     const supabase = await createClient();
 
-    // 1. Delete from R2 storage if key exists
     if (fileKey) {
       await deleteFromR2(fileKey);
     }
 
-    // 2. Delete from database
-    const { error } = await supabase
-      .from('customer_documents')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('customer_documents').delete().eq('id', id);
     if (error) throw error;
 
-    safeRevalidate('/dashboard/customers');
-    safeRevalidate('/dashboard/uae-visa');
-    safeRevalidate('/dashboard/air-tickets');
-    safeRevalidate('/dashboard/other-visa');
+    revalidateAfter(['/dashboard/customers']);
     return { success: true };
   } catch (error: any) {
     console.error('Delete document error:', error);

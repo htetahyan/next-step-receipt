@@ -3,7 +3,7 @@
 import { db } from '@/db';
 import { customerServices, invoices, invoiceItems, customers, suppliers } from '@/db/schema';
 import { eq, desc, like, or, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateAfter, SERVICE_DASHBOARD_PATHS } from '@/lib/revalidate';
 import { z } from 'zod';
 
 
@@ -24,13 +24,12 @@ export async function generateReferenceId(prefix: string): Promise<string> {
     const supabase = await createClient();
     const cleanPrefix = (prefix || 'REF').toUpperCase().trim();
     
-    // Fetch recent matching reference_ids to find the highest sequence number
     const { data, error } = await supabase
       .from('customer_services')
       .select('reference_id')
       .ilike('reference_id', `${cleanPrefix}%`)
       .order('created_at', { ascending: false })
-      .limit(300);
+      .limit(80);
 
     if (error || !data || data.length === 0) {
       return `${cleanPrefix}0001`;
@@ -141,7 +140,7 @@ export async function addCustomerService(data: any) {
     const { data: service, error: insertErr } = await supabase
       .from('customer_services')
       .insert(serviceInsertPayload)
-      .select()
+      .select('id, reference_id, customer_id, category, status, details, financials, created_at')
       .single();
 
     if (insertErr || !service) {
@@ -171,7 +170,7 @@ export async function addCustomerService(data: any) {
         const { data: newInvoice, error: invErr } = await supabase
           .from('invoices')
           .insert(invoiceInsertPayload)
-          .select()
+          .select('id')
           .single();
 
         if (newInvoice && !invErr) {
@@ -190,13 +189,7 @@ export async function addCustomerService(data: any) {
       }
     }
 
-    revalidatePath('/dashboard/customers');
-    revalidatePath('/dashboard/uae-visa');
-    revalidatePath('/dashboard/air-tickets');
-    revalidatePath('/dashboard/other-visa');
-    revalidatePath('/dashboard/tour-packages');
-    revalidatePath('/dashboard/custom-service');
-    revalidatePath('/dashboard');
+    revalidateAfter(SERVICE_DASHBOARD_PATHS);
 
     return { success: true, service, data: service };
   } catch (err: any) {
@@ -423,10 +416,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
     }
   }
 
-  revalidatePath('/dashboard/customers');
-  revalidatePath('/dashboard/uae-visa');
-  revalidatePath('/dashboard/air-tickets');
-  revalidatePath('/dashboard/other-visa');
+  revalidateAfter(SERVICE_DASHBOARD_PATHS);
 
   return {
     success: true,
@@ -465,17 +455,12 @@ export async function updateCustomerService(serviceId: string, data: any) {
       .from('customer_services')
       .update(updatePayload)
       .eq('id', serviceId)
-      .select()
+      .select('id, reference_id, customer_id, category, status, details, financials, created_at')
       .single();
 
     if (error) throw error;
 
-    revalidatePath('/dashboard/uae-visa');
-    revalidatePath('/dashboard/air-tickets');
-    revalidatePath('/dashboard/other-visa');
-    revalidatePath('/dashboard/tour-packages');
-    revalidatePath('/dashboard/custom-service');
-    revalidatePath('/dashboard');
+    revalidateAfter(SERVICE_DASHBOARD_PATHS);
 
     return { success: true, service: updated };
   } catch (err: any) {
@@ -502,12 +487,7 @@ export async function deleteCustomerService(serviceId: string) {
     const { error } = await supabase.from('customer_services').delete().eq('id', serviceId);
     if (error) throw error;
 
-    revalidatePath('/dashboard/uae-visa');
-    revalidatePath('/dashboard/air-tickets');
-    revalidatePath('/dashboard/other-visa');
-    revalidatePath('/dashboard/tour-packages');
-    revalidatePath('/dashboard/custom-service');
-    revalidatePath('/dashboard');
+    revalidateAfter(SERVICE_DASHBOARD_PATHS);
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -557,12 +537,7 @@ export async function updateServiceRefId(serviceId: string, referenceId: string)
 
     if (error) throw error;
 
-    revalidatePath('/dashboard/uae-visa');
-    revalidatePath('/dashboard/air-tickets');
-    revalidatePath('/dashboard/other-visa');
-    revalidatePath('/dashboard/tour-packages');
-    revalidatePath('/dashboard/custom-service');
-    revalidatePath('/dashboard');
+    revalidateAfter(SERVICE_DASHBOARD_PATHS);
 
     return { success: true, reference_id: cleanRef };
   } catch (err: any) {
@@ -656,10 +631,7 @@ export async function quickUpdateService(
       }
     }
 
-    revalidatePath('/dashboard/uae-visa');
-    revalidatePath('/dashboard/customers');
-    revalidatePath('/dashboard/air-tickets');
-    revalidatePath('/dashboard/other-visa');
+    revalidateAfter(SERVICE_DASHBOARD_PATHS);
     return { success: true, service: updated };
   } catch (err: any) {
     console.error('Failed to quick update service:', err);
@@ -713,10 +685,7 @@ export async function closeExpiredServices(daysOver: number = 30) {
 
       if (updateErr) throw updateErr;
 
-      revalidatePath('/dashboard/uae-visa');
-      revalidatePath('/dashboard/customers');
-      revalidatePath('/dashboard/air-tickets');
-      revalidatePath('/dashboard/other-visa');
+      revalidateAfter(SERVICE_DASHBOARD_PATHS);
     }
 
     return {

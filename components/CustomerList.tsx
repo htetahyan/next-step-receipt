@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Plus, User, Mail, Phone, Calendar, MoreHorizontal, Edit2, Trash2, Loader2, X, FileText, ArrowRight, Scan, UploadCloud, CheckCircle2, Search, Globe, CreditCard } from 'lucide-react'
 import { updateCustomer, deleteCustomer, addCustomer } from '@/app/actions/customers'
 import { addDocument } from '@/app/actions/documents'
-import { getPresignedUrl } from '@/app/actions/r2'
+import { uploadFileToR2 } from '@/lib/uploadToR2'
 import DocumentModal from './DocumentModal'
 import Link from 'next/link'
 import Pagination from './Pagination'
@@ -155,28 +155,20 @@ export default function CustomerList({
     // Upload Passport Image via Cloudflare R2
     if (passportFile && customerId) {
       try {
-        const presignedRes = await getPresignedUrl(passportFile.name, passportFile.type);
-        if (presignedRes.success && presignedRes.uploadUrl) {
-          const uploadRes = await fetch(presignedRes.uploadUrl, {
-            method: 'PUT',
-            body: passportFile,
-            headers: { 'Content-Type': passportFile.type },
-          });
-
-          if (uploadRes.ok) {
-            await addDocument({
-              customerId: customerId,
-              title: 'Passport Copy',
-              file_url: presignedRes.publicUrl!,
-              file_key: presignedRes.fileKey!,
-              tag: 'Passport'
-            });
-          } else {
-            console.error("Failed to upload to R2", uploadRes.statusText);
-          }
+        const uploaded = await uploadFileToR2(passportFile);
+        const docRes = await addDocument({
+          customerId: customerId,
+          title: 'Passport Copy',
+          file_url: uploaded.file_url,
+          file_key: uploaded.file_key,
+          tag: 'Passport'
+        });
+        if (docRes.error) {
+          toast.error(`Customer saved, but passport upload failed: ${docRes.error}`);
         }
-      } catch (uploadErr) {
+      } catch (uploadErr: any) {
         console.error("Failed to upload passport image", uploadErr);
+        toast.error(uploadErr?.message || 'Passport file upload failed. You can attach it from the customer record.');
       }
     }
 

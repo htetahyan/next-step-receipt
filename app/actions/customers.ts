@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidateAfter } from '@/lib/revalidate'
 import { customerSchema } from '@/lib/validations/serviceSchemas'
 import { createClient } from '@/utils/supabase/server'
 import { requirePermission } from '@/app/actions/users'
@@ -44,12 +44,12 @@ export async function addCustomer(formData: FormData) {
         passport_no: passportNo || null,
         metadata,
       })
-      .select()
+      .select('id, name, email, phone, passport_no, metadata, created_at')
       .single();
 
     if (error) throw error;
     
-    revalidatePath('/dashboard/customers')
+    revalidateAfter(['/dashboard/customers'])
     return { data: newCustomer }
   } catch (error: any) {
     return { error: error.message }
@@ -103,7 +103,7 @@ export async function updateCustomer(id: string, formData: FormData) {
 
     if (error) throw error;
 
-    revalidatePath('/dashboard/customers')
+    revalidateAfter(['/dashboard/customers'])
     return { message: 'Customer updated' }
   } catch (error: any) {
     return { error: error.message }
@@ -123,7 +123,7 @@ export async function deleteCustomer(id: string) {
     const { error } = await supabase.from('customers').delete().eq('id', id);
     if (error) throw error;
     
-    revalidatePath('/dashboard/customers')
+    revalidateAfter(['/dashboard/customers'])
     return { success: true, message: 'Customer deleted' }
   } catch (error: any) {
     console.error("Delete customer error:", error);

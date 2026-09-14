@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { UploadCloud, X, Loader2, CheckCircle2, FileText, Clipboard, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
-import { getPresignedUrl } from '@/app/actions/r2';
 import { addDocument } from '@/app/actions/documents';
+import { uploadFileToR2 } from '@/lib/uploadToR2';
 import { toast } from 'sonner';
 import { useOnlineStatus } from './ui/OfflineBanner';
 import BatchUploadConfirmModal, { UploadBatchItem } from './ui/BatchUploadConfirmModal';
@@ -177,20 +177,9 @@ export default function DocumentUploadZone({ customerId, serviceId, onUploadSucc
     abortControllersRef.current[item.id] = controller;
 
     try {
-      const presignedRes = await getPresignedUrl(item.file.name, item.file.type);
-      if (!presignedRes.success || !presignedRes.uploadUrl) {
-        throw new Error(presignedRes.error || 'Failed to get upload URL');
-      }
-
-      const uploadRes = await fetch(presignedRes.uploadUrl, {
-        method: 'PUT',
-        body: item.file,
-        headers: { 'Content-Type': item.file.type },
-        signal: controller.signal,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error(`Upload failed (${uploadRes.status})`);
+      const uploaded = await uploadFileToR2(item.file, controller.signal);
+      if (controller.signal.aborted) {
+        throw new DOMException('Cancelled', 'AbortError');
       }
 
       const finalTitle = item.title.trim() || cleanFilenameToTitle(item.file.name);
@@ -199,8 +188,8 @@ export default function DocumentUploadZone({ customerId, serviceId, onUploadSucc
         customerId,
         serviceId,
         title: finalTitle,
-        file_url: presignedRes.publicUrl!,
-        file_key: presignedRes.fileKey!,
+        file_url: uploaded.file_url,
+        file_key: uploaded.file_key,
         tag: item.tag || 'General',
       });
 
