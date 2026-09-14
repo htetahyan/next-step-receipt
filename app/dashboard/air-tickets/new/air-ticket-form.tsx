@@ -18,6 +18,7 @@ interface Props {
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
+  initialRefId?: string;
 }
 
 export default function AirTicketForm({
@@ -27,6 +28,7 @@ export default function AirTicketForm({
   initialData,
   duplicateData,
   currentUser,
+  initialRefId,
 }: Props) {
   const defaultHandledBy =
     initialData?.details?.handled_by ||
@@ -104,6 +106,7 @@ export default function AirTicketForm({
       initialData={initialData}
       duplicateData={duplicateData}
       currentUser={currentUser}
+      initialRefId={initialRefId}
       renderCategoryFields={() => <AirTicketFields suppliers={suppliers} />}
       onAutoFill={handleAutoFill}
     />

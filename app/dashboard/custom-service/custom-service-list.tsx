@@ -11,6 +11,8 @@ import * as XLSX from 'xlsx';
 import Pagination from '@/components/Pagination';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
+import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
+import { UAE_VISA_CATEGORIES, AIR_TICKET_CATEGORIES, OTHER_VISA_CATEGORIES } from '@/lib/service-constants';
 
 interface Props {
   initialServices: any[];
@@ -26,6 +28,9 @@ export default function CustomServiceList({ initialServices, customers, profile 
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
+  useRemoteServiceSearch(search, setServices, {
+    notInCategories: [...UAE_VISA_CATEGORIES, ...AIR_TICKET_CATEGORIES, ...OTHER_VISA_CATEGORIES, 'Tour Package'],
+  });
   const [statusFilter, setStatusFilter] = useState('all');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);

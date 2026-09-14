@@ -1,8 +1,13 @@
-import { createClient } from '@/utils/supabase/server';
 import OtherVisaList from './other-visa-list';
 import { getCurrentUserProfile } from '@/app/actions/users';
 import { checkPermission } from '@/lib/auth-permissions';
 import { redirect } from 'next/navigation';
+import { fetchModuleServiceList } from '@/lib/service-list-query';
+
+const CATEGORIES = [
+  'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
+  'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
+];
 
 export default async function OtherVisaPage() {
   const profile = await getCurrentUserProfile();
@@ -10,36 +15,12 @@ export default async function OtherVisaPage() {
     redirect('/dashboard');
   }
 
-  const supabase = await createClient();
-
-  const categories = [
-    'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
-    'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
-  ];
-
   let services: any[] = [];
   try {
-    const { data } = await supabase
-      .from('customer_services')
-      .select('id, reference_id, customer_id, category, status, details, financials, created_at, customers!inner(id, name, passport_no, phone)')
-      .in('category', categories)
-      .order('created_at', { ascending: false });
-    if (data) services = data;
+    services = await fetchModuleServiceList({ inCategories: CATEGORIES });
   } catch (e) {
     console.error('Failed to fetch other visa services:', e);
   }
 
-  let customers: any[] = [];
-  try {
-    const { data } = await supabase
-      .from('customers')
-      .select('id, name, phone, passport_no, email')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    if (data) customers = data;
-  } catch (e) {
-    console.error('Failed to fetch customers:', e);
-  }
-
-  return <OtherVisaList initialServices={services} customers={customers} profile={profile} />;
+  return <OtherVisaList initialServices={services} customers={[]} profile={profile} />;
 }

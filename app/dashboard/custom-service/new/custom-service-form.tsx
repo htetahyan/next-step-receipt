@@ -12,6 +12,7 @@ interface Props {
   suppliers?: any[];
   initialData?: any;
   currentUser?: UserProfile | null;
+  initialRefId?: string;
 }
 
 export default function CustomServiceForm({
@@ -19,6 +20,7 @@ export default function CustomServiceForm({
   suppliers = [],
   initialData,
   currentUser,
+  initialRefId,
 }: Props) {
   const defaultHandledBy =
     initialData?.details?.handled_by ||
@@ -65,6 +67,7 @@ export default function CustomServiceForm({
       suppliers={suppliers}
       initialData={initialData}
       currentUser={currentUser}
+      initialRefId={initialRefId}
       renderCategoryFields={() => (
         <CustomServiceFields suppliers={suppliers} />
       )}

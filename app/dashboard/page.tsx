@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { createClient } from '@/utils/supabase/server';
 import { 
   subDays, 
@@ -34,6 +35,51 @@ import { parseFinancialNumber } from '@/lib/financialUtils';
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string }>;
+}) {
+  const now = new Date();
+  return (
+    <div className="max-w-6xl mx-auto space-y-4 pb-8">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 border-b border-[var(--card-border)] pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-serif font-normal tracking-tight text-[#222222] dark:text-[#F5F4EF]">
+              Executive Dashboard
+            </h1>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#D97757]/10 text-[#D97757] border border-[#D97757]/20">
+              Live UAE
+            </span>
+          </div>
+          <p className="text-xs opacity-60 mt-0.5 font-mono">
+            {format(now, 'EEEE, dd MMMM yyyy')} • Real-time performance & margin telemetry
+          </p>
+        </div>
+        <DashboardFilters />
+      </div>
+      <DashboardQuickActions />
+      <Suspense fallback={<DashboardMetricsFallback />}>
+        <DashboardMetrics searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+function DashboardMetricsFallback() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="card-anthropic p-5 h-28 bg-[var(--card-border)]/30" />
+        ))}
+      </div>
+      <div className="h-64 card-anthropic bg-[var(--card-border)]/20" />
+    </div>
+  );
+}
+
+async function DashboardMetrics({
   searchParams,
 }: {
   searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string }>;
@@ -366,30 +412,7 @@ export default async function Dashboard({
   });
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 pb-8">
-      {/* Executive Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 border-b border-[var(--card-border)] pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl md:text-2xl font-serif font-normal tracking-tight text-[#222222] dark:text-[#F5F4EF]">
-              Executive Dashboard
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#D97757]/10 text-[#D97757] border border-[#D97757]/20">
-              Live UAE
-            </span>
-          </div>
-          <p className="text-xs opacity-60 mt-0.5 font-mono">
-            {format(now, 'EEEE, dd MMMM yyyy')} • Real-time performance & margin telemetry
-          </p>
-        </div>
-
-        <DashboardFilters />
-      </div>
-
-      {/* 1-Click Quick Add Actions Bar */}
-      <DashboardQuickActions />
-
-      {/* Hero 4-Card Bento Grid & Pipeline Counter */}
+    <div className="space-y-4">
       <DashboardKPICards
         totalRevenue={totalRevenue}
         totalReceiving={totalReceiving}

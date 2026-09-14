@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import Sidebar from "@/components/Sidebar";
 import { getCurrentUserProfile } from "@/app/actions/users";
+import DashboardLoading from "./loading";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +17,9 @@ export default async function DashboardLayout({
       <Sidebar profile={profile} />
       <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-5">
         <div className="w-full h-full">
-          {children}
+          <Suspense fallback={<DashboardLoading />}>
+            {children}
+          </Suspense>
         </div>
       </main>
     </div>

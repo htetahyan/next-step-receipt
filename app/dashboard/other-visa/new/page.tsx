@@ -5,7 +5,7 @@ export default async function NewOtherVisaPage(props: { searchParams?: Promise<{
   const searchParams = await props.searchParams;
   const duplicateId = searchParams?.duplicate as string | undefined;
 
-  const { currentUser, customers, suppliers, rateCards } = await getServiceNewPageData();
+  const { currentUser, customers, suppliers, rateCards, nextRefId } = await getServiceNewPageData('OV');
 
   let duplicateData = null;
   if (duplicateId) {
@@ -22,7 +22,8 @@ export default async function NewOtherVisaPage(props: { searchParams?: Promise<{
       suppliers={suppliers}
       rateCards={rateCards}
       duplicateData={duplicateData} 
-      currentUser={currentUser} 
+      currentUser={currentUser}
+      initialRefId={nextRefId}
     />
   );
 }

@@ -3,8 +3,11 @@
 import { db } from '@/db';
 import { customerServices, invoices, invoiceItems, customers, suppliers } from '@/db/schema';
 import { eq, desc, like, or, sql } from 'drizzle-orm';
+import { after } from 'next/server';
+import { refresh } from 'next/cache';
 import { revalidateAfter, SERVICE_DASHBOARD_PATHS } from '@/lib/revalidate';
 import { z } from 'zod';
+import { SERVICE_LIST_SELECT } from '@/lib/service-list-query';
 
 
 
@@ -76,18 +79,99 @@ function parseDateToISO(dateVal: any): string | null {
 
 import { safeAction } from '@/lib/safeAction';
 
+export async function searchServices(
+  query: string,
+  filter?: { inCategories?: string[]; notInCategories?: string[] }
+) {
+  try {
+    const raw = query.trim();
+    if (raw.length < 2) return { success: true, data: [] as any[] };
+
+    const sanitized = raw.replace(/[,():;'"*]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!sanitized) return { success: true, data: [] as any[] };
+
+    const supabase = await createClient();
+
+    const applyFilter = (q: any) => {
+      if (filter?.inCategories?.length) q = q.in('category', filter.inCategories);
+      if (filter?.notInCategories?.length) {
+        q = q.not('category', 'in', `("${filter.notInCategories.join('","')}")`);
+      }
+      return q;
+    };
+
+    const refQuery = applyFilter(
+      supabase
+        .from('customer_services')
+        .select(SERVICE_LIST_SELECT)
+        .ilike('reference_id', `%${sanitized}%`)
+        .order('created_at', { ascending: false })
+        .limit(40)
+    );
+
+    const { data: matchedCustomers } = await supabase
+      .from('customers')
+      .select('id')
+      .or(`name.ilike.%${sanitized}%,passport_no.ilike.%${sanitized}%,phone.ilike.%${sanitized}%`)
+      .limit(40);
+
+    const customerIds = (matchedCustomers || []).map((c: any) => c.id);
+    const customerQuery = customerIds.length
+      ? applyFilter(
+          supabase
+            .from('customer_services')
+            .select(SERVICE_LIST_SELECT)
+            .in('customer_id', customerIds)
+            .order('created_at', { ascending: false })
+            .limit(60)
+        )
+      : Promise.resolve({ data: [] as any[] });
+
+    const [refRes, customerRes] = await Promise.all([refQuery, customerQuery]);
+    const merged = new Map<string, any>();
+    for (const row of [...((refRes as any).data || []), ...((customerRes as any).data || [])]) {
+      merged.set(row.id, row);
+    }
+
+    return { success: true, data: Array.from(merged.values()) };
+  } catch (err: any) {
+    console.error('searchServices error:', err);
+    return { success: false, data: [] as any[], error: err.message };
+  }
+}
+
 // ── Add Service ─────────────────────────────────────────────
 export async function addCustomerService(data: any) {
   try {
-    const { customerId, referenceId, category, status, details, financials } = data || {};
+    let { customerId, referenceId, category, status, details, financials, newCustomer } = data || {};
+
+    const moduleKey = mapCategoryToModule(category);
+    const userProfile = await requirePermission(moduleKey, 'create');
+    const supabase = await createClient();
+
+    if (!customerId && newCustomer?.name) {
+      await requirePermission('customers', 'create');
+      const { data: createdCustomer, error: custErr } = await supabase
+        .from('customers')
+        .insert({
+          name: String(newCustomer.name).trim(),
+          phone: newCustomer.phone || null,
+          email: newCustomer.email || null,
+          passport_no: newCustomer.passport_no || null,
+          metadata: {},
+        })
+        .select('id')
+        .single();
+
+      if (custErr || !createdCustomer) {
+        throw new Error(custErr?.message || 'Failed to create customer');
+      }
+      customerId = createdCustomer.id;
+    }
 
     if (!customerId) {
       return { success: false, error: 'Customer ID is required' };
     }
-
-    // Check RBAC permission for this specific service module
-    const moduleKey = mapCategoryToModule(category);
-    const userProfile = await requirePermission(moduleKey, 'create');
 
     const defaultHandledBy = userProfile.fullName || (userProfile.email ? userProfile.email.split('@')[0] : '');
     const finalDetails = {
@@ -96,8 +180,6 @@ export async function addCustomerService(data: any) {
         ? details.handled_by.trim() 
         : defaultHandledBy,
     };
-
-    const supabase = await createClient();
 
     // 2. Validate input using Zod schemas based on moduleKey
     const validationData = {
@@ -147,49 +229,57 @@ export async function addCustomerService(data: any) {
       throw new Error(insertErr?.message || 'Failed to insert customer service');
     }
 
-    // Auto-generate invoice if there is a positive amount
     const amount = Number(financials?.amount) || 0;
     if (amount > 0) {
-      try {
-        const randomSuffix = Math.floor(100 + Math.random() * 900); // 3-digit random
-        const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}${randomSuffix}`;
-        
-        const invoiceInsertPayload: any = {
-          customer_id: customerId,
-          invoice_number: invoiceNumber,
-          date: effectiveDateISO ? effectiveDateISO.split('T')[0] : new Date().toISOString().split('T')[0],
-          subtotal: amount.toString(),
-          vat_amount: '0',
-          total_amount: amount.toString(),
-          payment_method: financials?.payment_method || 'cash',
-        };
-        if (effectiveDateISO) {
-          invoiceInsertPayload.created_at = effectiveDateISO;
-        }
+      const invoiceCustomerId = customerId;
+      const invoiceCategory = category;
+      const invoicePayment = financials?.payment_method || 'cash';
+      const invoiceDateISO = effectiveDateISO;
+      after(async () => {
+        try {
+          const sb = await createClient();
+          const randomSuffix = Math.floor(100 + Math.random() * 900);
+          const invoiceNumber = `INV-${new Date().getTime().toString().slice(-6)}${randomSuffix}`;
+          const invoiceInsertPayload: any = {
+            customer_id: invoiceCustomerId,
+            invoice_number: invoiceNumber,
+            date: invoiceDateISO ? invoiceDateISO.split('T')[0] : new Date().toISOString().split('T')[0],
+            subtotal: amount.toString(),
+            vat_amount: '0',
+            total_amount: amount.toString(),
+            payment_method: invoicePayment,
+          };
+          if (invoiceDateISO) {
+            invoiceInsertPayload.created_at = invoiceDateISO;
+          }
 
-        const { data: newInvoice, error: invErr } = await supabase
-          .from('invoices')
-          .insert(invoiceInsertPayload)
-          .select('id')
-          .single();
+          const { data: newInvoice, error: invErr } = await sb
+            .from('invoices')
+            .insert(invoiceInsertPayload)
+            .select('id')
+            .single();
 
-        if (newInvoice && !invErr) {
-          await supabase
-            .from('invoice_items')
-            .insert({
+          if (newInvoice && !invErr) {
+            await sb.from('invoice_items').insert({
               invoice_id: newInvoice.id,
-              description: category || 'Service Fee',
+              description: invoiceCategory || 'Service Fee',
               quantity: '1',
               rate: amount.toString(),
               amount: amount.toString(),
             });
+          }
+        } catch (invError: any) {
+          console.error('Non-critical invoice generation error:', invError);
         }
-      } catch (invError: any) {
-        console.error('Non-critical invoice generation error:', invError);
-      }
+      });
     }
 
     revalidateAfter(SERVICE_DASHBOARD_PATHS);
+    try {
+      refresh();
+    } catch {
+      // refresh() is a no-op outside a Server Action request
+    }
 
     return { success: true, service, data: service };
   } catch (err: any) {
@@ -461,6 +551,7 @@ export async function updateCustomerService(serviceId: string, data: any) {
     if (error) throw error;
 
     revalidateAfter(SERVICE_DASHBOARD_PATHS);
+    try { refresh(); } catch { /* ignore */ }
 
     return { success: true, service: updated };
   } catch (err: any) {
@@ -632,6 +723,7 @@ export async function quickUpdateService(
     }
 
     revalidateAfter(SERVICE_DASHBOARD_PATHS);
+    try { refresh(); } catch { /* ignore */ }
     return { success: true, service: updated };
   } catch (err: any) {
     console.error('Failed to quick update service:', err);

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X, Wrench, Building2 } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { UserProfile, checkPermission, ModuleKey } from "@/lib/auth-permissions";
@@ -15,6 +15,7 @@ interface SidebarProps {
 export default function Sidebar({ profile }: SidebarProps) {
   const isOnline = useOnlineStatus();
   const pathname = usePathname();
+  const router = useRouter();
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -91,7 +92,14 @@ export default function Sidebar({ profile }: SidebarProps) {
       {hasAnyCreate && (
         <div className="px-3 pt-4 relative" ref={dropdownRef}>
           <button
-            onClick={() => setIsQuickAddOpen(!isQuickAddOpen)}
+            onClick={() => {
+              const next = !isQuickAddOpen;
+              setIsQuickAddOpen(next);
+              if (next) {
+                router.prefetch('/dashboard/uae-visa/new');
+                router.prefetch('/dashboard/air-tickets/new');
+              }
+            }}
             className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#D97757] text-[#F5F4EF] px-3 py-2 text-sm font-medium transition-opacity hover:opacity-90 shadow-sm cursor-pointer"
           >
             <Plus className="h-4 w-4" />
@@ -103,6 +111,7 @@ export default function Sidebar({ profile }: SidebarProps) {
               {canCreateUAE && (
                 <Link
                   href="/dashboard/uae-visa/new"
+                  onMouseEnter={() => router.prefetch('/dashboard/uae-visa/new')}
                   className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
                 >
                   <Shield className="h-4 w-4 opacity-70" />
@@ -112,6 +121,7 @@ export default function Sidebar({ profile }: SidebarProps) {
               {canCreateAir && (
                 <Link
                   href="/dashboard/air-tickets/new"
+                  onMouseEnter={() => router.prefetch('/dashboard/air-tickets/new')}
                   className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--card-border)]"
                 >
                   <Plane className="h-4 w-4 opacity-70" />

@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { ZodType } from 'zod';
 
 import { addCustomerService, updateCustomerService, generateReferenceId } from '@/app/actions/services';
-import { addCustomer } from '@/app/actions/customers';
 import { addDocuments } from '@/app/actions/documents';
 import { uploadFileToR2, runWithConcurrency } from '@/lib/uploadToR2';
 import DocumentModal from '@/components/DocumentModal';
@@ -34,6 +33,7 @@ export interface ServiceFormShellProps<T extends Record<string, any>> {
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
+  initialRefId?: string;
   renderCategoryFields: (methods: UseFormReturn<T>) => React.ReactNode;
   onAutoFill?: (watchedValues: any, setValue: UseFormReturn<T>['setValue']) => void;
 }
@@ -57,6 +57,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
   initialData,
   duplicateData,
   currentUser,
+  initialRefId = '',
   renderCategoryFields,
   onAutoFill,
 }: ServiceFormShellProps<T>) {
@@ -65,7 +66,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
   const preselectedCustomerId = searchParams.get('customerId') || '';
 
   const [saving, setSaving] = useState(false);
-  const [refId, setRefId] = useState(initialData?.reference_id || '');
+  const [refId, setRefId] = useState(initialData?.reference_id || initialRefId || '');
   const [showDocs, setShowDocs] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
 
@@ -76,10 +77,10 @@ export function ServiceFormShell<T extends Record<string, any>>({
   const [passengers, setPassengers] = useState<Passenger[]>(initialPassengers);
 
   useEffect(() => {
-    if (!initialData) {
+    if (!initialData && !initialRefId) {
       generateReferenceId(refPrefix).then((id) => setRefId(id));
     }
-  }, [initialData, refPrefix]);
+  }, [initialData, initialRefId, refPrefix]);
 
   const methods = useForm<T>({
     resolver: zodResolver(schema) as any,
@@ -132,25 +133,9 @@ export function ServiceFormShell<T extends Record<string, any>>({
   const onSubmit = async (data: any) => {
     setSaving(true);
     try {
-      let customerId = data.customerId;
+      let customerId = data.isNewCustomer ? null : data.customerId;
 
-      // Inline new customer creation
-      if (data.isNewCustomer && data.newCustomer) {
-        const formData = new FormData();
-        formData.set('name', data.newCustomer.name);
-        if (data.newCustomer.phone) formData.set('phone', data.newCustomer.phone);
-        if (data.newCustomer.email) formData.set('email', data.newCustomer.email);
-        if (data.newCustomer.passport_no) formData.set('passport_no', data.newCustomer.passport_no);
-        formData.set('metadata', JSON.stringify({}));
-
-        const res = await addCustomer(formData);
-        if (res.error || !res.data) {
-          throw new Error(res.error || 'Failed to create customer');
-        }
-        customerId = res.data.id;
-      }
-
-      if (!customerId) {
+      if (!customerId && !(data.isNewCustomer && data.newCustomer?.name)) {
         throw new Error('Customer ID is required');
       }
 
@@ -162,6 +147,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
 
       const payload = {
         customerId,
+        newCustomer: data.isNewCustomer ? data.newCustomer : undefined,
         referenceId: refId ? refId.trim() : null,
         category: data.category,
         status: data.status || 'Open',
@@ -187,8 +173,9 @@ export function ServiceFormShell<T extends Record<string, any>>({
 
       if (res.success) {
         const serviceIdToUse = initialData?.id || (res as any).service?.id || (res as any).data?.id;
+        customerId = customerId || (res as any).service?.customer_id || (res as any).data?.customer_id;
 
-        if (serviceIdToUse && stagedFiles.length > 0) {
+        if (serviceIdToUse && stagedFiles.length > 0 && customerId) {
           toast.info('Uploading documents...');
           const uploadResults = await runWithConcurrency(stagedFiles, 3, async (file) => {
             const uploaded = await uploadFileToR2(file);
@@ -230,6 +217,17 @@ export function ServiceFormShell<T extends Record<string, any>>({
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (!saving) methods.handleSubmit(onSubmit)();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   return (
     <div className="max-w-3xl mx-auto pb-24">
@@ -398,6 +396,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
                     </>
                   )}
                 </button>
+                <p className="text-[10px] text-center opacity-40 font-mono">Ctrl+S to save</p>
               </div>
             </div>
           </div>

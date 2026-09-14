@@ -28,6 +28,14 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
   const selectedCustomerId = watch('customerId');
   const selectedCustomerName = defaultCustomerName || watch('_selectedCustomerName') || selectedCustomerData?.name;
 
+  useEffect(() => {
+    if (!readOnly && !selectedCustomerId && inputRef.current) {
+      inputRef.current.focus();
+    }
+    // Autofocus once so staff can type a name immediately
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Click outside listener to close dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

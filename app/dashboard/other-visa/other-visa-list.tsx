@@ -11,6 +11,7 @@ import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
+import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 
 const COUNTRY_EMOJI: Record<string, string> = {
   'Japan Visa': '🇯🇵',
@@ -38,6 +39,12 @@ export default function OtherVisaList({
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
+  useRemoteServiceSearch(search, setServices, {
+    inCategories: [
+      'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
+      'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
+    ],
+  });
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);

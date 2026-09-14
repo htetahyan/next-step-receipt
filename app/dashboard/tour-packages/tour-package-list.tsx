@@ -12,6 +12,7 @@ import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
+import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 
 interface Props {
   initialServices: any[];
@@ -27,6 +28,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
+  useRemoteServiceSearch(search, setServices, { inCategories: ['Tour Package'] });
   const [statusFilter, setStatusFilter] = useState('all');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);

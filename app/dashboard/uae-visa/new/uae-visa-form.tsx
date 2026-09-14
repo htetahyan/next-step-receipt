@@ -20,6 +20,7 @@ interface Props {
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
+  initialRefId?: string;
 }
 
 export default function UAEVisaForm({
@@ -30,6 +31,7 @@ export default function UAEVisaForm({
   initialData,
   duplicateData,
   currentUser,
+  initialRefId,
 }: Props) {
   // Available Visa Types dynamically derived from Supplier Rate Cards
   const availableVisaTypes = useMemo(() => {
@@ -162,6 +164,7 @@ export default function UAEVisaForm({
       initialData={initialData}
       duplicateData={duplicateData}
       currentUser={currentUser}
+      initialRefId={initialRefId}
       renderCategoryFields={() => (
         <UAEVisaFields
           availableVisaTypes={availableVisaTypes}

@@ -11,6 +11,7 @@ import { STATUS_COLORS } from '@/lib/statusColors';
 import Pagination from '@/components/Pagination';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
+import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 
 export default function AirTicketList({
   initialServices,
@@ -27,6 +28,9 @@ export default function AirTicketList({
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
+  useRemoteServiceSearch(search, setServices, {
+    inCategories: ['Air Ticket', 'Dummy Ticket', 'Ticket + Hotel Package'],
+  });
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; ref: string; name: string } | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('all');

@@ -5,7 +5,7 @@ export default async function NewAirTicketPage(props: { searchParams?: Promise<{
   const searchParams = await props.searchParams;
   const duplicateId = searchParams?.duplicate as string | undefined;
 
-  const { currentUser, customers, suppliers, rateCards } = await getServiceNewPageData();
+  const { currentUser, customers, suppliers, rateCards, nextRefId } = await getServiceNewPageData('AT');
 
   let duplicateData = null;
   if (duplicateId) {
@@ -23,6 +23,7 @@ export default async function NewAirTicketPage(props: { searchParams?: Promise<{
       rateCards={rateCards}
       duplicateData={duplicateData} 
       currentUser={currentUser}
+      initialRefId={nextRefId}
     />
   );
 }

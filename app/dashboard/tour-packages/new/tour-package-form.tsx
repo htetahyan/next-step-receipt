@@ -18,6 +18,7 @@ interface Props {
   initialData?: any;
   duplicateData?: any;
   currentUser?: UserProfile | null;
+  initialRefId?: string;
 }
 
 export default function TourPackageForm({
@@ -27,6 +28,7 @@ export default function TourPackageForm({
   initialData,
   duplicateData,
   currentUser,
+  initialRefId,
 }: Props) {
   const defaultHandledBy =
     initialData?.details?.handled_by ||
@@ -102,6 +104,7 @@ export default function TourPackageForm({
       initialData={initialData}
       duplicateData={duplicateData}
       currentUser={currentUser}
+      initialRefId={initialRefId}
       renderCategoryFields={() => (
         <TourPackageFields suppliers={suppliers} initialData={initialData || duplicateData} />
       )}
