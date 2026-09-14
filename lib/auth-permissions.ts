@@ -40,17 +40,44 @@ export const DEFAULT_ADMIN_PERMISSIONS: PermissionsMap = {
 };
 
 export const DEFAULT_STAFF_PERMISSIONS: PermissionsMap = {
-  uae_visa: { read: true, create: true, edit: false, delete: false },
-  air_tickets: { read: true, create: true, edit: false, delete: false },
-  other_visa: { read: true, create: true, edit: false, delete: false },
-  tour_packages: { read: true, create: true, edit: false, delete: false },
-  custom_service: { read: true, create: true, edit: false, delete: false },
-  customers: { read: true, create: true, edit: false, delete: false },
+  uae_visa: { read: true, create: true, edit: true, delete: false },
+  air_tickets: { read: true, create: true, edit: true, delete: false },
+  other_visa: { read: true, create: true, edit: true, delete: false },
+  tour_packages: { read: true, create: true, edit: true, delete: false },
+  custom_service: { read: true, create: true, edit: true, delete: false },
+  customers: { read: true, create: true, edit: true, delete: false },
   invoices: { read: true, create: false, edit: false, delete: false },
   suppliers: { read: true, create: false, edit: false, delete: false },
   settings: { read: false, create: false, edit: false, delete: false },
   migration: { read: false, create: false, edit: false, delete: false },
 };
+
+const STAFF_EDIT_WITH_CREATE: ModuleKey[] = [
+  'uae_visa',
+  'air_tickets',
+  'other_visa',
+  'tour_packages',
+  'custom_service',
+  'customers',
+];
+
+/** Merge stored staff permissions with defaults. Staff who can create a module can also edit it. Delete is never auto-granted. */
+export function resolveStaffPermissions(stored?: PermissionsMap | null): PermissionsMap {
+  const merged: PermissionsMap = { ...DEFAULT_STAFF_PERMISSIONS };
+  if (stored) {
+    (Object.keys(DEFAULT_STAFF_PERMISSIONS) as ModuleKey[]).forEach((key) => {
+      if (stored[key]) {
+        merged[key] = { ...DEFAULT_STAFF_PERMISSIONS[key], ...stored[key] };
+      }
+    });
+  }
+  STAFF_EDIT_WITH_CREATE.forEach((key) => {
+    if (merged[key]?.create) {
+      merged[key] = { ...merged[key], edit: true };
+    }
+  });
+  return merged;
+}
 
 export interface UserProfile {
   id: string;

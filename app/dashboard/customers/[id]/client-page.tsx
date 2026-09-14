@@ -43,6 +43,7 @@ import { CustomerFinancialLedger } from './components/CustomerFinancialLedger';
 import EditCustomerModal from './components/EditCustomerModal';
 import { parseFinancialNumber } from '@/lib/financialUtils';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
+import { getCustomerPortalUrl } from '@/app/actions/customers';
 
 type TabKey = 'services' | 'invoices' | 'documents' | 'financials';
 
@@ -67,6 +68,7 @@ export default function CustomerHubClient({
 
   // Passport copy feedback
   const [copiedPassport, setCopiedPassport] = useState(false);
+  const [copiedPortal, setCopiedPortal] = useState(false);
 
   // Services filtering & search
   const [serviceSearch, setServiceSearch] = useState('');
@@ -231,6 +233,26 @@ export default function CustomerHubClient({
               <span className="hidden md:inline">Call</span>
             </a>
           )}
+
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await getCustomerPortalUrl(customer.id);
+              if (res.error || !res.url) {
+                toast.error(res.error || 'Could not create portal link');
+                return;
+              }
+              await navigator.clipboard.writeText(res.url);
+              setCopiedPortal(true);
+              toast.success('Signed portal link copied');
+              setTimeout(() => setCopiedPortal(false), 2000);
+            }}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] hover:bg-[var(--sidebar-bg)] text-xs font-medium transition-all cursor-pointer"
+            title="Copy signed customer portal link"
+          >
+            {copiedPortal ? <Check className="w-3.5 h-3.5 text-green-600" /> : <ExternalLink className="w-3.5 h-3.5 opacity-70" />}
+            <span>{copiedPortal ? 'Copied' : 'Portal'}</span>
+          </button>
 
           <button
             type="button"

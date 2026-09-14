@@ -9,7 +9,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { ZodType } from 'zod';
 
-import { addCustomerService, updateCustomerService, generateReferenceId } from '@/app/actions/services';
+import { addCustomerService, updateCustomerService, generateReferenceId, findServicesByReferenceId } from '@/app/actions/services';
+import { findCustomerByPassportOrName } from '@/app/actions/customers';
 import { addDocuments } from '@/app/actions/documents';
 import { uploadFileToR2, runWithConcurrency } from '@/lib/uploadToR2';
 import DocumentModal from '@/components/DocumentModal';
@@ -139,6 +140,35 @@ export function ServiceFormShell<T extends Record<string, any>>({
         throw new Error('Customer ID is required');
       }
 
+      if (data.isNewCustomer && data.newCustomer) {
+        const dup = await findCustomerByPassportOrName(
+          data.newCustomer.passport_no || '',
+          data.newCustomer.passport_no ? '' : data.newCustomer.name || ''
+        );
+        if (dup.data) {
+          const useExisting = window.confirm(
+            `A customer already exists: ${dup.data.name}${dup.data.passport_no ? ` (${dup.data.passport_no})` : ''}.\n\nOK = attach this booking to that profile.\nCancel = create a new profile anyway.`
+          );
+          if (useExisting) {
+            customerId = dup.data.id;
+            data.isNewCustomer = false;
+          }
+        }
+      }
+
+      if (refId && refId.trim()) {
+        const taken = await findServicesByReferenceId(refId.trim(), initialData?.id);
+        if (taken.data && taken.data.length > 0) {
+          const proceed = window.confirm(
+            `Reference ID "${refId.trim()}" is already used. Save anyway? (Nothing will be deleted.)`
+          );
+          if (!proceed) {
+            setSaving(false);
+            return;
+          }
+        }
+      }
+
       const receivingAmount = Number(data.financials?.amount || 0) - Number(data.financials?.discount || 0);
       const balance = receivingAmount - Number(data.financials?.supplier_cost || 0) - Number(data.financials?.refund || 0);
 
@@ -147,7 +177,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
 
       const payload = {
         customerId,
-        newCustomer: data.isNewCustomer ? data.newCustomer : undefined,
+        newCustomer: !customerId && data.isNewCustomer ? data.newCustomer : undefined,
         referenceId: refId ? refId.trim() : null,
         category: data.category,
         status: data.status || 'Open',

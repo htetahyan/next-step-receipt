@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { getSettings } from '@/app/actions/settings';
 import CustomerAutocomplete from '@/components/CustomerAutocomplete';
 import { toast } from 'sonner';
+import { downloadInvoicePdf } from '@/lib/invoicePdf';
 
 export default function NewInvoicePage() {
   const invoiceRef = useRef<HTMLDivElement>(null);
@@ -170,26 +171,8 @@ export default function NewInvoicePage() {
     if (!invoiceRef.current) return;
     setIsGenerating(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const { jsPDF } = await import('jspdf');
-
-      const element = invoiceRef.current;
-      
-      // Sanitizing filename (Windows does not allow / in filenames)
       const sanitizedNo = (data.invoiceNumber || 'invoice').replace(/[/\\?%*:|"<>]/g, '-');
-      
-      const imgData = await toPng(element, { 
-        quality: 1, 
-        pixelRatio: 2,
-        backgroundColor: '#ffffff'
-      });
-      
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (1131 * pdfWidth) / 800;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${sanitizedNo}.pdf`);
+      await downloadInvoicePdf(invoiceRef.current, `${sanitizedNo}.pdf`);
     } catch (e) {
       console.error(e);
       toast.error('Error generating PDF');

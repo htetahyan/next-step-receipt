@@ -1,10 +1,39 @@
 import { createClient } from '@/utils/supabase/server'
-import { FileText, Download } from 'lucide-react'
+import { FileText, Download, Lock } from 'lucide-react'
 import Link from 'next/link'
+import { verifyPortalToken } from '@/lib/portal-token'
 
-export default async function PortalPage({ params }: { params: Promise<{ customerId: string }> }) {
+export default async function PortalPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ customerId: string }>
+  searchParams: Promise<{ t?: string }>
+}) {
   const { customerId } = await params;
+  const { t: token } = await searchParams;
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const allowed = !!user || verifyPortalToken(customerId, token);
+
+  if (!allowed) {
+    return (
+      <div className="card-anthropic p-8 max-w-lg mx-auto text-center space-y-3">
+        <div className="w-12 h-12 rounded-xl bg-[#D97757]/10 text-[#D97757] flex items-center justify-center mx-auto">
+          <Lock className="w-5 h-5" />
+        </div>
+        <h2 className="text-lg font-serif font-semibold">Private customer portal</h2>
+        <p className="text-sm opacity-70">
+          This page is no longer open from a raw customer ID. Ask NextStep staff for a signed portal link, or sign in if you are a team member.
+        </p>
+        <Link href="/login" className="inline-flex text-xs font-semibold text-[#D97757] hover:underline">
+          Staff login
+        </Link>
+      </div>
+    );
+  }
+
 
   let customer: any = null;
   let invoices: any[] = [];

@@ -13,6 +13,7 @@ import {
   checkPermission,
   DEFAULT_STAFF_PERMISSIONS,
   DEFAULT_ADMIN_PERMISSIONS,
+  resolveStaffPermissions,
 } from '@/lib/auth-permissions';
 import { getSiteUrl } from '@/lib/site-url';
 
@@ -37,7 +38,7 @@ export const getCurrentUserProfile = cache(async function getCurrentUserProfile(
       const role = (profile.role as UserRole) || 'staff';
       const permissions = role === 'admin'
         ? DEFAULT_ADMIN_PERMISSIONS
-        : { ...DEFAULT_STAFF_PERMISSIONS, ...(profile.permissions as PermissionsMap || {}) };
+        : resolveStaffPermissions(profile.permissions as PermissionsMap || {});
 
       return {
         id: user.id,
@@ -120,7 +121,7 @@ export async function listTeamMembers(): Promise<{ success: boolean; data?: User
       role: (p.role as UserRole) || 'staff',
       permissions: p.role === 'admin'
         ? DEFAULT_ADMIN_PERMISSIONS
-        : { ...DEFAULT_STAFF_PERMISSIONS, ...(p.permissions || {}) },
+        : resolveStaffPermissions(p.permissions || {}),
     }));
 
     return { success: true, data: formatted };

@@ -13,6 +13,8 @@ import Pagination from '@/components/Pagination';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
+import { useRecordScope } from '@/lib/useRecordScope';
+import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
 
 interface Props {
   initialServices: any[];
@@ -28,7 +30,9 @@ export default function TourPackageList({ initialServices, customers, profile }:
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
-  useRemoteServiceSearch(search, setServices, { inCategories: ['Tour Package'] });
+  const listFilter = { inCategories: ['Tour Package'] };
+  useRemoteServiceSearch(search, setServices, listFilter);
+  const scope = useRecordScope(setServices, listFilter);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -201,7 +205,10 @@ export default function TourPackageList({ initialServices, customers, profile }:
             <Map className="w-5 h-5 text-[#D97757] opacity-80" />
             Tour Packages
           </h1>
-          <p className="text-xs opacity-60 font-mono mt-0.5">{summary.count} records</p>
+          <div className="text-xs opacity-60 font-mono mt-0.5 flex items-center gap-2">
+            {summary.count} records
+            <RecordScopeToggle allTime={scope.allTime} loading={scope.loading} onChange={scope.change} />
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

@@ -16,6 +16,8 @@ import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import OdooKanbanView from '@/components/OdooKanbanView';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
+import { useRecordScope } from '@/lib/useRecordScope';
+import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
 
 interface Props {
   initialServices: any[];
@@ -31,14 +33,16 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
-  useRemoteServiceSearch(search, setServices, {
+  const listFilter = {
     notInCategories: [
       'Air Ticket', 'Dummy Ticket', 'Ticket + Hotel Package', 'Flight Booking',
       'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
       'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
       'Tour Package',
     ],
-  });
+  };
+  useRemoteServiceSearch(search, setServices, listFilter);
+  const scope = useRecordScope(setServices, listFilter);
   const [statusFilter, setStatusFilter] = useState('all');
   const [supplierFilter, setSupplierFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -594,6 +598,7 @@ export default function UAEVisaList({ initialServices, customers, profile }: Pro
               <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[var(--sidebar-bg)] border border-[var(--card-border)] opacity-75">
                 {summary.count} records
               </span>
+              <RecordScopeToggle allTime={scope.allTime} loading={scope.loading} onChange={scope.change} />
             </div>
           </div>
         </div>

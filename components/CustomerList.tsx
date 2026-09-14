@@ -142,7 +142,20 @@ export default function CustomerList({
       )
       setCustomers(updated)
     } else {
-      const res = await addCustomer(formData)
+      let res = await addCustomer(formData)
+      if (res.existing) {
+        const useExisting = window.confirm(
+          `${res.error}\n\nOK = use the existing profile (no duplicate).\nCancel = create a new profile anyway.`
+        );
+        if (useExisting) {
+          setIsSaving(false)
+          setIsModalOpen(false)
+          window.location.href = `/dashboard/customers/${res.existing.id}`
+          return
+        }
+        formData.set('force_duplicate', '1')
+        res = await addCustomer(formData)
+      }
       if (res.error || !res.data) {
         toast.error(res.error || "Failed to add customer")
         setIsSaving(false)

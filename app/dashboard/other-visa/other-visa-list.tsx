@@ -12,6 +12,8 @@ import Pagination from '@/components/Pagination';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
+import { useRecordScope } from '@/lib/useRecordScope';
+import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
 
 const COUNTRY_EMOJI: Record<string, string> = {
   'Japan Visa': '🇯🇵',
@@ -39,12 +41,14 @@ export default function OtherVisaList({
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
-  useRemoteServiceSearch(search, setServices, {
+  const listFilter = {
     inCategories: [
       'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
       'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
     ],
-  });
+  };
+  useRemoteServiceSearch(search, setServices, listFilter);
+  const scope = useRecordScope(setServices, listFilter);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -220,7 +224,10 @@ export default function OtherVisaList({
             <Globe className="w-5 h-5 text-[#D97757] opacity-80" />
             Other Visa & Consultation
           </h1>
-          <p className="text-xs opacity-60 font-mono mt-0.5">{services.length} records</p>
+          <div className="text-xs opacity-60 font-mono mt-0.5 flex items-center gap-2">
+            {services.length} records
+            <RecordScopeToggle allTime={scope.allTime} loading={scope.loading} onChange={scope.change} />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* Export Dropdown Menu */}

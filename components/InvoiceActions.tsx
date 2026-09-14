@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react'
 import { Printer, Download, Loader2, MessageCircle, Copy, Check, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import InvoiceTemplate, { InvoiceData } from '@/components/InvoiceTemplate'
+import { downloadInvoicePdf } from '@/lib/invoicePdf'
 
 export default function InvoiceActions({ data }: { data: InvoiceData }) {
   const invoiceRef = useRef<HTMLDivElement>(null)
@@ -14,34 +15,8 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
     if (!invoiceRef.current) return;
     setIsGenerating(true);
     try {
-      const { toPng } = await import('html-to-image');
-      const { jsPDF } = await import('jspdf');
-
-      const element = invoiceRef.current;
-      
-      // Sanitizing filename (Windows does not allow / in filenames)
       const sanitizedInvoiceNo = (data.invoiceNumber || 'invoice').replace(/[/\\?%*:|"<>]/g, '-');
-
-      // Slight delay to ensure any dynamic content or fonts are fully rendered
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const imgData = await toPng(element, { 
-        quality: 1, 
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        cacheBust: true,
-      });
-
-      if (!imgData || imgData.length < 500) {
-        throw new Error('Capture failed - generated image is too small.');
-      }
-      
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (1131 * pdfWidth) / 800;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${sanitizedInvoiceNo}.pdf`);
+      await downloadInvoicePdf(invoiceRef.current, `${sanitizedInvoiceNo}.pdf`);
       toast.success('Invoice PDF downloaded');
     } catch (e: any) {
       console.error('PDF Generation Error:', e);

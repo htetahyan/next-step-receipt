@@ -4,6 +4,21 @@ import { revalidateAfter } from '@/lib/revalidate'
 import { customerSchema } from '@/lib/validations/serviceSchemas'
 import { createClient } from '@/utils/supabase/server'
 import { requirePermission } from '@/app/actions/users'
+import { signPortalToken } from '@/lib/portal-token'
+import { getSiteUrl } from '@/lib/site-url'
+
+export async function getCustomerPortalUrl(customerId: string) {
+  try {
+    await requirePermission('customers', 'read');
+    const token = signPortalToken(customerId);
+    if (!token) {
+      return { error: 'Portal signing secret is not configured on the server.' };
+    }
+    return { url: `${getSiteUrl()}/portal/${customerId}?t=${encodeURIComponent(token)}` };
+  } catch (err: any) {
+    return { error: err.message };
+  }
+}
 
 export async function addCustomer(formData: FormData) {
   try {
@@ -34,7 +49,19 @@ export async function addCustomer(formData: FormData) {
     } catch(e) {}
   }
 
+  const forceDuplicate = formData.get('force_duplicate') === '1';
+
   try {
+    if (!forceDuplicate && passportNo) {
+      const existing = await findCustomerByPassportOrName(passportNo, '');
+      if (existing.data) {
+        return {
+          existing: existing.data,
+          error: `A customer with this passport already exists: ${existing.data.name}${existing.data.passport_no ? ` (${existing.data.passport_no})` : ''}. Open that profile instead of creating a duplicate.`,
+        };
+      }
+    }
+
     const { data: newCustomer, error } = await supabase
       .from('customers')
       .insert({
@@ -226,12 +253,20 @@ export async function findCustomerByPassportOrName(passportNo: string, name: str
 
     if (passportNo && passportNo.trim()) {
       const trimmedPassport = passportNo.replace(/\s+/g, '').toUpperCase();
-      const { data: byPassport } = await supabase
+      const { data: byPassportExact } = await supabase
         .from('customers')
         .select('id, name, passport_no, phone, email, created_at')
         .eq('passport_no', trimmedPassport)
         .maybeSingle();
-      if (byPassport) return { data: byPassport };
+      if (byPassportExact) return { data: byPassportExact };
+
+      const { data: byPassportLike } = await supabase
+        .from('customers')
+        .select('id, name, passport_no, phone, email, created_at')
+        .ilike('passport_no', `%${trimmedPassport}%`)
+        .limit(1)
+        .maybeSingle();
+      if (byPassportLike) return { data: byPassportLike };
     }
 
     if (name && name.trim()) {

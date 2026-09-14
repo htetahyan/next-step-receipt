@@ -3,9 +3,10 @@ import { createClient } from '@/utils/supabase/server';
 export const SERVICE_LIST_SELECT =
   'id, reference_id, customer_id, category, status, details, financials, created_at, customers!inner(id, name, passport_no, phone)';
 
-type ListFilter = {
+export type ListFilter = {
   inCategories?: string[];
   notInCategories?: string[];
+  allTime?: boolean;
 };
 
 function applyCategoryFilter(query: any, filter: ListFilter) {
@@ -25,6 +26,20 @@ function applyCategoryFilter(query: any, filter: ListFilter) {
  */
 export async function fetchModuleServiceList(filter: ListFilter = {}) {
   const supabase = await createClient();
+
+  if (filter.allTime) {
+    const allQuery = applyCategoryFilter(
+      supabase
+        .from('customer_services')
+        .select(SERVICE_LIST_SELECT)
+        .order('created_at', { ascending: false })
+        .limit(1000),
+      filter
+    );
+    const { data } = await allQuery;
+    return data || [];
+  }
+
   const since = new Date();
   since.setDate(since.getDate() - 120);
 

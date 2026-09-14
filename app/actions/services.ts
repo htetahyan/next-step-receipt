@@ -7,7 +7,7 @@ import { after } from 'next/server';
 import { refresh } from 'next/cache';
 import { revalidateAfter, SERVICE_DASHBOARD_PATHS } from '@/lib/revalidate';
 import { z } from 'zod';
-import { SERVICE_LIST_SELECT } from '@/lib/service-list-query';
+import { SERVICE_LIST_SELECT, fetchModuleServiceList, ListFilter } from '@/lib/service-list-query';
 
 
 
@@ -78,6 +78,76 @@ function parseDateToISO(dateVal: any): string | null {
 }
 
 import { safeAction } from '@/lib/safeAction';
+
+export async function loadModuleServiceList(filter: ListFilter = {}) {
+  try {
+    const data = await fetchModuleServiceList(filter);
+    return { success: true, data };
+  } catch (err: any) {
+    console.error('loadModuleServiceList error:', err);
+    return { success: false, data: [] as any[], error: err.message };
+  }
+}
+
+export async function findServicesByReferenceId(referenceId: string, excludeId?: string) {
+  try {
+    const clean = String(referenceId || '').trim();
+    if (!clean) return { success: true, data: [] as any[] };
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('customer_services')
+      .select('id, reference_id, customer_id, category, status, customers(name)')
+      .ilike('reference_id', clean)
+      .limit(10);
+    if (error) throw error;
+    const rows = (data || []).filter((row: any) => !excludeId || row.id !== excludeId);
+    return { success: true, data: rows };
+  } catch (err: any) {
+    return { success: false, data: [] as any[], error: err.message };
+  }
+}
+
+async function syncLinkedInvoice(
+  supabase: any,
+  customerId: string,
+  financials: any,
+  category?: string
+) {
+  const amount = Number(financials?.amount) || 0;
+  const invoiceId = financials?.invoice_id;
+  if (!invoiceId || amount <= 0) return;
+
+  try {
+    await supabase
+      .from('invoices')
+      .update({
+        subtotal: amount.toString(),
+        total_amount: amount.toString(),
+        payment_method: financials?.payment_method || undefined,
+      })
+      .eq('id', invoiceId)
+      .eq('customer_id', customerId);
+
+    const { data: items } = await supabase
+      .from('invoice_items')
+      .select('id')
+      .eq('invoice_id', invoiceId)
+      .limit(1);
+
+    if (items?.[0]?.id) {
+      await supabase
+        .from('invoice_items')
+        .update({
+          rate: amount.toString(),
+          amount: amount.toString(),
+          description: category || 'Service Fee',
+        })
+        .eq('id', items[0].id);
+    }
+  } catch (err) {
+    console.error('Non-critical invoice sync error:', err);
+  }
+}
 
 export async function searchServices(
   query: string,
@@ -267,6 +337,12 @@ export async function addCustomerService(data: any) {
               rate: amount.toString(),
               amount: amount.toString(),
             });
+            await sb
+              .from('customer_services')
+              .update({
+                financials: { ...(financials || {}), invoice_id: newInvoice.id },
+              })
+              .eq('id', service.id);
           }
         } catch (invError: any) {
           console.error('Non-critical invoice generation error:', invError);
@@ -550,6 +626,8 @@ export async function updateCustomerService(serviceId: string, data: any) {
 
     if (error) throw error;
 
+    await syncLinkedInvoice(supabase, updated.customer_id, updatePayload.financials, data.category);
+
     revalidateAfter(SERVICE_DASHBOARD_PATHS);
     try { refresh(); } catch { /* ignore */ }
 
@@ -721,6 +799,8 @@ export async function quickUpdateService(
         }
       }
     }
+
+    await syncLinkedInvoice(supabase, existing.customer_id, updated.financials, updated.category);
 
     revalidateAfter(SERVICE_DASHBOARD_PATHS);
     try { refresh(); } catch { /* ignore */ }
