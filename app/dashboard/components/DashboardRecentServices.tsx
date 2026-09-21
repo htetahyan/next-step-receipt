@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { parseFinancialNumber } from '@/lib/financialUtils';
+import { getBookingDateISO, getTravelDateISO } from '@/lib/serviceDates';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
 
 interface RecentServiceItem {
@@ -290,8 +291,8 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
               const refund = parseFinancialNumber(fin.refund, 0);
               const profit = receiving - cost - refund;
               const isProfitPositive = profit >= 0;
-              const travelDate = parseFormattedDate(details.travel_date || details.departure_date || details.visa_issued_date);
-              const createdDate = parseFormattedDate(srv.created_at);
+              const travelDate = parseFormattedDate(getTravelDateISO(srv) || details.travel_date || details.departure_date);
+              const createdDate = parseFormattedDate(getBookingDateISO(srv) || srv.created_at);
               const serviceLabel = getServiceSpecificLabel(srv);
               const serviceUrl = getServiceLink(srv);
 
@@ -339,7 +340,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                     )}
                   </td>
 
-                  {/* Booked Date: created_at is primary, travel_date is secondary context */}
+                  {/* Booked Date: issue/booking date, travel is secondary */}
                   <td className="px-3.5 py-1.5 whitespace-nowrap text-xs font-mono">
                     <div>
                       <div className="flex items-center gap-1 font-medium text-[var(--foreground)]">

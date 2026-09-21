@@ -14,6 +14,7 @@ import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 import { useRecordScope } from '@/lib/useRecordScope';
 import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
+import { getBookingDateISO } from '@/lib/serviceDates';
 import { UAE_VISA_CATEGORIES, AIR_TICKET_CATEGORIES, OTHER_VISA_CATEGORIES } from '@/lib/service-constants';
 
 interface Props {
@@ -137,7 +138,7 @@ export default function CustomServiceList({ initialServices, customers, profile 
       return {
         'NO': idx + 1,
         'Ref ID': s.reference_id,
-        'Date Booked': s.created_at ? new Date(s.created_at).toISOString().split('T')[0] : '',
+        'Date Booked': getBookingDateISO(s) || (s.created_at ? new Date(s.created_at).toISOString().split('T')[0] : ''),
         'Customer': cust?.name || '',
         'Service Name': s.category,
         'Status': s.status,

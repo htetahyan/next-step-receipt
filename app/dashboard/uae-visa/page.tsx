@@ -3,6 +3,7 @@ import { getCurrentUserProfile } from '@/app/actions/users';
 import { checkPermission } from '@/lib/auth-permissions';
 import { redirect } from 'next/navigation';
 import { fetchModuleServiceList } from '@/lib/service-list-query';
+import { isUaeVisaCategory } from '@/lib/service-constants';
 
 const NON_UAE_CATEGORIES = [
   'Air Ticket', 'Dummy Ticket', 'Ticket + Hotel Package', 'Flight Booking',
@@ -19,7 +20,8 @@ export default async function UAEVisaPage() {
 
   let services: any[] = [];
   try {
-    services = await fetchModuleServiceList({ notInCategories: NON_UAE_CATEGORIES });
+    const raw = await fetchModuleServiceList({ notInCategories: NON_UAE_CATEGORIES });
+    services = raw.filter((s: any) => isUaeVisaCategory(s.category));
   } catch (e) {
     console.error('Failed to fetch UAE visa services:', e);
   }

@@ -13,6 +13,7 @@ import { addCustomerService, updateCustomerService, generateReferenceId, findSer
 import { findCustomerByPassportOrName } from '@/app/actions/customers';
 import { addDocuments } from '@/app/actions/documents';
 import { uploadFileToR2, runWithConcurrency } from '@/lib/uploadToR2';
+import { stampBookingDate } from '@/lib/serviceDates';
 import DocumentModal from '@/components/DocumentModal';
 import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
@@ -181,11 +182,11 @@ export function ServiceFormShell<T extends Record<string, any>>({
         referenceId: refId ? refId.trim() : null,
         category: data.category,
         status: data.status || 'Open',
-        details: {
+        details: stampBookingDate({
           ...(data.details || {}),
           pax_count: effectivePaxCount,
           passengers: isMultiPax ? passengers : ((data.details as any)?.passengers || []),
-        },
+        }, { fallbackToday: !initialData }),
         financials: {
           ...(data.financials || {}),
           pax_count: effectivePaxCount,

@@ -15,6 +15,7 @@ import { uaeVisaSchema, airTicketSchema, otherVisaSchema, tourPackageSchema } fr
 import { createClient } from '@/utils/supabase/server';
 import { requirePermission } from '@/app/actions/users';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
+import { stampBookingDate, getBookingDateISO } from '@/lib/serviceDates';
 
 // ── Schema ──────────────────────────────────────────────────
 // We will now use the shared schemas directly to ensure frontend/backend parity.
@@ -275,18 +276,16 @@ export async function addCustomerService(data: any) {
       console.warn('Schema validation warning (proceeding with normalized payload):', zodErr?.message);
     }
 
-    const effectiveDateISO = parseDateToISO(finalDetails?.travel_date || finalDetails?.visa_issued_date);
+    const stampedDetails = stampBookingDate(finalDetails, { fallbackToday: true });
+    const bookingISO = parseDateToISO(getBookingDateISO({ details: stampedDetails, created_at: null }) || stampedDetails.booking_date);
     const serviceInsertPayload: any = {
       customer_id: customerId,
       reference_id: referenceId || null,
       category: category || 'Service',
       status: status || 'Open',
-      details: finalDetails,
+      details: stampedDetails,
       financials: financials || {},
     };
-    if (effectiveDateISO) {
-      serviceInsertPayload.created_at = effectiveDateISO;
-    }
 
     // Insert the service
     const { data: service, error: insertErr } = await supabase
@@ -304,7 +303,7 @@ export async function addCustomerService(data: any) {
       const invoiceCustomerId = customerId;
       const invoiceCategory = category;
       const invoicePayment = financials?.payment_method || 'cash';
-      const invoiceDateISO = effectiveDateISO;
+      const invoiceDateISO = bookingISO;
       after(async () => {
         try {
           const sb = await createClient();
@@ -394,10 +393,11 @@ export async function bulkMigrateCustomerServices(records: any[]) {
       let customerId = '';
       let matched = false;
 
+      // Match by passport/ID number: if client exists in DB with this passport, reuse profile (no duplicate)
       if (passportNo) {
         const { data: byPassport } = await supabase
           .from('customers')
-          .select('id')
+          .select('id, name, passport_no')
           .eq('passport_no', passportNo)
           .maybeSingle();
         if (byPassport) {
@@ -406,14 +406,16 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         }
       }
 
-      if (!customerId) {
-        const { data: byName } = await supabase
+      // If no passport was provided, match ONLY if both phone and name match (names can duplicate, so name alone is never matched)
+      if (!customerId && !passportNo && phone && phone.length >= 7) {
+        const { data: byPhoneAndName } = await supabase
           .from('customers')
-          .select('id')
-          .eq('name', name)
+          .select('id, name, phone, passport_no')
+          .eq('phone', phone)
+          .ilike('name', name)
           .maybeSingle();
-        if (byName) {
-          customerId = byName.id;
+        if (byPhoneAndName) {
+          customerId = byPhoneAndName.id;
           matched = true;
         }
       }
@@ -421,7 +423,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
       if (matched) {
         matchedCount++;
       } else {
-        // Create new customer
+        // Create new customer (names can duplicate; separate people with same name get their own profile)
         const { data: newCust, error: custErr } = await supabase
           .from('customers')
           .insert({
@@ -492,19 +494,17 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         referenceId = await generateReferenceId(prefix);
       }
 
-      const effectiveDateISO = parseDateToISO(service.details?.travel_date || service.details?.visa_issued_date);
+      const stampedDetails = stampBookingDate(service.details || {}, { fallbackToday: true });
+      const bookingISO = parseDateToISO(stampedDetails.booking_date);
 
       const servicePayload: any = {
         customer_id: customerId,
         reference_id: referenceId,
         category: service.category,
         status: service.status || 'Open',
-        details: service.details || {},
+        details: stampedDetails,
         financials: service.financials || {},
       };
-      if (effectiveDateISO) {
-        servicePayload.created_at = effectiveDateISO;
-      }
 
       const { error: svcErr } = await supabase
         .from('customer_services')
@@ -541,14 +541,14 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         const invoicePayload: any = {
           customer_id: customerId,
           invoice_number: invoiceNumber,
-          date: effectiveDateISO ? effectiveDateISO.split('T')[0] : new Date().toISOString().split('T')[0],
+          date: bookingISO ? bookingISO.split('T')[0] : new Date().toISOString().split('T')[0],
           subtotal: amount,
           vat_amount: 0,
           total_amount: amount,
           payment_method: service.financials?.payment_method || 'cash',
         };
-        if (effectiveDateISO) {
-          invoicePayload.created_at = effectiveDateISO;
+        if (bookingISO) {
+          invoicePayload.created_at = bookingISO;
         }
 
         const { data: newInvoice } = await supabase
@@ -609,7 +609,7 @@ export async function updateCustomerService(serviceId: string, data: any) {
     const updatePayload: any = {
       category: data.category,
       status: data.status,
-      details: data.details,
+      details: stampBookingDate(data.details || {}),
       financials: data.financials,
     };
 
@@ -756,10 +756,10 @@ export async function quickUpdateService(
     }
 
     if (payload.details) {
-      updateData.details = {
+      updateData.details = stampBookingDate({
         ...(existing.details as any || {}),
         ...payload.details,
-      };
+      });
     }
 
     if (payload.financials) {

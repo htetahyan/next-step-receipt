@@ -60,6 +60,54 @@ export const OTHER_VISA_CATEGORIES = [
   'Consultation Only',
 ] as const;
 
+/** Positive match only — unknown custom services must NOT appear on the UAE visa tracker. */
+export function isUaeVisaCategory(category?: string | null): boolean {
+  if (!category) return false;
+  const cat = category.trim();
+  const lower = cat.toLowerCase();
+
+  if ((UAE_VISA_CATEGORIES as readonly string[]).includes(cat)) return true;
+  if ((AIR_TICKET_CATEGORIES as readonly string[]).includes(cat)) return false;
+  if ((OTHER_VISA_CATEGORIES as readonly string[]).includes(cat)) return false;
+
+  if (
+    lower.includes('tour package') ||
+    lower.includes('safari') ||
+    lower.includes('ticket') ||
+    lower.includes('flight') ||
+    lower.includes('airline') ||
+    lower.includes('schengen') ||
+    lower.includes('japan') ||
+    lower.includes('china') ||
+    lower.includes('korea') ||
+    lower.includes('armenia') ||
+    lower.includes('uk visa') ||
+    lower.includes('other country') ||
+    lower.includes('consultation') ||
+    lower.includes('passport') ||
+    lower.includes('insurance') ||
+    lower.includes('attestation') ||
+    lower.includes('hotel package')
+  ) {
+    return false;
+  }
+
+  return (
+    lower.includes('uae') ||
+    lower.includes('visit visa') ||
+    lower.includes('visa change') ||
+    lower.includes('inside visa') ||
+    lower.includes('a2a') ||
+    lower.includes('transit visa') ||
+    lower.includes('multi entry') ||
+    lower.includes('multi-entry') ||
+    lower.includes('oman') ||
+    lower.includes('visa extension') ||
+    (lower.includes('bus') && lower.includes('visa')) ||
+    (lower.includes('air') && lower.includes('visa change'))
+  );
+}
+
 // ── Suppliers ───────────────────────────────────────────────
 export const VISA_SUPPLIERS = [
   'DAHR',

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { isUaeVisaCategory } from '@/lib/service-constants';
 
 /**
  * Auto-close expired visas server action.
@@ -35,21 +36,7 @@ export async function autoCloseExpiredVisas(): Promise<{ closed: number; error?:
       const details = (service.details as any) || {};
       let isExpired = false;
 
-      // Determine if this is a visa service (not ticket or hotel)
-      const category = (service.category || '').toLowerCase();
-      const ref = (service.reference_id || '').toLowerCase();
-      const isTicketOrHotel = 
-        category.includes('ticket') || 
-        category.includes('flight') || 
-        category.includes('way') || 
-        category.includes('trip') || 
-        category.includes('hotel') || 
-        ref.startsWith('at') || 
-        ref.startsWith('tk') || 
-        ref.startsWith('hb');
-      
-      const isVisa = !isTicketOrHotel;
-      if (!isVisa) continue;
+      if (!isUaeVisaCategory(service.category)) continue;
 
       // Method 1: explicit visa_expiry_date in the past
       if (details.visa_expiry_date) {

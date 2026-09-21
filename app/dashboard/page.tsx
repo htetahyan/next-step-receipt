@@ -10,7 +10,8 @@ import {
   parseISO, 
   eachDayOfInterval, 
   differenceInDays, 
-  startOfMonth, 
+  startOfMonth,
+  endOfMonth,
   startOfYear 
 } from 'date-fns';
 import Link from 'next/link';
@@ -31,13 +32,14 @@ import { DashboardKPICards } from './components/DashboardKPICards';
 import { DashboardRecentServices } from './components/DashboardRecentServices';
 import { OutstandingReceivablesWidget } from './components/OutstandingReceivablesWidget';
 import { parseFinancialNumber } from '@/lib/financialUtils';
+import { getBookingDateISO, parseServiceDateToTimestamp } from '@/lib/serviceDates';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string; month?: string }>;
 }) {
   const now = new Date();
   return (
@@ -53,7 +55,7 @@ export default async function Dashboard({
             </span>
           </div>
           <p className="text-xs opacity-60 mt-0.5 font-mono">
-            {format(now, 'EEEE, dd MMMM yyyy')} • Real-time performance & margin telemetry
+            {format(now, 'EEEE, dd MMMM yyyy')} • Profit by booking / visa issue date (not travel date)
           </p>
         </div>
         <DashboardFilters />
@@ -82,9 +84,9 @@ function DashboardMetricsFallback() {
 async function DashboardMetrics({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ range?: string; category?: string; status?: string; from?: string; to?: string; month?: string }>;
 }) {
-  const { range = 'today', category = 'all', status = 'all', from, to } = await searchParams;
+  const { range = 'today', category = 'all', status = 'all', from, to, month } = await searchParams;
   const supabase = await createClient();
 
   const now = new Date();
@@ -107,6 +109,17 @@ async function DashboardMetrics({
     case 'this-month':
       startDate = startOfMonth(now);
       endDate = endOfDay(now);
+      break;
+    case 'specific-month':
+      if (month) {
+        const [yyyy, mm] = month.split('-');
+        const date = new Date(parseInt(yyyy, 10), parseInt(mm, 10) - 1, 1);
+        startDate = startOfMonth(date);
+        endDate = endOfMonth(date);
+      } else {
+        startDate = startOfMonth(now);
+        endDate = endOfMonth(now);
+      }
       break;
     case '90d':
       startDate = subDays(now, 90);
@@ -142,7 +155,9 @@ async function DashboardMetrics({
 
     if (range !== 'all') {
       kpiQuery.gte('created_at', startDate.toISOString());
-      if (endDate) kpiQuery.lte('created_at', endDate.toISOString());
+      const fetchUntil = endDate ? new Date(endDate.getTime()) : new Date();
+      fetchUntil.setMonth(fetchUntil.getMonth() + 18);
+      kpiQuery.lte('created_at', fetchUntil.toISOString());
     }
 
     const [kpiRes, activeRes, closedCountRes, customersRes, recentRes] = await Promise.all([
@@ -180,45 +195,8 @@ async function DashboardMetrics({
     console.error('Error fetching dashboard dataset:', err);
   }
 
-  const parseDateToTimestamp = (dateVal: any): number => {
-    if (!dateVal) return 0;
-    if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? 0 : dateVal.getTime();
-    const str = String(dateVal).trim();
-    if (!str) return 0;
-    if (/^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}/.test(str)) {
-      const parts = str.split(/[\/-]/);
-      const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
-      return isNaN(d.getTime()) ? 0 : d.getTime();
-    }
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? 0 : d.getTime();
-  };
-
-  // getServiceDate: Used ONLY for operational features (departure reminders, visa expiry)
-  // Prioritizes travel_date since those features care about when travel actually happens
-  const getServiceDate = (srv: any): string | null => {
-    const details = (srv.details as any) || {};
-    const travelDate = details.travel_date || details.application_date || details.booking_date;
-    if (travelDate) {
-      const ts = parseDateToTimestamp(travelDate);
-      if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
-    }
-    if (srv.created_at) {
-      const ts = parseDateToTimestamp(srv.created_at);
-      if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
-    }
-    return null;
-  };
-
-  // getBookingDate: Used for ALL financial accounting — KPIs, revenue, profit, sales chart
-  // Always uses created_at (when the booking was entered into the system)
-  const getBookingDate = (srv: any): string | null => {
-    if (srv.created_at) {
-      const ts = parseDateToTimestamp(srv.created_at);
-      if (ts > 0) return format(new Date(ts), 'yyyy-MM-dd');
-    }
-    return null;
-  };
+  const parseDateToTimestamp = parseServiceDateToTimestamp;
+  const getBookingDate = getBookingDateISO;
 
   let totalRevenue = 0;
   let totalReceiving = 0;
@@ -287,7 +265,7 @@ async function DashboardMetrics({
       uaeServicesByPerson.get(key)!.push(srv);
     }
 
-    // Date Filtering for KPI & Charts — uses created_at (booking date), NOT travel_date
+    // Date Filtering for KPI & Charts — booking / visa issue date, NEVER travel date
     const bookingDate = getBookingDate(srv);
     let matchesDate = false;
     if (range === 'all') {
@@ -400,7 +378,7 @@ async function DashboardMetrics({
           ? parseISO(getBookingDate(allServices[allServices.length - 1]) || format(subDays(now, 7), 'yyyy-MM-dd'))
           : subDays(now, 7)
         : startDate,
-    end: now,
+    end: (endDate && isBefore(endDate, now)) ? endDate : now,
   });
 
   const chartData = intervalDays.map((day) => {
@@ -432,7 +410,7 @@ async function DashboardMetrics({
           <SalesChart
             data={chartData}
             title="Revenue & Booking Timeline"
-            subtitle={`Daily sales velocity for ${range === 'today' ? 'today' : range.replace('-', ' ')}`}
+            subtitle={`By booking / visa issue date — not travel date (${range === 'today' ? 'today' : range.replace('-', ' ')})`}
           />
         </div>
 
