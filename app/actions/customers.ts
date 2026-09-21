@@ -267,6 +267,10 @@ export async function findCustomerByPassportOrName(passportNo: string, name: str
         .limit(1)
         .maybeSingle();
       if (byPassportLike) return { data: byPassportLike };
+
+      // When passport/ID is provided and doesn't match, do NOT match by name alone
+      // because names can duplicate across different people with different IDs
+      return { data: null };
     }
 
     if (name && name.trim()) {

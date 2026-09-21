@@ -101,6 +101,28 @@ export default function InvoiceList({
 
            <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
              <div className="flex items-center gap-1.5 text-xs">
+               <span className="opacity-60 text-[11px]">Month:</span>
+               <input
+                 type="month"
+                 onChange={e => {
+                   if (e.target.value) {
+                     const [yyyy, mm] = e.target.value.split('-');
+                     setStartDate(`${yyyy}-${mm}-01`);
+                     // Get last day of month
+                     const lastDay = new Date(parseInt(yyyy, 10), parseInt(mm, 10), 0).getDate();
+                     setEndDate(`${yyyy}-${mm}-${lastDay}`);
+                   } else {
+                     setStartDate('');
+                     setEndDate('');
+                   }
+                 }}
+                 className="rounded-lg border border-[var(--card-border)] bg-[var(--background)] px-2 h-8 text-xs focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 cursor-pointer"
+               />
+             </div>
+             
+             <span className="opacity-30 mx-1 hidden sm:inline">|</span>
+
+             <div className="flex items-center gap-1.5 text-xs">
                <span className="opacity-60 text-[11px]">From:</span>
                <input
                  type="date"
@@ -123,7 +145,7 @@ export default function InvoiceList({
              {(startDate || endDate) && (
                <button
                  onClick={() => { setStartDate(''); setEndDate(''); }}
-                 className="px-2 h-8 rounded-lg hover:bg-[var(--sidebar-bg)] text-xs text-red-500 font-semibold cursor-pointer"
+                 className="px-2 h-8 rounded-lg hover:bg-[var(--sidebar-bg)] text-xs text-[#D97757] font-semibold cursor-pointer"
                  title="Clear Date Filters"
                >
                  Clear

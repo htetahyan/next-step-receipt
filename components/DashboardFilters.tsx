@@ -19,9 +19,10 @@ export default function DashboardFilters() {
     { label: 'Today', value: 'today' },
     { label: '7 Days', value: '7d' },
     { label: 'This Month', value: 'this-month' },
+    { label: 'Specific Month', value: 'specific-month' },
     { label: '30 Days', value: '30d' },
-    { label: '90 Days', value: '90d' },
     { label: 'This Year', value: 'this-year' },
+    { label: 'Custom Dates', value: 'custom' },
     { label: 'All Time', value: 'all' },
   ]
 
@@ -62,6 +63,19 @@ export default function DashboardFilters() {
     const params = new URLSearchParams(searchParams.toString())
     params.set(type, val)
     params.set('range', 'custom')
+    startTransition(() => {
+      router.push(`?${params.toString()}`)
+    })
+  }
+
+  const handleSpecificMonth = (val: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (val) {
+      params.set('month', val)
+    } else {
+      params.delete('month')
+    }
+    params.set('range', 'specific-month')
     startTransition(() => {
       router.push(`?${params.toString()}`)
     })
@@ -132,6 +146,18 @@ export default function DashboardFilters() {
               value={currentTo}
               onChange={(e) => handleCustomDate('to', e.target.value)}
               className="bg-transparent text-[11px] font-mono focus:outline-none"
+            />
+          </div>
+        )}
+
+        {/* Specific Month Picker if selected */}
+        {currentRange === 'specific-month' && (
+          <div className="flex items-center gap-1 bg-[var(--sidebar-bg)] border border-[var(--card-border)] rounded-xl px-2.5 py-1 text-xs">
+            <input
+              type="month"
+              value={searchParams.get('month') || ''}
+              onChange={(e) => handleSpecificMonth(e.target.value)}
+              className="bg-transparent text-[11px] font-mono focus:outline-none cursor-pointer"
             />
           </div>
         )}

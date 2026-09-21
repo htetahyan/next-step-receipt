@@ -405,79 +405,79 @@ export default function CustomerHubClient({
               </div>
             </div>
 
-            {/* Contact Details List */}
-            <div className="space-y-2.5 text-xs">
-              {/* Phone */}
-              <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Phone className="w-3.5 h-3.5 opacity-50 shrink-0 text-[#D97757]" />
-                  <span className="font-mono text-[11px] truncate opacity-90">
-                    {customer.phone || 'No phone recorded'}
-                  </span>
-                </div>
-                {customer.phone && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    {waUrl && (
-                      <a
-                        href={waUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 rounded text-emerald-600 hover:bg-emerald-500/10 transition-colors"
-                        title="Chat on WhatsApp"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                    <a
-                      href={`tel:${customer.phone}`}
-                      className="p-1 rounded text-blue-600 hover:bg-blue-500/10 transition-colors"
-                      title="Call"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                    </a>
+              {/* Contact Details List */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                {/* Phone */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)] hover:border-[#D97757]/30 transition-colors">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Phone className="w-3.5 h-3.5 opacity-50 shrink-0 text-[#D97757]" />
+                    <span className="font-mono text-[11px] truncate opacity-90">
+                      {customer.phone || 'No phone recorded'}
+                    </span>
                   </div>
-                )}
+                  {customer.phone && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {waUrl && (
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 rounded text-emerald-600 hover:bg-emerald-500/10 transition-colors flex items-center justify-center"
+                          title="Chat on WhatsApp"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      <a
+                        href={`tel:${customer.phone}`}
+                        className="p-1 rounded text-blue-600 hover:bg-blue-500/10 transition-colors flex items-center justify-center"
+                        title="Call"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)] hover:border-[#D97757]/30 transition-colors">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Mail className="w-3.5 h-3.5 opacity-50 shrink-0 text-[#D97757]" />
+                    <span className="text-[11px] truncate opacity-90">
+                      {customer.email || 'No email recorded'}
+                    </span>
+                  </div>
+                  {customer.email && (
+                    <a
+                      href={`mailto:${customer.email}`}
+                      className="p-1 rounded text-amber-600 hover:bg-amber-500/10 transition-colors shrink-0 flex items-center justify-center"
+                      title="Send Email"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+
+                {/* Member Since */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)] sm:col-span-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 opacity-50 text-[#D97757]" />
+                    <span className="text-[11px] opacity-70 font-mono">Member Since</span>
+                  </div>
+                  <span className="font-mono text-[11px] font-medium opacity-90">{joinDate}</span>
+                </div>
               </div>
 
-              {/* Email */}
-              <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Mail className="w-3.5 h-3.5 opacity-50 shrink-0 text-[#D97757]" />
-                  <span className="text-[11px] truncate opacity-90">
-                    {customer.email || 'No email recorded'}
-                  </span>
-                </div>
-                {customer.email && (
-                  <a
-                    href={`mailto:${customer.email}`}
-                    className="p-1 rounded text-amber-600 hover:bg-amber-500/10 transition-colors shrink-0"
-                    title="Send Email"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
-              </div>
-
-              {/* Member Since */}
-              <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)]">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 opacity-50 text-[#D97757]" />
-                  <span className="text-[11px] opacity-70 font-mono">Member Since</span>
-                </div>
-                <span className="font-mono text-[11px] font-medium opacity-90">{joinDate}</span>
-              </div>
+              {/* Quick Edit Profile Button */}
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="mt-3 w-full h-8 flex items-center justify-center gap-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)] hover:text-[#D97757] text-xs font-medium transition-colors cursor-pointer"
+              >
+                <Pencil className="w-3 h-3 opacity-70" />
+                Edit Profile Details
+              </button>
             </div>
-
-            {/* Quick Edit Profile Button */}
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(true)}
-              className="mt-4 w-full h-8 flex items-center justify-center gap-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--sidebar-bg)] hover:bg-[var(--card-border)] text-xs font-medium transition-colors cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5 opacity-60" />
-              Edit Profile Details
-            </button>
-          </div>
 
           {/* Quick Invoice Action Link Card */}
           <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#D97757]/10 via-[var(--card-bg)] to-[var(--card-bg)] border border-[#D97757]/20 flex items-center justify-between shadow-xs">
