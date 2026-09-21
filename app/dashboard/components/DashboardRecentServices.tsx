@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { parseFinancialNumber } from '@/lib/financialUtils';
-import { getBookingDateISO, getTravelDateISO } from '@/lib/serviceDates';
+import { getActivitySortISO, getServiceDateFields, getTravelDateISO } from '@/lib/serviceDates';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
 
 interface RecentServiceItem {
@@ -41,9 +41,10 @@ interface RecentServiceItem {
 
 interface DashboardRecentServicesProps {
   services: RecentServiceItem[];
+  periodLabel?: string;
 }
 
-export function DashboardRecentServices({ services }: DashboardRecentServicesProps) {
+export function DashboardRecentServices({ services, periodLabel = 'Today' }: DashboardRecentServicesProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -173,7 +174,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
       }
 
       return true;
-    });
+    }).sort((a, b) => getActivitySortISO(b).localeCompare(getActivitySortISO(a)));
   }, [services, search, categoryFilter, statusFilter]);
 
   return (
@@ -184,9 +185,11 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#D97757]" />
             <div>
-              <h3 className="text-sm font-serif font-medium">Recent Services Ledger</h3>
+              <h3 className="text-sm font-serif font-medium">
+                {periodLabel === 'Today' ? "Today's Services" : `Services — ${periodLabel}`}
+              </h3>
               <p className="text-[11px] opacity-50 font-mono">
-                Last {services.length} active & completed bookings with live profit telemetry
+                {services.length} booking{services.length === 1 ? '' : 's'} by issue / booked / created date (not travel)
               </p>
             </div>
           </div>
@@ -270,7 +273,7 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
               <th className="px-3.5 py-2 font-medium">Ref & Type</th>
               <th className="px-3.5 py-2 font-medium">Service Details</th>
               <th className="px-3.5 py-2 font-medium">Customer</th>
-              <th className="px-3.5 py-2 font-medium">Booked Date</th>
+              <th className="px-3.5 py-2 font-medium">Issued / Booked / Created</th>
               <th className="px-3.5 py-2 font-medium">Status</th>
               <th className="px-3.5 py-2 text-right font-medium">Receiving (AED)</th>
               <th className="px-3.5 py-2 text-right font-medium">Cost (AED)</th>
@@ -292,7 +295,10 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
               const profit = receiving - cost - refund;
               const isProfitPositive = profit >= 0;
               const travelDate = parseFormattedDate(getTravelDateISO(srv) || details.travel_date || details.departure_date);
-              const createdDate = parseFormattedDate(getBookingDateISO(srv) || srv.created_at);
+              const dates = getServiceDateFields(srv);
+              const issuedDate = parseFormattedDate(dates.issued);
+              const bookedDate = parseFormattedDate(dates.booked);
+              const createdDate = parseFormattedDate(dates.created);
               const serviceLabel = getServiceSpecificLabel(srv);
               const serviceUrl = getServiceLink(srv);
 
@@ -340,17 +346,28 @@ export function DashboardRecentServices({ services }: DashboardRecentServicesPro
                     )}
                   </td>
 
-                  {/* Booked Date: issue/booking date, travel is secondary */}
                   <td className="px-3.5 py-1.5 whitespace-nowrap text-xs font-mono">
-                    <div>
-                      <div className="flex items-center gap-1 font-medium text-[var(--foreground)]">
-                        <Calendar className="w-3 h-3 text-[#D97757]" />
-                        <span>{createdDate || '—'}</span>
-                      </div>
-                      {travelDate && (
-                        <div className="text-[10px] opacity-50 mt-0.5">
-                          Travel: {travelDate}
+                    <div className="space-y-0.5">
+                      {issuedDate && (
+                        <div className="flex items-center gap-1 font-medium">
+                          <Calendar className="w-3 h-3 text-[#D97757]" />
+                          <span>Issued {issuedDate}</span>
                         </div>
+                      )}
+                      {bookedDate && bookedDate !== issuedDate && (
+                        <div className="text-[10px] opacity-70">Booked {bookedDate}</div>
+                      )}
+                      {createdDate && createdDate !== issuedDate && createdDate !== bookedDate && (
+                        <div className="text-[10px] opacity-50">Created {createdDate}</div>
+                      )}
+                      {!issuedDate && !bookedDate && (
+                        <div className="flex items-center gap-1 font-medium">
+                          <Calendar className="w-3 h-3 text-[#D97757]" />
+                          <span>{createdDate || '—'}</span>
+                        </div>
+                      )}
+                      {travelDate && (
+                        <div className="text-[10px] opacity-40 mt-0.5">Travel {travelDate}</div>
                       )}
                     </div>
                   </td>

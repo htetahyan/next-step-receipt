@@ -34,19 +34,50 @@ export function getTravelDateISO(service: any): string | null {
   return toISODate(details.travel_date || details.departure_date);
 }
 
-export function getBookingDateISO(service: any): string | null {
-  const details = service?.details || {};
-  const issued = toISODate(
-    details.booking_date || details.visa_issued_date || details.issue_date || details.application_date
-  );
-  if (issued) return issued;
+export type ServiceDateFields = {
+  issued: string | null;
+  booked: string | null;
+  created: string | null;
+};
 
-  const created = toISODate(service?.created_at);
-  const travel = getTravelDateISO(service);
-  if (created && travel && created === travel) {
-    return created;
-  }
-  return created;
+/** Issue / booked / created — never travel date. */
+export function getServiceDateFields(service: any): ServiceDateFields {
+  const details = service?.details || {};
+  return {
+    issued: toISODate(details.visa_issued_date || details.issue_date || details.application_date),
+    booked: toISODate(details.booking_date),
+    created: toISODate(service?.created_at),
+  };
+}
+
+export function getActivityDates(service: any): string[] {
+  const { issued, booked, created } = getServiceDateFields(service);
+  return [...new Set([issued, booked, created].filter(Boolean) as string[])];
+}
+
+export function serviceMatchesDateRange(service: any, startISO: string, endISO: string): boolean {
+  return getActivityDates(service).some((d) => d >= startISO && d <= endISO);
+}
+
+/** Date to plot on the sales chart when the service falls in the selected range. */
+export function getRangeMatchDate(service: any, startISO: string, endISO: string): string | null {
+  const { issued, booked, created } = getServiceDateFields(service);
+  const inRange = (d: string | null) => !!d && d >= startISO && d <= endISO;
+  if (inRange(issued)) return issued;
+  if (inRange(booked)) return booked;
+  if (inRange(created)) return created;
+  return null;
+}
+
+export function getActivitySortISO(service: any): string {
+  const dates = getActivityDates(service);
+  if (!dates.length) return '';
+  return dates.sort().at(-1) || '';
+}
+
+export function getBookingDateISO(service: any): string | null {
+  const { issued, booked, created } = getServiceDateFields(service);
+  return issued || booked || created;
 }
 
 export function stampBookingDate(

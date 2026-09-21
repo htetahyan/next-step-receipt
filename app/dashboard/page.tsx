@@ -32,7 +32,13 @@ import { DashboardKPICards } from './components/DashboardKPICards';
 import { DashboardRecentServices } from './components/DashboardRecentServices';
 import { OutstandingReceivablesWidget } from './components/OutstandingReceivablesWidget';
 import { parseFinancialNumber } from '@/lib/financialUtils';
-import { getBookingDateISO, parseServiceDateToTimestamp } from '@/lib/serviceDates';
+import {
+  getActivitySortISO,
+  getBookingDateISO,
+  getRangeMatchDate,
+  parseServiceDateToTimestamp,
+  serviceMatchesDateRange,
+} from '@/lib/serviceDates';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,7 +148,6 @@ async function DashboardMetrics({
     'id, customer_id, reference_id, category, status, details, financials, created_at, customer:customers(id, name, passport_no)';
 
   let allServices: any[] = [];
-  let recent20Services: any[] = [];
   let totalCustomersCount = 0;
   let activeBookingsCount = 0;
   let closedBookingsCount = 0;
@@ -154,13 +159,18 @@ async function DashboardMetrics({
       .order('created_at', { ascending: false });
 
     if (range !== 'all') {
-      kpiQuery.gte('created_at', startDate.toISOString());
       const fetchUntil = endDate ? new Date(endDate.getTime()) : new Date();
       fetchUntil.setMonth(fetchUntil.getMonth() + 18);
       kpiQuery.lte('created_at', fetchUntil.toISOString());
+      const shortRange = range === 'today' || range === '7d' || range === 'this-month' || range === 'specific-month' || range === 'custom';
+      if (!shortRange) {
+        const fetchFrom = new Date(startDate.getTime());
+        fetchFrom.setMonth(fetchFrom.getMonth() - 18);
+        kpiQuery.gte('created_at', fetchFrom.toISOString());
+      }
     }
 
-    const [kpiRes, activeRes, closedCountRes, customersRes, recentRes] = await Promise.all([
+    const [kpiRes, activeRes, closedCountRes, customersRes] = await Promise.all([
       kpiQuery,
       supabase
         .from('customer_services')
@@ -172,11 +182,6 @@ async function DashboardMetrics({
         .select('id', { count: 'exact', head: true })
         .eq('status', 'Closed'),
       supabase.from('customers').select('id', { count: 'exact', head: true }),
-      supabase
-        .from('customer_services')
-        .select(SERVICE_SELECT)
-        .order('created_at', { ascending: false })
-        .limit(20),
     ]);
 
     const merged = new Map<string, any>();
@@ -184,13 +189,12 @@ async function DashboardMetrics({
       merged.set(row.id, row);
     }
     allServices = Array.from(merged.values()).sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => getActivitySortISO(b).localeCompare(getActivitySortISO(a))
     );
 
     if (customersRes.count) totalCustomersCount = customersRes.count;
     activeBookingsCount = (activeRes.data || []).length;
     closedBookingsCount = closedCountRes.count || 0;
-    if (recentRes.data) recent20Services = recentRes.data;
   } catch (err) {
     console.error('Error fetching dashboard dataset:', err);
   }
@@ -218,6 +222,9 @@ async function DashboardMetrics({
 
   const todayStart = startOfDay(now);
   const in7Days = subDays(now, -7);
+  const startISO = format(startDate, 'yyyy-MM-dd');
+  const endISO = format(endDate || now, 'yyyy-MM-dd');
+  const periodServices: any[] = [];
 
   allServices.forEach((srv) => {
     const details = (srv.details as any) || {};
@@ -265,19 +272,10 @@ async function DashboardMetrics({
       uaeServicesByPerson.get(key)!.push(srv);
     }
 
-    // Date Filtering for KPI & Charts — booking / visa issue date, NEVER travel date
-    const bookingDate = getBookingDate(srv);
-    let matchesDate = false;
-    if (range === 'all') {
-      matchesDate = true;
-    } else if (bookingDate) {
-      const d = parseISO(bookingDate);
-      if (!isNaN(d.getTime())) {
-        const isAfterStart = isAfter(d, startDate) || format(d, 'yyyy-MM-dd') === format(startDate, 'yyyy-MM-dd');
-        const isBeforeEnd = endDate ? isBefore(d, endDate) || format(d, 'yyyy-MM-dd') === format(endDate, 'yyyy-MM-dd') : true;
-        matchesDate = isAfterStart && isBeforeEnd;
-      }
-    }
+    const bookingDate = range === 'all'
+      ? getBookingDate(srv)
+      : getRangeMatchDate(srv, startISO, endISO);
+    const matchesDate = range === 'all' ? true : serviceMatchesDateRange(srv, startISO, endISO);
 
     // Category Filter
     let matchesCategory = true;
@@ -295,6 +293,7 @@ async function DashboardMetrics({
     }
 
     if (matchesDate && matchesCategory && matchesStatus) {
+      periodServices.push(srv);
       const amt = parseFinancialNumber(fin.amount, 0);
       const disc = parseFinancialNumber(fin.discount, 0);
       const recAmt = parseFinancialNumber(fin.receiving_amount, amt - disc);
@@ -556,7 +555,10 @@ async function DashboardMetrics({
       )}
 
       {/* Primary Feature: Recent Services Ledger (Last 20 Services) with Profit & Dates */}
-      <DashboardRecentServices services={recent20Services} />
+      <DashboardRecentServices
+        services={periodServices.sort((a, b) => getActivitySortISO(b).localeCompare(getActivitySortISO(a)))}
+        periodLabel={range === 'today' ? 'Today' : range === 'all' ? 'All time' : range.replace('-', ' ')}
+      />
     </div>
   );
 }
