@@ -38,16 +38,15 @@ export function OtherVisaFields({
 
       <div className="grid grid-cols-2 gap-4">
         <FormField
+          name="details.visa_supplier"
+          label="Supplier *"
+          component="select"
+          options={supplierOptions}
+        />
+        <FormField
           name="category"
           label="Destination / Service Category *"
           placeholder="e.g. Schengen / EU Visa, Japan Visa, UK Visa, China Visa"
-          className="col-span-2"
-        />
-        <FormField
-          name="details.visa_supplier"
-          label="Supplier"
-          component="select"
-          options={supplierOptions}
         />
         <FormField
           name="details.visa_type"
@@ -61,15 +60,14 @@ export function OtherVisaFields({
             { label: 'Transit', value: 'Transit' },
           ]}
         />
-        <FormField name="details.appointment_date" label="Appointment Date" type="date" />
-        <FormField name="details.travel_date" label="Expected Travel Date" type="date" />
         <FormField
           name="status"
           label="Status"
           component="select"
           options={SERVICE_STATUSES.map((s) => ({ label: s, value: s }))}
-          className="col-span-2"
         />
+        <FormField name="details.appointment_date" label="Appointment Date" type="date" />
+        <FormField name="details.travel_date" label="Expected Travel Date" type="date" />
       </div>
     </div>
   );

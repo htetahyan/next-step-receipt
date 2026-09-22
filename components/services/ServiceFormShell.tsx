@@ -321,45 +321,48 @@ export function ServiceFormShell<T extends Record<string, any>>({
 
       <FormProvider {...methods}>
         <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Customer Selection Card */}
-          <div className="card-anthropic p-6">
-            <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">
-              Customer / Billing Entity
-            </h3>
-            <CustomerSelector
-              customers={customers}
-              readOnly={!!initialData}
-              defaultCustomerName={
-                initialData?.customers?.name ||
-                customers.find((c) => c.id === methods.watch('customerId' as any))?.name
-              }
-            />
-          </div>
-
-          {/* Travelers / Passengers Roster (Multi-Pax Support) */}
-          <PassengerRoster
-            passengers={passengers}
-            onChange={(updated) => {
-              setPassengers(updated);
-              (methods.setValue as any)('details.pax_count', updated.length > 1 ? updated.length : 1);
-            }}
-            serviceCategory={title || (defaultValues as any)?.category || ''}
-            primaryCustomer={{
-              name: initialData?.customers?.name || methods.watch('_selectedCustomerName' as any) || customers.find((c) => c.id === methods.watch('customerId' as any))?.name,
-              passport_no: customers.find((c) => c.id === methods.watch('customerId' as any))?.passport_no,
-            }}
-            onPassportScanned={(file) => {
-              setStagedFiles((prev) => [...prev, file]);
-            }}
-          />
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Left Column: Category Specific Details + Staff Info */}
+            {/* Left Column: Service Details -> Customer -> Travelers -> Staff -> Documents */}
             <div className="md:col-span-2 space-y-6">
+              {/* 1. Service & Supplier Category Details */}
               {renderCategoryFields(methods)}
+
+              {/* 2. Customer / Billing Entity Selection Card */}
+              <div className="card-anthropic p-6">
+                <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">
+                  Customer / Billing Entity
+                </h3>
+                <CustomerSelector
+                  customers={customers}
+                  readOnly={!!initialData}
+                  defaultCustomerName={
+                    initialData?.customers?.name ||
+                    customers.find((c) => c.id === methods.watch('customerId' as any))?.name
+                  }
+                />
+              </div>
+
+              {/* 3. Travelers / Passengers Roster (Multi-Pax Support) */}
+              <PassengerRoster
+                passengers={passengers}
+                onChange={(updated) => {
+                  setPassengers(updated);
+                  (methods.setValue as any)('details.pax_count', updated.length > 1 ? updated.length : 1);
+                }}
+                serviceCategory={title || (defaultValues as any)?.category || ''}
+                primaryCustomer={{
+                  name: initialData?.customers?.name || methods.watch('_selectedCustomerName' as any) || customers.find((c) => c.id === methods.watch('customerId' as any))?.name,
+                  passport_no: customers.find((c) => c.id === methods.watch('customerId' as any))?.passport_no,
+                }}
+                onPassportScanned={(file) => {
+                  setStagedFiles((prev) => [...prev, file]);
+                }}
+              />
+
+              {/* 4. Staff Info */}
               <StaffAdditionalInfoFields />
 
-              {/* Document Staging */}
+              {/* 5. Document Staging */}
               <div className="card-anthropic p-6">
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--card-border)]">
                   <h3 className="text-xs font-serif uppercase tracking-wider opacity-50">

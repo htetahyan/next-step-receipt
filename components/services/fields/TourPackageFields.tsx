@@ -37,6 +37,12 @@ export function TourPackageFields({
 
       <div className="grid grid-cols-2 gap-4">
         <FormField
+          name="details.supplier_name"
+          label="Supplier Name *"
+          component="select"
+          options={supplierOptions}
+        />
+        <FormField
           name="category"
           label="Category *"
           component="select"
@@ -47,28 +53,19 @@ export function TourPackageFields({
             { label: 'City Tour', value: 'City Tour' },
             { label: 'Custom Package', value: 'Custom Package' },
           ]}
-          className="col-span-2"
         />
-        <FormField name="details.travel_date" label="Date" type="date" className="col-span-2 md:col-span-1" />
+        <FormField name="details.travel_date" label="Date" type="date" />
         <FormField
-          name="details.supplier_name"
-          label="Supplier Name"
+          name="status"
+          label="Status"
           component="select"
-          options={supplierOptions}
-          className="col-span-2 md:col-span-1"
+          options={SERVICE_STATUSES.map((s) => ({ label: s, value: s }))}
         />
         <FormField
           name="details.tour_plans"
           label="Tour Name / Plan Details"
           component="textarea"
           placeholder="e.g. 5 Days Dubai & Abu Dhabi Deluxe Package with 4-star hotel and transfers"
-          className="col-span-2"
-        />
-        <FormField
-          name="status"
-          label="Status"
-          component="select"
-          options={SERVICE_STATUSES.map((s) => ({ label: s, value: s }))}
           className="col-span-2"
         />
       </div>

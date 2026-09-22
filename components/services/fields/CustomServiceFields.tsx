@@ -28,26 +28,21 @@ export function CustomServiceFields({ suppliers }: CustomServiceFieldsProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <FormField
-          name="category"
-          label="Service Name *"
-          component="input"
-          list="service-suggestions"
-          className="col-span-2"
-          placeholder="e.g. Dummy Flight, Document Attestation"
-        />
-        
-        <FormField
           name="details.supplier_name"
           label="Supplier"
           component="select"
           options={supplierOptions}
         />
         
-        <FormField name="details.reference_number" label="Reference / Booking Number" type="text" />
+        <FormField
+          name="category"
+          label="Service Name *"
+          component="input"
+          list="service-suggestions"
+          placeholder="e.g. Dummy Flight, Document Attestation"
+        />
         
-        <FormField name="details.start_date" label="Start Date" type="date" />
-        <FormField name="details.end_date" label="End Date" type="date" />
-        <FormField name="details.travel_date" label="Travel Date" type="date" />
+        <FormField name="details.reference_number" label="Reference / Booking Number" type="text" />
         
         <FormField
           name="status"
@@ -55,6 +50,10 @@ export function CustomServiceFields({ suppliers }: CustomServiceFieldsProps) {
           component="select"
           options={SERVICE_STATUSES.map((s) => ({ label: s, value: s }))}
         />
+
+        <FormField name="details.start_date" label="Start Date" type="date" />
+        <FormField name="details.end_date" label="End Date" type="date" />
+        <FormField name="details.travel_date" label="Travel Date" type="date" className="col-span-2 md:col-span-1" />
         
         <FormField
           name="details.description"

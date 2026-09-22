@@ -21,6 +21,11 @@ export function AirTicketFields({ suppliers = [] }: AirTicketFieldsProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <FormField
+          name="details.airline"
+          label="Airline / Supplier *"
+          placeholder="e.g. Emirates, FlyDubai, Myanmar Airways"
+        />
+        <FormField
           name="category"
           label="Trip Type *"
           component="select"
@@ -29,17 +34,17 @@ export function AirTicketFields({ suppliers = [] }: AirTicketFieldsProps) {
             { label: 'Round Trip', value: 'Round Trip' },
             { label: 'Multi City', value: 'Multi City' },
           ]}
-          className="col-span-2"
-        />
-        <FormField
-          name="details.airline"
-          label="Airline"
-          placeholder="e.g. Emirates, FlyDubai, Myanmar Airways"
         />
         <FormField
           name="details.sector"
           label="Sector (Route)"
           placeholder="e.g. DXB-LHR or RGN-BKK"
+        />
+        <FormField
+          name="status"
+          label="Status"
+          component="select"
+          options={SERVICE_STATUSES.map((s) => ({ label: s, value: s }))}
         />
         <FormField
           name="details.pnr"
@@ -55,13 +60,6 @@ export function AirTicketFields({ suppliers = [] }: AirTicketFieldsProps) {
         {(tripType === 'Round Trip' || tripType === 'Multi City') && (
           <FormField name="details.return_date" label="Return / Next Date" type="date" />
         )}
-        <FormField
-          name="status"
-          label="Status"
-          component="select"
-          options={SERVICE_STATUSES.map((s) => ({ label: s, value: s }))}
-          className="col-span-2"
-        />
       </div>
     </div>
   );

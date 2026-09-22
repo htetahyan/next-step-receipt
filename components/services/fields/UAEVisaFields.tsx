@@ -21,15 +21,17 @@ export function UAEVisaFields({
 
       <div className="grid grid-cols-2 gap-4">
         <FormField
+          name="details.visa_supplier"
+          label="Supplier *"
+          component="select"
+          options={availableSuppliers.map((s) => ({ label: s, value: s }))}
+        />
+        <FormField
           name="category"
           label="Visa Type *"
           component="select"
           options={availableVisaTypes.map((c) => ({ label: c, value: c }))}
-          className="col-span-2"
         />
-        <FormField name="details.visa_issued_date" label="Issue Date" type="date" />
-        <FormField name="details.travel_date" label="Travel Date" type="date" />
-        <FormField name="details.visa_expiry_date" label="Expiry Date" type="date" />
         <FormField
           name="details.visa_duration"
           label="Duration"
@@ -43,17 +45,14 @@ export function UAEVisaFields({
           ]}
         />
         <FormField
-          name="details.visa_supplier"
-          label="Supplier"
-          component="select"
-          options={availableSuppliers.map((s) => ({ label: s, value: s }))}
-        />
-        <FormField
           name="status"
           label="Status"
           component="select"
           options={SERVICE_STATUSES.map((s) => ({ label: s, value: s }))}
         />
+        <FormField name="details.visa_issued_date" label="Issue Date" type="date" />
+        <FormField name="details.travel_date" label="Travel Date" type="date" />
+        <FormField name="details.visa_expiry_date" label="Expiry Date" type="date" className="col-span-2 md:col-span-1" />
       </div>
     </div>
   );
