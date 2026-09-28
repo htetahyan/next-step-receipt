@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   Shield, 
@@ -22,6 +22,7 @@ import { format, parseISO } from 'date-fns';
 import { parseFinancialNumber } from '@/lib/financialUtils';
 import { getActivitySortISO, getServiceDateFields, getTravelDateISO } from '@/lib/serviceDates';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
+import Pagination from '@/components/Pagination';
 
 interface RecentServiceItem {
   id: string;
@@ -48,6 +49,13 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  // Reset to first page when search, category, status, or dataset changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter, statusFilter, services]);
 
   const getServiceLink = (srv: RecentServiceItem) => {
     const mod = mapCategoryToModule(srv.category);
@@ -177,6 +185,15 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
     }).sort((a, b) => getActivitySortISO(b).localeCompare(getActivitySortISO(a)));
   }, [services, search, categoryFilter, statusFilter]);
 
+  const totalItems = filteredServices.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const validPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedServices = useMemo(() => {
+    const start = (validPage - 1) * itemsPerPage;
+    return filteredServices.slice(start, start + itemsPerPage);
+  }, [filteredServices, validPage, itemsPerPage]);
+
   return (
     <div className="card-anthropic overflow-hidden shadow-sm">
       {/* Header & Controls */}
@@ -189,7 +206,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
                 {periodLabel === 'Today' ? "Today's Services" : `Services — ${periodLabel}`}
               </h3>
               <p className="text-[11px] opacity-50 font-mono">
-                {services.length} booking{services.length === 1 ? '' : 's'} by issue / booked / created date (not travel)
+                {totalItems} booking{totalItems === 1 ? '' : 's'} by issue / booked / created date (not travel)
               </p>
             </div>
           </div>
@@ -282,7 +299,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--card-border)]">
-            {filteredServices.map((srv) => {
+            {paginatedServices.map((srv) => {
               const details = srv.details || {};
               const fin = srv.financials || {};
               const cust = srv.customer || {};
@@ -425,7 +442,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
               );
             })}
 
-            {filteredServices.length === 0 && (
+            {paginatedServices.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-6 py-12 text-center opacity-50 text-xs font-serif">
                   No services match your filters.
@@ -436,7 +453,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
                         setCategoryFilter('all');
                         setStatusFilter('all');
                       }}
-                      className="ml-2 text-[#D97757] underline font-sans"
+                      className="ml-2 text-[#D97757] underline font-sans cursor-pointer"
                     >
                       Clear search
                     </button>
@@ -448,12 +465,41 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
         </table>
       </div>
 
-      {/* Footer summary info */}
-      <div className="p-4 border-t border-[var(--card-border)] bg-[var(--sidebar-bg)] flex items-center justify-between text-xs opacity-70 font-mono">
-        <span>Showing {filteredServices.length} of {services.length} recent bookings</span>
+      {/* Pagination Controls */}
+      <Pagination
+        currentPage={validPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={(page) => setCurrentPage(page)}
+      />
+
+      {/* Footer summary info & Rows per page selector */}
+      <div className="p-3.5 sm:p-4 border-t border-[var(--card-border)] bg-[var(--sidebar-bg)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs opacity-80 font-mono">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="opacity-60">Rows per page:</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            aria-label="Rows per page"
+            className="bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--foreground)] rounded px-2 py-0.5 text-xs font-mono cursor-pointer"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className="opacity-50 ml-2">
+            Showing {totalItems === 0 ? 0 : (validPage - 1) * itemsPerPage + 1}–{Math.min(validPage * itemsPerPage, totalItems)} of {totalItems} bookings
+          </span>
+        </div>
+
         <div className="flex items-center gap-4">
           <span>
-            Total Displayed Profit:{' '}
+            Total Filtered Profit:{' '}
             <strong className="text-emerald-600 dark:text-emerald-400">
               {filteredServices
                 .reduce((acc, s) => {
