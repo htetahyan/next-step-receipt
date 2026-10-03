@@ -1,11 +1,18 @@
 'use client'
 
-import React, { useActionState } from 'react';
+import React, { useActionState, useEffect } from 'react';
+import Script from 'next/script';
 import { login, signup, type AuthState } from '@/app/actions/auth';
 import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, undefined);
+
+  useEffect(() => {
+    if (state?.error && typeof window !== 'undefined' && (window as any).turnstile) {
+      (window as any).turnstile.reset();
+    }
+  }, [state?.error]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#020617] relative overflow-hidden font-sans">
@@ -59,6 +66,14 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div className="flex justify-center min-h-[65px]">
+              <div
+                className="cf-turnstile"
+                data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                data-theme="dark"
+              />
+            </div>
+
             {state?.error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm px-4 py-3 rounded-2xl animate-shake">
                 {state.error}
@@ -107,6 +122,7 @@ export default function LoginPage() {
           animation: shake 0.4s ease-in-out 0s 2;
         }
       `}</style>
+      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
     </div>
   );
 }
