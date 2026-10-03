@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useActionState, useEffect, useRef } from 'react';
+import React, { useActionState, useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import { login, signup, type AuthState } from '@/app/actions/auth';
 import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, undefined);
   const widgetRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState('');
 
   const renderTurnstile = () => {
     const turnstile = (window as any).turnstile;
@@ -18,6 +19,10 @@ export default function LoginPage() {
     widgetId.current = turnstile.render(widgetRef.current, {
       sitekey: TURNSTILE_SITE_KEY,
       theme: 'dark',
+      'error-callback': (code: string) => {
+        setTurnstileError(String(code || 'unknown'));
+        return true;
+      },
     });
   };
 
@@ -86,7 +91,14 @@ export default function LoginPage() {
 
             <div className="flex justify-center min-h-[65px]">
               {TURNSTILE_SITE_KEY ? (
-                <div ref={widgetRef} />
+                <div className="space-y-2 text-center">
+                  <div ref={widgetRef} />
+                  {turnstileError && (
+                    <p className="text-xs text-amber-300">
+                      Security check failed ({turnstileError}). Open the site as https://operation.nextsteptravelandtourism.com and add that hostname in the Cloudflare Turnstile widget.
+                    </p>
+                  )}
+                </div>
               ) : (
                 <p className="text-xs text-amber-400">Security check is not configured for this build.</p>
               )}
