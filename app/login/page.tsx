@@ -1,16 +1,34 @@
 'use client'
 
-import React, { useActionState, useEffect } from 'react';
+import React, { useActionState, useEffect, useRef } from 'react';
 import Script from 'next/script';
 import { login, signup, type AuthState } from '@/app/actions/auth';
 import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
 
+const TURNSTILE_SITE_KEY = String(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '').trim();
+
 export default function LoginPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, undefined);
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const widgetId = useRef<string | null>(null);
+
+  const renderTurnstile = () => {
+    const turnstile = (window as any).turnstile;
+    if (!turnstile || !widgetRef.current || widgetId.current || !TURNSTILE_SITE_KEY) return;
+    widgetId.current = turnstile.render(widgetRef.current, {
+      sitekey: TURNSTILE_SITE_KEY,
+      theme: 'dark',
+    });
+  };
 
   useEffect(() => {
-    if (state?.error && typeof window !== 'undefined' && (window as any).turnstile) {
-      (window as any).turnstile.reset();
+    renderTurnstile();
+  }, []);
+
+  useEffect(() => {
+    const turnstile = (window as any).turnstile;
+    if (state?.error && turnstile && widgetId.current) {
+      turnstile.reset(widgetId.current);
     }
   }, [state?.error]);
 
@@ -67,11 +85,11 @@ export default function LoginPage() {
             </div>
 
             <div className="flex justify-center min-h-[65px]">
-              <div
-                className="cf-turnstile"
-                data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-                data-theme="dark"
-              />
+              {TURNSTILE_SITE_KEY ? (
+                <div ref={widgetRef} />
+              ) : (
+                <p className="text-xs text-amber-400">Security check is not configured for this build.</p>
+              )}
             </div>
 
             {state?.error && (
@@ -122,7 +140,11 @@ export default function LoginPage() {
           animation: shake 0.4s ease-in-out 0s 2;
         }
       `}</style>
-      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        strategy="afterInteractive"
+        onLoad={renderTurnstile}
+      />
     </div>
   );
 }

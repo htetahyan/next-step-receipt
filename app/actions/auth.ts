@@ -12,31 +12,10 @@ export type AuthState = {
   message?: string;
 } | undefined;
 
-async function verifyTurnstile(token: string) {
-  const secret = process.env.TURNSTILE_SECRET_KEY
-  if (!secret) {
-    return { ok: false, error: 'Login security check is not configured.' }
-  }
-  if (!token) {
-    return { ok: false, error: 'Complete the security check, then sign in.' }
-  }
-
-  const result = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ secret, response: token }),
-  })
-  const data = await result.json().catch(() => null)
-  if (!data?.success) {
-    return { ok: false, error: 'Security check failed. Refresh the page and try again.' }
-  }
-  return { ok: true as const }
-}
-
 export async function login(prevState: AuthState, formData: FormData) {
-  const turnstile = await verifyTurnstile(String(formData.get('cf-turnstile-response') || ''))
-  if (!turnstile.ok) {
-    return { error: turnstile.error }
+  const captchaToken = String(formData.get('cf-turnstile-response') || '')
+  if (!captchaToken) {
+    return { error: 'Complete the security check, then sign in.' }
   }
 
   const supabase = await createClient()
@@ -47,6 +26,9 @@ export async function login(prevState: AuthState, formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
+    options: {
+      captchaToken,
+    },
   })
 
   if (error) {
