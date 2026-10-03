@@ -13,9 +13,9 @@ import { SERVICE_LIST_SELECT, fetchModuleServiceList, ListFilter } from '@/lib/s
 
 import { uaeVisaSchema, airTicketSchema, otherVisaSchema, tourPackageSchema } from '@/lib/validations/serviceSchemas';
 import { createClient } from '@/utils/supabase/server';
-import { requirePermission, requireAdmin } from '@/app/actions/users';
+import { requirePermission, requireAdmin, getCurrentUserProfile } from '@/app/actions/users';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
-import { stampBookingDate, getBookingDateISO } from '@/lib/serviceDates';
+import { stampBookingDate, getBookingDateISO, serviceDateColumns } from '@/lib/serviceDates';
 
 // ── Schema ──────────────────────────────────────────────────
 // We will now use the shared schemas directly to ensure frontend/backend parity.
@@ -175,6 +175,7 @@ export async function searchServices(
       supabase
         .from('customer_services')
         .select(SERVICE_LIST_SELECT)
+        .is('deleted_at', null)
         .ilike('reference_id', `%${sanitized}%`)
         .order('created_at', { ascending: false })
         .limit(40)
@@ -192,6 +193,7 @@ export async function searchServices(
           supabase
             .from('customer_services')
             .select(SERVICE_LIST_SELECT)
+            .is('deleted_at', null)
             .in('customer_id', customerIds)
             .order('created_at', { ascending: false })
             .limit(60)
@@ -285,6 +287,7 @@ export async function addCustomerService(data: any) {
       status: status || 'Open',
       details: stampedDetails,
       financials: financials || {},
+      ...serviceDateColumns(stampedDetails),
     };
 
     // Insert the service
@@ -503,6 +506,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         status: service.status || 'Open',
         details: stampedDetails,
         financials: service.financials || {},
+        ...serviceDateColumns(stampedDetails),
       };
 
       const { error: svcErr } = await supabase
@@ -610,6 +614,7 @@ export async function updateCustomerService(serviceId: string, data: any) {
       status: data.status,
       details: stampBookingDate(data.details || {}),
       financials: data.financials,
+      ...serviceDateColumns(stampBookingDate(data.details || {})),
     };
 
     if (data.referenceId !== undefined) {
@@ -637,6 +642,44 @@ export async function updateCustomerService(serviceId: string, data: any) {
   }
 }
 
+async function writeAudit(supabase: any, event: { serviceId?: string; action: string; before?: any; after?: any }) {
+  try {
+    const profile = await getCurrentUserProfile();
+    await supabase.from('audit_events').insert({
+      service_id: event.serviceId || null,
+      actor_id: profile?.id || null,
+      action: event.action,
+      before: event.before || null,
+      after: event.after || null,
+    });
+  } catch (err) {
+    console.error('Audit log skipped:', err);
+  }
+}
+
+export async function addServicePayment(input: { serviceId: string; customerId?: string; amount: number; method?: string; note?: string }) {
+  try {
+    await requirePermission('customers', 'edit');
+    const supabase = await createClient();
+    const { error } = await supabase.from('service_payments').insert({
+      service_id: input.serviceId,
+      customer_id: input.customerId || null,
+      amount: input.amount,
+      method: input.method || null,
+      note: input.note || null,
+    });
+    if (error) throw error;
+    await writeAudit(supabase, {
+      serviceId: input.serviceId,
+      action: 'payment',
+      after: { amount: input.amount, method: input.method },
+    });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function deleteCustomerService(serviceId: string) {
   try {
     const { createClient } = await import('@/utils/supabase/server');
@@ -652,8 +695,18 @@ export async function deleteCustomerService(serviceId: string) {
     const moduleKey = mapCategoryToModule(existing?.category);
     await requirePermission(moduleKey, 'delete');
 
-    const { error } = await supabase.from('customer_services').delete().eq('id', serviceId);
+    const { error } = await supabase
+      .from('customer_services')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', serviceId)
+      .is('deleted_at', null);
     if (error) throw error;
+    await writeAudit(supabase, {
+      serviceId,
+      action: 'soft_delete',
+      before: { deleted_at: null },
+      after: { deleted_at: new Date().toISOString() },
+    });
 
     revalidateAfter(SERVICE_DASHBOARD_PATHS);
     return { success: true };
@@ -777,6 +830,15 @@ export async function quickUpdateService(
       .single();
 
     if (updateErr) throw updateErr;
+
+    if (payload.status || payload.financials || payload.details) {
+      await writeAudit(supabase, {
+        serviceId,
+        action: 'update',
+        before: { status: existing.status, financials: existing.financials },
+        after: { status: updated?.status, financials: updated?.financials },
+      });
+    }
 
     // Update customer info if provided
     if (payload.customer && existing.customer_id) {

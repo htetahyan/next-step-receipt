@@ -42,7 +42,7 @@ export default function UAEVisaList({ initialServices, profile }: { initialServi
   const [supplierFilter, setSupplierFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>('all');
-  const [expiryTab, setExpiryTab] = useState<'all' | 'this_month' | 'next_month' | 'expired'>('expired');
+  const [expiryTab, setExpiryTab] = useState<'all' | 'this_month' | 'next_month' | 'expired' | 'remind7' | 'remind15'>('remind7');
   const [showFilters, setShowFilters] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -97,6 +97,8 @@ export default function UAEVisaList({ initialServices, profile }: { initialServi
   const displayedAlerts = expiryTab === 'this_month' ? expiryAlertData.thisMonthList
     : expiryTab === 'next_month' ? expiryAlertData.nextMonthList
     : expiryTab === 'expired' ? expiryAlertData.expiredList
+    : expiryTab === 'remind15' ? expiryAlertData.remindSoonList
+    : expiryTab === 'remind7' ? expiryAlertData.remindNowList
     : expiryAlertData.allAlerts;
 
   const suppliers = useMemo(() => Array.from(new Set(visaOnly.map((s) => s.details?.visa_supplier).filter(Boolean))).sort() as string[], [visaOnly]);

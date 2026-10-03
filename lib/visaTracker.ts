@@ -39,6 +39,8 @@ export type ExpiryAlert = {
   isThisMonth: boolean;
   isNextMonth: boolean;
   totalRecords: number;
+  /** Staff call window. Does not change the stored visa. */
+  remindBand: 'now' | 'soon' | 'watch' | 'expired';
 };
 
 export function getVisaDateInfo(): DateInfo {
@@ -186,6 +188,13 @@ export function buildExpiryAlerts(visas: any[], dateInfo: DateInfo) {
     const info = getExpiryInfo(latest, dateInfo);
     if (info.daysRemaining === null) return;
     if (info.isExpired || info.isExpiringThisMonth || info.isExpiringNextMonth || info.daysRemaining <= 60) {
+      const remindBand: ExpiryAlert['remindBand'] = info.isExpired
+        ? 'expired'
+        : info.daysRemaining <= 7
+          ? 'now'
+          : info.daysRemaining <= 15
+            ? 'soon'
+            : 'watch';
       allAlerts.push({
         service: latest,
         daysLeft: info.daysRemaining,
@@ -193,6 +202,7 @@ export function buildExpiryAlerts(visas: any[], dateInfo: DateInfo) {
         isThisMonth: info.isExpiringThisMonth,
         isNextMonth: info.isExpiringNextMonth,
         totalRecords: personServices.length,
+        remindBand,
       });
     }
   });
@@ -202,6 +212,8 @@ export function buildExpiryAlerts(visas: any[], dateInfo: DateInfo) {
     thisMonthList: allAlerts.filter((a) => a.isThisMonth),
     nextMonthList: allAlerts.filter((a) => a.isNextMonth),
     expiredList: allAlerts.filter((a) => a.isExpired),
+    remindNowList: allAlerts.filter((a) => a.remindBand === 'now'),
+    remindSoonList: allAlerts.filter((a) => a.remindBand === 'soon'),
   };
 }
 
@@ -209,7 +221,7 @@ export function getWhatsAppUrl(phoneVal: string, nameVal: string, refVal: string
   if (!phoneVal) return null;
   const clean = String(phoneVal).replace(/[^0-9]/g, '');
   if (!clean) return null;
-  const text = `Hello ${nameVal || 'Customer'},\nRegarding your UAE Visit Visa (Ref: ${refVal || ''}, Expiry: ${expiryVal || 'N/A'}). Please let us know if you need to extend or renew.\nBest regards,\nNextStep Travel`;
+  const text = `Hello ${nameVal || 'Customer'},\nYour UAE visa (Ref: ${refVal || ''}) expires on ${expiryVal || 'the date we have on file'}. Please contact us if you need to extend or renew.\nNextStep Travel`;
   return `https://wa.me/${clean}?text=${encodeURIComponent(text)}`;
 }
 

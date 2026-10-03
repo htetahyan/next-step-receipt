@@ -149,6 +149,7 @@ async function DashboardMetrics({
     const kpiQuery = supabase
       .from('customer_services')
       .select(SERVICE_SELECT)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (range !== 'all') {
@@ -168,6 +169,7 @@ async function DashboardMetrics({
       supabase
         .from('customer_services')
         .select(SERVICE_SELECT)
+        .is('deleted_at', null)
         .in('status', ['Open', 'In Progress'])
         .order('created_at', { ascending: false })
         .limit(400),
@@ -345,7 +347,7 @@ async function DashboardMetrics({
       if (expTs > 0) {
         const expDate = new Date(expTs);
         const daysLeft = differenceInDays(expDate, todayStart);
-        if (daysLeft >= 0 && daysLeft <= 10) {
+        if (daysLeft >= 0 && daysLeft <= 15) {
           nearExpiryAlerts.push({
             id: latest.id,
             refId: latest.reference_id,
@@ -463,7 +465,7 @@ async function DashboardMetrics({
           <div className="border-b border-[var(--card-border)] px-4 py-2.5 flex items-center justify-between bg-blue-500/5">
             <div className="flex items-center gap-2">
               <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-xs font-serif font-medium">Visa Expirations Watchlist (Next 10 Days)</h3>
+              <h3 className="text-xs font-medium">Remind passengers — visa expires within 15 days (call at 7 days)</h3>
             </div>
             <span className="text-[10px] font-mono font-semibold uppercase bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded-full">
               {nearExpiryAlerts.length} Critical
@@ -473,7 +475,7 @@ async function DashboardMetrics({
           <div className="divide-y divide-[var(--card-border)] max-h-[260px] overflow-y-auto">
             {nearExpiryAlerts.length === 0 ? (
               <div className="p-4 text-center text-xs opacity-50 font-serif">
-                No active visas expiring within the next 10 days.
+                No active visas expiring in the next 15 days.
               </div>
             ) : (
               nearExpiryAlerts.map((srv) => (
@@ -484,8 +486,8 @@ async function DashboardMetrics({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-serif text-sm font-medium">{srv.name}</span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-blue-500 text-white">
-                        {srv.daysLeft === 0 ? 'Expires Today' : `${srv.daysLeft}d left`}
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold text-white ${srv.daysLeft <= 7 ? 'bg-red-600' : 'bg-amber-600'}`}>
+                        {srv.daysLeft === 0 ? 'Expires today — call now' : srv.daysLeft <= 7 ? `Call now · ${srv.daysLeft}d` : `Remind · ${srv.daysLeft}d`}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-[11px] opacity-60 font-mono">

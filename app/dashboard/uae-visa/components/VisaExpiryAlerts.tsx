@@ -16,14 +16,14 @@ export default function VisaExpiryAlerts({
   onFilterTable,
   onExport,
 }: {
-  alerts: { allAlerts: ExpiryAlert[]; thisMonthList: ExpiryAlert[]; nextMonthList: ExpiryAlert[]; expiredList: ExpiryAlert[] };
+  alerts: { allAlerts: ExpiryAlert[]; thisMonthList: ExpiryAlert[]; nextMonthList: ExpiryAlert[]; expiredList: ExpiryAlert[]; remindNowList: ExpiryAlert[]; remindSoonList: ExpiryAlert[] };
   displayed: ExpiryAlert[];
-  expiryTab: 'all' | 'this_month' | 'next_month' | 'expired';
+  expiryTab: 'all' | 'this_month' | 'next_month' | 'expired' | 'remind7' | 'remind15';
   expiryFilter: ExpiryFilter;
   dateInfo: DateInfo;
   expanded: boolean;
   onToggleExpanded: () => void;
-  onTab: (tab: 'all' | 'this_month' | 'next_month' | 'expired') => void;
+  onTab: (tab: 'all' | 'this_month' | 'next_month' | 'expired' | 'remind7' | 'remind15') => void;
   onFilterTable: (filter: ExpiryFilter) => void;
   onExport: (items: any[], prefix: string) => void;
 }) {
@@ -35,7 +35,7 @@ export default function VisaExpiryAlerts({
         <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold">
           <AlertTriangle className="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
           <span>
-            Smart Expiry Tracker: <strong className="font-mono text-amber-700 dark:text-amber-400">{alerts.allAlerts.length}</strong> clients need attention
+            Remind passengers: <strong>{alerts.remindNowList.length}</strong> within 7 days, <strong>{alerts.remindSoonList.length}</strong> within 8–15 days. Existing month and expired lists stay below.
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -62,6 +62,8 @@ export default function VisaExpiryAlerts({
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="inline-flex p-0.5 bg-amber-100/80 dark:bg-amber-900/40 rounded-lg text-xs font-medium">
               {([
+                ['remind7', `Call now, 7 days (${alerts.remindNowList.length})`],
+                ['remind15', `Call this week, 15 days (${alerts.remindSoonList.length})`],
                 ['all', `All (${alerts.allAlerts.length})`],
                 ['this_month', `This Month (${alerts.thisMonthList.length})`],
                 ['next_month', `Next Month (${alerts.nextMonthList.length})`],

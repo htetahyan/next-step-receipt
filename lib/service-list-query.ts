@@ -32,6 +32,7 @@ export async function fetchModuleServiceList(filter: ListFilter = {}) {
       supabase
         .from('customer_services')
         .select(SERVICE_LIST_SELECT)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(1000),
       filter
@@ -47,6 +48,7 @@ export async function fetchModuleServiceList(filter: ListFilter = {}) {
     supabase
       .from('customer_services')
       .select(SERVICE_LIST_SELECT)
+      .is('deleted_at', null)
       .in('status', ['Open', 'In Progress'])
       .order('created_at', { ascending: false }),
     filter
@@ -56,6 +58,7 @@ export async function fetchModuleServiceList(filter: ListFilter = {}) {
     supabase
       .from('customer_services')
       .select(SERVICE_LIST_SELECT)
+      .is('deleted_at', null)
       .gte('created_at', since.toISOString())
       .order('created_at', { ascending: false })
       .limit(400),

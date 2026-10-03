@@ -80,6 +80,15 @@ export function getBookingDateISO(service: any): string | null {
   return issued || booked || created;
 }
 
+export function serviceDateColumns(details: any) {
+  const next = details || {};
+  return {
+    booking_date: toISODate(next.booking_date),
+    issued_date: toISODate(next.visa_issued_date || next.issue_date || next.application_date),
+    travel_date: toISODate(next.travel_date || next.departure_date),
+  };
+}
+
 export function stampBookingDate(
   details: any,
   options?: { fallbackToday?: boolean }
