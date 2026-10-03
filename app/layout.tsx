@@ -17,7 +17,11 @@ const newsreader = Newsreader({
 
 export const metadata: Metadata = {
   title: "NextStep Travel & Tourism",
-  description: "NextStep Travel & Tourism",
+  description: "NextStep Travel & Tourism operations",
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 export default function RootLayout({
