@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { requireAdmin } from '@/app/actions/users'
 
 export type SettingsData = {
   company_name: string;
@@ -32,6 +33,7 @@ export async function getSettings() {
 }
 
 export async function updateSettings(prevState: SettingsState, formData: FormData) {
+  await requireAdmin()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')

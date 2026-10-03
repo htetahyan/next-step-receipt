@@ -155,20 +155,7 @@ export function filterAndSortVisas(
     return true;
   });
 
-  rows.sort((a, b) => {
-    const ea = getExpiryInfo(a, opts.dateInfo);
-    const eb = getExpiryInfo(b, opts.dateInfo);
-    const aClosed = a.status === 'Closed' || a.status === 'Cancelled';
-    const bClosed = b.status === 'Closed' || b.status === 'Cancelled';
-    const aExpiredOpen = !!ea.isExpired && !aClosed;
-    const bExpiredOpen = !!eb.isExpired && !bClosed;
-    if (aExpiredOpen !== bExpiredOpen) return aExpiredOpen ? -1 : 1;
-    if (aClosed !== bClosed) return aClosed ? 1 : -1;
-    const ta = ea.expDate ? ea.expDate.getTime() : Number.POSITIVE_INFINITY;
-    const tb = eb.expDate ? eb.expDate.getTime() : Number.POSITIVE_INFINITY;
-    if (ta !== tb) return ta - tb;
-    return String(b.created_at || '').localeCompare(String(a.created_at || ''));
-  });
+  rows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
 
   return rows;
 }

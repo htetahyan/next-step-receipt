@@ -88,6 +88,17 @@ export async function requirePermission(
   return profile;
 }
 
+export async function requireAdmin(): Promise<UserProfile> {
+  const profile = await getCurrentUserProfile();
+  if (!profile) {
+    throw new Error('Unauthorized: Authentication required.');
+  }
+  if (profile.role !== 'admin') {
+    throw new Error('Forbidden: Admin access only.');
+  }
+  return profile;
+}
+
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { parseFinancialNumber } from '@/lib/financialUtils';
-import { getActivitySortISO, getServiceDateFields, getTravelDateISO } from '@/lib/serviceDates';
+import { getServiceDateFields, getTravelDateISO } from '@/lib/serviceDates';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
 import Pagination from '@/components/Pagination';
 
@@ -182,7 +182,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
       }
 
       return true;
-    }).sort((a, b) => getActivitySortISO(b).localeCompare(getActivitySortISO(a)));
+    }).sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
   }, [services, search, categoryFilter, statusFilter]);
 
   const totalItems = filteredServices.length;
@@ -202,11 +202,11 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#D97757]" />
             <div>
-              <h3 className="text-sm font-serif font-medium">
-                {periodLabel === 'Today' ? "Today's Services" : `Services — ${periodLabel}`}
+              <h3 className="text-sm font-semibold">
+                {periodLabel === 'Today' ? "Today's services" : `Services · ${periodLabel}`}
               </h3>
-              <p className="text-[11px] opacity-50 font-mono">
-                {totalItems} booking{totalItems === 1 ? '' : 's'} by issue / booked / created date (not travel)
+              <p className="text-[11px] text-[var(--muted)]">
+                {totalItems} record{totalItems === 1 ? '' : 's'} · newest created first
               </p>
             </div>
           </div>

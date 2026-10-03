@@ -324,13 +324,9 @@ export function ServiceFormShell<T extends Record<string, any>>({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Left Column: Service Details -> Customer -> Travelers -> Staff -> Documents */}
             <div className="md:col-span-2 space-y-6">
-              {/* 1. Service & Supplier Category Details */}
-              {renderCategoryFields(methods)}
-
-              {/* 2. Customer / Billing Entity Selection Card */}
-              <div className="card-anthropic p-6">
-                <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">
-                  Customer / Billing Entity
+              <div className="card-anthropic p-5">
+                <h3 className="text-sm font-serif pb-3 mb-3 border-b border-[var(--card-border)]">
+                  Who is this for?
                 </h3>
                 <CustomerSelector
                   customers={customers}
@@ -341,6 +337,8 @@ export function ServiceFormShell<T extends Record<string, any>>({
                   }
                 />
               </div>
+
+              {renderCategoryFields(methods)}
 
               {/* 3. Travelers / Passengers Roster (Multi-Pax Support) */}
               <PassengerRoster
@@ -411,7 +409,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
             </div>
 
             {/* Right Column: Financials + Submit */}
-            <div className="space-y-6">
+            <div className="space-y-6 lg:sticky lg:top-4 self-start">
               <FinancialsSection />
 
               <div className="card-anthropic p-6 flex flex-col gap-3">

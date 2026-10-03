@@ -76,6 +76,9 @@ export function resolveStaffPermissions(stored?: PermissionsMap | null): Permiss
       merged[key] = { ...merged[key], edit: true };
     }
   });
+  // Data migration and settings stay admin-only even if a stored staff profile grants them.
+  merged.settings = { read: false, create: false, edit: false, delete: false };
+  merged.migration = { read: false, create: false, edit: false, delete: false };
   return merged;
 }
 

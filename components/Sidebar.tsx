@@ -62,6 +62,9 @@ export default function Sidebar({ profile }: SidebarProps) {
   ];
 
   const navItems = allNavItems.filter(item => {
+    if (item.moduleKey === 'settings' || item.moduleKey === 'migration') {
+      return profile?.role === 'admin';
+    }
     if (!item.moduleKey) return true;
     return checkPermission(profile || null, item.moduleKey, 'read');
   });

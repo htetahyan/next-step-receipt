@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   UploadCloud,
   CheckCircle2,
@@ -36,6 +36,8 @@ import { bulkMigrateCustomerServices } from '@/app/actions/services';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import Pagination from '@/components/Pagination';
+import { getCurrentUserProfile } from '@/app/actions/users';
+import { useRouter } from 'next/navigation';
 
 export interface PreparedRecord {
   id: string;
@@ -62,6 +64,31 @@ export interface PreparedRecord {
 }
 
 export default function MigratePage() {
+  const router = useRouter();
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  useEffect(() => {
+    getCurrentUserProfile().then((profile) => {
+      if (profile?.role === 'admin') setAllowed(true);
+      else {
+        toast.error('Data migration is admin only.');
+        router.replace('/dashboard');
+        setAllowed(false);
+      }
+    });
+  }, [router]);
+
+  if (allowed !== true) {
+    return (
+      <div className="flex h-[40vh] items-center justify-center text-sm opacity-60">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Checking access
+      </div>
+    );
+  }
+
+  return <MigrateWorkspace />;
+}
+
+function MigrateWorkspace() {
   const [file, setFile] = useState<File | null>(null);
   const [type, setType] = useState('uae-visa');
   const [isParsing, setIsParsing] = useState(false);

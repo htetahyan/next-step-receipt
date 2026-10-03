@@ -13,7 +13,7 @@ import { SERVICE_LIST_SELECT, fetchModuleServiceList, ListFilter } from '@/lib/s
 
 import { uaeVisaSchema, airTicketSchema, otherVisaSchema, tourPackageSchema } from '@/lib/validations/serviceSchemas';
 import { createClient } from '@/utils/supabase/server';
-import { requirePermission } from '@/app/actions/users';
+import { requirePermission, requireAdmin } from '@/app/actions/users';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
 import { stampBookingDate, getBookingDateISO } from '@/lib/serviceDates';
 
@@ -365,8 +365,7 @@ export async function addCustomerService(data: any) {
 
 // ── Bulk Migrate Services ───────────────────────────────────
 export async function bulkMigrateCustomerServices(records: any[]) {
-  // Use Supabase REST client — same one that works for all page queries
-  // This avoids Drizzle's postgres wire protocol which fails with Supabase pooler
+  await requireAdmin();
   const { createClient } = await import('@/utils/supabase/server');
   const supabase = await createClient();
 

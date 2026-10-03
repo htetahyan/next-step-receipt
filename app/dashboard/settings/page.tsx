@@ -7,12 +7,14 @@ import UserManagement from '@/components/UserManagement'
 import PasskeyManager from '@/components/PasskeyManager'
 import { getCurrentUserProfile } from '@/app/actions/users'
 import { UserProfile } from '@/lib/auth-permissions'
+import { useRouter } from 'next/navigation'
 
 export default function SettingsPage() {
   const [initialData, setInitialData] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [activeTab, setActiveTab] = useState<'business' | 'team' | 'security'>('business')
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
   const [state, action, pending] = useActionState<SettingsState, FormData>(updateSettings, undefined)
 
   useEffect(() => {
@@ -22,7 +24,8 @@ export default function SettingsPage() {
         getCurrentUserProfile(),
       ]);
       if (data) setInitialData(data);
-      if (profile) setUserProfile(profile);
+      if (profile?.role === 'admin') setUserProfile(profile);
+      else router.replace('/dashboard');
       setIsLoading(false);
     }
     load();

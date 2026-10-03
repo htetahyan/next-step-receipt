@@ -33,7 +33,6 @@ import { DashboardRecentServices } from './components/DashboardRecentServices';
 import { OutstandingReceivablesWidget } from './components/OutstandingReceivablesWidget';
 import { parseFinancialNumber } from '@/lib/financialUtils';
 import {
-  getActivitySortISO,
   getBookingDateISO,
   getRangeMatchDate,
   parseServiceDateToTimestamp,
@@ -49,19 +48,13 @@ export default async function Dashboard({
 }) {
   const now = new Date();
   return (
-    <div className="max-w-6xl mx-auto space-y-4 pb-8">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 border-b border-[var(--card-border)] pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl md:text-2xl font-serif font-normal tracking-tight text-[#222222] dark:text-[#F5F4EF]">
-              Executive Dashboard
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#D97757]/10 text-[#D97757] border border-[#D97757]/20">
-              Live UAE
-            </span>
-          </div>
-          <p className="text-xs opacity-60 mt-0.5 font-mono">
-            {format(now, 'EEEE, dd MMMM yyyy')} • Profit by booking / visa issue date (not travel date)
+    <div className="max-w-6xl mx-auto space-y-3 pb-8">
+      <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-md px-3 py-2 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[11px] text-[var(--muted)]">Operations / Dashboard</div>
+          <h1 className="text-lg font-semibold leading-tight">Dashboard</h1>
+          <p className="text-[11px] text-[var(--muted)]">
+            {format(now, 'dd MMM yyyy')} · newest records first · profit uses issue, booked, or created date
           </p>
         </div>
         <DashboardFilters />
@@ -161,7 +154,7 @@ async function DashboardMetrics({
     if (range !== 'all') {
       const fetchUntil = endDate ? new Date(endDate.getTime()) : new Date();
       fetchUntil.setMonth(fetchUntil.getMonth() + 18);
-      kpiQuery.lte('created_at', fetchUntil.toISOString());
+      kpiQuery.lte('created_at', fetchUntil.toISOString()).limit(800);
       const shortRange = range === 'today' || range === '7d' || range === 'this-month' || range === 'specific-month' || range === 'custom';
       if (!shortRange) {
         const fetchFrom = new Date(startDate.getTime());
@@ -176,7 +169,8 @@ async function DashboardMetrics({
         .from('customer_services')
         .select(SERVICE_SELECT)
         .in('status', ['Open', 'In Progress'])
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(400),
       supabase
         .from('customer_services')
         .select('id', { count: 'exact', head: true })
@@ -189,7 +183,7 @@ async function DashboardMetrics({
       merged.set(row.id, row);
     }
     allServices = Array.from(merged.values()).sort(
-      (a, b) => getActivitySortISO(b).localeCompare(getActivitySortISO(a))
+      (a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))
     );
 
     if (customersRes.count) totalCustomersCount = customersRes.count;
@@ -556,7 +550,7 @@ async function DashboardMetrics({
 
       {/* Primary Feature: Recent Services Ledger (Last 20 Services) with Profit & Dates */}
       <DashboardRecentServices
-        services={periodServices.sort((a, b) => getActivitySortISO(b).localeCompare(getActivitySortISO(a)))}
+        services={[...periodServices].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))}
         periodLabel={range === 'today' ? 'Today' : range === 'all' ? 'All time' : range.replace('-', ' ')}
       />
     </div>

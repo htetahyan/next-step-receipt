@@ -29,17 +29,16 @@ export function DashboardKPICards({
   closedBookingsCount = 0,
 }: DashboardKPICardsProps) {
   return (
-    <div className="space-y-4">
-      {/* 4-Card Hero Bento Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 border border-[var(--card-border)] rounded-md overflow-hidden bg-[var(--card-bg)]">
         {/* KPI 1: Gross Revenue */}
-        <div className="card-anthropic p-3.5 sm:p-4 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-sm">
+        <div className="p-3 border-r border-b border-[var(--card-border)]">
           <div>
-            <div className="flex items-center justify-between opacity-60 mb-1.5">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">Gross Revenue</span>
+            <div className="flex items-center justify-between text-[var(--muted)] mb-1">
+              <span className="text-[11px] font-medium">Revenue</span>
               <DollarSign className="w-4 h-4 text-[#D97757]" />
             </div>
-            <div className="text-xl sm:text-2xl font-serif font-semibold text-[#222222] dark:text-[#F5F4EF]">
+            <div className="text-lg font-semibold">
               {totalRevenue.toLocaleString()} <span className="text-xs font-normal opacity-60 font-mono">AED</span>
             </div>
           </div>
@@ -50,13 +49,13 @@ export function DashboardKPICards({
         </div>
 
         {/* KPI 2: Receiving Cashflow */}
-        <div className="card-anthropic p-3.5 sm:p-4 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-sm">
+        <div className="p-3 border-b lg:border-r border-[var(--card-border)]">
           <div>
-            <div className="flex items-center justify-between opacity-60 mb-1.5">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">Collected Receiving</span>
+            <div className="flex items-center justify-between text-[var(--muted)] mb-1">
+              <span className="text-[11px] font-medium">Collected</span>
               <CreditCard className="w-4 h-4 text-blue-500" />
             </div>
-            <div className="text-xl sm:text-2xl font-serif font-semibold text-blue-600 dark:text-blue-400">
+            <div className="text-lg font-semibold text-blue-700 dark:text-blue-400">
               {totalReceiving.toLocaleString()} <span className="text-xs font-normal opacity-60 font-mono">AED</span>
             </div>
           </div>
@@ -67,13 +66,13 @@ export function DashboardKPICards({
         </div>
 
         {/* KPI 3: Direct Supplier Cost */}
-        <div className="card-anthropic p-3.5 sm:p-4 flex flex-col justify-between transition-all hover:-translate-y-0.5 shadow-sm">
+        <div className="p-3 border-r border-[var(--card-border)]">
           <div>
-            <div className="flex items-center justify-between opacity-60 mb-1.5">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-semibold">Supplier / Airline Cost</span>
+            <div className="flex items-center justify-between text-[var(--muted)] mb-1">
+              <span className="text-[11px] font-medium">Supplier cost</span>
               <Plane className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="text-xl sm:text-2xl font-serif font-semibold text-amber-600 dark:text-amber-400">
+            <div className="text-lg font-semibold text-amber-700 dark:text-amber-400">
               {totalCost.toLocaleString()} <span className="text-xs font-normal opacity-60 font-mono">AED</span>
             </div>
           </div>
@@ -84,7 +83,7 @@ export function DashboardKPICards({
         </div>
 
         {/* KPI 4: Net Gross Profit */}
-        <div className="card-anthropic p-3.5 sm:p-4 flex flex-col justify-between border border-emerald-500/20 bg-emerald-500/5 transition-all hover:-translate-y-0.5 shadow-sm">
+        <div className="p-3 bg-emerald-500/5">
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-mono uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-300">

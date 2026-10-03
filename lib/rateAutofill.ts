@@ -97,6 +97,20 @@ export function isCategoryMatch(a: string, b: string): boolean {
   return false;
 }
 
+let indexedCards: any[] | null = null;
+let rateIndex: { visa_type: string; norm: string; card: any }[] | null = null;
+
+function getRateCardIndex(rateCards: any[]) {
+  if (indexedCards === rateCards && rateIndex) return rateIndex;
+  indexedCards = rateCards;
+  rateIndex = rateCards.map((rc) => ({
+    visa_type: rc.visa_type || '',
+    norm: normalize(rc.visa_type),
+    card: rc,
+  }));
+  return rateIndex;
+}
+
 /**
  * Find default supplier cost and selling price for a selected supplier & category/visa_type
  */
@@ -114,11 +128,9 @@ export function findSupplierRate(
 
   // 1. Check Rate Cards Table first (matches visa_type and supplier_costs)
   if (Array.isArray(rateCards) && rateCards.length > 0) {
-    const rateCard = rateCards.find(rc => {
-      const rcNorm = normalize(rc.visa_type);
-      const catNorm = normalize(targetCategory);
-      return rcNorm === catNorm || isCategoryMatch(rc.visa_type, targetCategory);
-    });
+    const index = getRateCardIndex(rateCards);
+    const catNorm = normalize(targetCategory);
+    const rateCard = index.find((rc) => rc.norm === catNorm || isCategoryMatch(rc.visa_type, targetCategory))?.card;
 
     if (rateCard) {
       let cost = 0;

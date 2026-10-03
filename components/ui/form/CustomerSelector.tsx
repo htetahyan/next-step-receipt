@@ -80,19 +80,29 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
       return;
     }
 
+    if (q.length < 2) {
+      setServerResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    let cancelled = false;
     setIsSearching(true);
     const timer = setTimeout(async () => {
       try {
         const results = await searchCustomers(q);
-        setServerResults(results || []);
+        if (!cancelled) setServerResults(results || []);
       } catch (err) {
-        console.error('Customer live search failed:', err);
+        if (!cancelled) console.error('Customer live search failed:', err);
       } finally {
-        setIsSearching(false);
+        if (!cancelled) setIsSearching(false);
       }
-    }, 200);
+    }, 160);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [customerSearch]);
 
   // Merge local instant matches + server results (deduplicated by ID)
