@@ -46,7 +46,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md px-6 z-10">
         <div className="flex flex-col items-center mb-8">
           <div className="p-4 rounded-3xl bg-white/5 border border-white/10 mb-6 shadow-md">
-             <img src="/logo.jpg" alt="NextStep" className="w-24 h-24 rounded-2xl object-cover" />
+             <img src="/logo.png" alt="NextStep" className="w-24 h-24 rounded-2xl object-cover" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
             NextStep <span className="text-emerald-500">Travel & Tourism</span>

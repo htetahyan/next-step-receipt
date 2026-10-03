@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   title: "NextStep Travel & Tourism",
   description: "NextStep Travel & Tourism operations",
   icons: {
-    icon: "/logo.jpg",
-    apple: "/logo.jpg",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
