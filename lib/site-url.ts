@@ -7,7 +7,7 @@ export function getSiteUrl(): string {
     process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '') ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'https://next-step-receipt.vercel.app';
+    'https://operation.nextsteptravelandtourism.com';
 
   // Ensure protocol
   if (!url.startsWith('http://') && !url.startsWith('https://')) {

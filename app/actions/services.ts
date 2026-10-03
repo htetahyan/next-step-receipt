@@ -875,6 +875,7 @@ export async function quickUpdateService(
 // ── Close Services Expired Over 1 Month (30 Days) ───────────
 export async function closeExpiredServices(daysOver: number = 30) {
   try {
+    await requirePermission('uae_visa', 'edit');
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 

@@ -2,6 +2,14 @@
 
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { createClient } from '@/utils/supabase/server';
+
+async function requireSignedIn() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+  return user;
+}
 
 let s3Client: S3Client | null = null;
 
@@ -22,6 +30,7 @@ export async function getS3Client() {
 
 export async function getPresignedUrl(fileName: string, contentType: string) {
   try {
+    await requireSignedIn();
     const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
     if (!bucketName) throw new Error("Missing R2 Bucket Name");
 
@@ -50,6 +59,7 @@ export async function getPresignedUrl(fileName: string, contentType: string) {
 
 export async function getPresignedReadUrl(fileKeyOrUrl: string) {
   try {
+    await requireSignedIn();
     const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
     if (!bucketName) return fileKeyOrUrl;
 
@@ -81,6 +91,7 @@ export async function getPresignedReadUrl(fileKeyOrUrl: string) {
 
 export async function deleteFromR2(fileKey: string) {
   try {
+    await requireSignedIn();
     const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
     if (!bucketName) throw new Error("Missing R2 Bucket Name");
 

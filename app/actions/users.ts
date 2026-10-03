@@ -101,7 +101,7 @@ export async function requireAdmin(): Promise<UserProfile> {
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
   return createAdminSupabaseClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,

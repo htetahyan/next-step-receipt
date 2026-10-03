@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { isUaeVisaCategory } from '@/lib/service-constants';
+import { requirePermission } from '@/app/actions/users';
 
 /**
  * Auto-close expired visas server action.
@@ -12,11 +13,8 @@ import { isUaeVisaCategory } from '@/lib/service-constants';
  */
 export async function autoCloseExpiredVisas(): Promise<{ closed: number; error?: string }> {
   try {
+    await requirePermission('uae_visa', 'edit');
     const supabase = await createClient();
-
-    // Verify auth
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { closed: 0, error: 'Not authenticated' };
 
     // Fetch all open visa services
     const { data: services, error } = await supabase

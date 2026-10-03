@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
 import { getSiteUrl } from '@/lib/site-url'
+import { requireAdmin } from '@/app/actions/users'
 
 export type AuthState = {
   error?: string;
@@ -31,13 +32,13 @@ export async function login(prevState: AuthState, formData: FormData) {
 }
 
 export async function signup(prevState: AuthState, formData: FormData) {
-  const supabase = await createClient()
-  
-  // Gate signup to already authenticated users (admins) only
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { error: 'Unauthorized. Only logged-in administrators can create new users.' }
+  try {
+    await requireAdmin()
+  } catch {
+    return { error: 'Only an administrator can create accounts.' }
   }
+
+  const supabase = await createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string

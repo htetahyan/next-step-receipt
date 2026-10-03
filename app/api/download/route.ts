@@ -1,14 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getS3Client } from '@/app/actions/r2';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { createClient } from '@/utils/supabase/server';
+
+function allowedFileHost(fileUrl: string): boolean {
+  if (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) return true;
+  const publicBase = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  if (!publicBase) return false;
+  try {
+    return new URL(fileUrl).host === new URL(publicBase).host;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const fileUrl = searchParams.get('url');
   const filename = searchParams.get('filename') || 'downloaded-document';
 
   if (!fileUrl) {
     return new NextResponse('Missing file URL parameter', { status: 400 });
+  }
+
+  if (!allowedFileHost(fileUrl)) {
+    return new NextResponse('File host is not allowed', { status: 400 });
   }
 
   try {
