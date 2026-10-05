@@ -41,6 +41,7 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const isNewCustomer = watch('isNewCustomer');
