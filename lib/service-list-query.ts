@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server';
+import { dashboardServiceGroup } from '@/lib/service-constants';
 
 export const SERVICE_LIST_SELECT =
-  'id, reference_id, customer_id, category, status, details, financials, created_at, customers!inner(id, name, passport_no, phone)';
+  'id, reference_id, customer_id, category, status, details, financials, created_at, customers(id, name, passport_no, phone)';
 
 export type ListFilter = {
   inCategories?: string[];
@@ -75,4 +76,63 @@ export async function fetchModuleServiceList(filter: ListFilter = {}) {
   return Array.from(merged.values()).sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+}
+
+async function fetchMatchingCategories(patterns: string[]) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('customer_services')
+    .select(SERVICE_LIST_SELECT)
+    .is('deleted_at', null)
+    .or(patterns.map((pattern) => `category.ilike.%${pattern}%`).join(','))
+    .order('created_at', { ascending: false })
+    .limit(1000);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function fetchAirTicketServices() {
+  const rows = await fetchMatchingCategories(['ticket', 'flight', 'airline']);
+  return rows.filter((row) => dashboardServiceGroup(row.category) === 'Air Tickets');
+}
+
+export async function fetchTourPackageServices() {
+  const rows = await fetchMatchingCategories(['tour', 'safari', 'package', 'hotel']);
+  return rows.filter((row) => dashboardServiceGroup(row.category) === 'Tour Packages');
+}
+
+export async function fetchCustomServices() {
+  const rows = await fetchModuleServiceList({ allTime: true });
+  return rows.filter((row) => dashboardServiceGroup(row.category) === 'Custom Service');
+}
+
+/** Other-country visas only. Names like "Japan" or "Schengen Visa" are included. Tickets, tours, and UAE visas are removed. */
+export async function fetchOtherCountryVisas() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('customer_services')
+    .select(SERVICE_LIST_SELECT)
+    .is('deleted_at', null)
+    .or(
+      [
+        'category.ilike.%schengen%',
+        'category.ilike.%japan%',
+        'category.ilike.%china%',
+        'category.ilike.%korea%',
+        'category.ilike.%armenia%',
+        'category.ilike.%uk%',
+        'category.ilike.%britain%',
+        'category.ilike.%consultation%',
+        'category.ilike.%other country%',
+        'category.ilike.%usa%',
+        'category.ilike.%canada%',
+        'category.ilike.%australia%',
+        'category.ilike.%europe%',
+      ].join(',')
+    )
+    .order('created_at', { ascending: false })
+    .limit(1000);
+
+  if (error) throw error;
+  return (data || []).filter((row) => dashboardServiceGroup(row.category) === 'Other Visas');
 }

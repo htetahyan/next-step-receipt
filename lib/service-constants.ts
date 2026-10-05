@@ -60,6 +60,64 @@ export const OTHER_VISA_CATEGORIES = [
   'Consultation Only',
 ] as const;
 
+export type DashboardGroup = 'UAE Visa' | 'Air Tickets' | 'Tour Packages' | 'Other Visas' | 'Custom Service';
+
+/** Positive groups only. Unknown work is Custom Service, never Other Visas. */
+export function dashboardServiceGroup(category?: string | null): DashboardGroup {
+  const cat = (category || '').trim();
+  const lower = cat.toLowerCase();
+  if (!cat) return 'Custom Service';
+
+  if (
+    (AIR_TICKET_CATEGORIES as readonly string[]).includes(cat) ||
+    lower.includes('ticket') ||
+    lower.includes('flight') ||
+    lower.includes('airline') ||
+    lower.includes('dummy ticket')
+  ) {
+    return 'Air Tickets';
+  }
+
+  if ((UAE_VISA_CATEGORIES as readonly string[]).includes(cat) || isUaeVisaCategory(cat)) {
+    return 'UAE Visa';
+  }
+
+  if (isOtherCountryVisa(lower, cat)) {
+    return 'Other Visas';
+  }
+
+  if (
+    lower.includes('tour') ||
+    lower.includes('safari') ||
+    (lower.includes('package') && !lower.includes('ticket')) ||
+    (lower.includes('hotel') && !lower.includes('ticket'))
+  ) {
+    return 'Tour Packages';
+  }
+
+  return 'Custom Service';
+}
+
+function isOtherCountryVisa(lower: string, cat: string): boolean {
+  if ((OTHER_VISA_CATEGORIES as readonly string[]).includes(cat)) return true;
+  return (
+    lower.includes('schengen') ||
+    lower.includes('japan') ||
+    lower.includes('china') ||
+    lower.includes('korea') ||
+    lower.includes('armenia') ||
+    lower.includes('britain') ||
+    lower.includes('uk visa') ||
+    lower.includes('united kingdom') ||
+    lower.includes('other country') ||
+    lower.includes('consultation') ||
+    lower.includes('usa') ||
+    lower.includes('canada') ||
+    lower.includes('australia') ||
+    lower.includes('europe')
+  );
+}
+
 /** Positive match only — unknown custom services must NOT appear on the UAE visa tracker. */
 export function isUaeVisaCategory(category?: string | null): boolean {
   if (!category) return false;

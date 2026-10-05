@@ -2,12 +2,7 @@ import OtherVisaList from './other-visa-list';
 import { getCurrentUserProfile } from '@/app/actions/users';
 import { checkPermission } from '@/lib/auth-permissions';
 import { redirect } from 'next/navigation';
-import { fetchModuleServiceList } from '@/lib/service-list-query';
-
-const CATEGORIES = [
-  'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
-  'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
-];
+import { fetchOtherCountryVisas } from '@/lib/service-list-query';
 
 export default async function OtherVisaPage() {
   const profile = await getCurrentUserProfile();
@@ -17,7 +12,7 @@ export default async function OtherVisaPage() {
 
   let services: any[] = [];
   try {
-    services = await fetchModuleServiceList({ inCategories: CATEGORIES });
+    services = await fetchOtherCountryVisas();
   } catch (e) {
     console.error('Failed to fetch other visa services:', e);
   }

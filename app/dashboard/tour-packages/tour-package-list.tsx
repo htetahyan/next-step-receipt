@@ -15,6 +15,7 @@ import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 import { useRecordScope } from '@/lib/useRecordScope';
 import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
+import { dashboardServiceGroup } from '@/lib/service-constants';
 
 interface Props {
   initialServices: any[];
@@ -30,7 +31,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
-  const listFilter = { inCategories: ['Tour Package'] };
+  const listFilter = {};
   useRemoteServiceSearch(search, setServices, listFilter);
   const scope = useRecordScope(setServices, listFilter);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -65,6 +66,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
 
   const filtered = useMemo(() => {
     return services.filter(s => {
+      if (dashboardServiceGroup(s.category) !== 'Tour Packages') return false;
       const customer = s.customers;
       const details = s.details as any;
 

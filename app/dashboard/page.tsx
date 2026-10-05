@@ -32,6 +32,7 @@ import { DashboardKPICards } from './components/DashboardKPICards';
 import { DashboardRecentServices } from './components/DashboardRecentServices';
 import { OutstandingReceivablesWidget } from './components/OutstandingReceivablesWidget';
 import { parseFinancialNumber } from '@/lib/financialUtils';
+import { dashboardServiceGroup } from '@/lib/service-constants';
 import {
   getBookingDateISO,
   getRangeMatchDate,
@@ -208,6 +209,7 @@ async function DashboardMetrics({
     'Air Tickets': { count: 0, volume: 0 },
     'Tour Packages': { count: 0, volume: 0 },
     'Other Visas': { count: 0, volume: 0 },
+    'Custom Service': { count: 0, volume: 0 },
   };
 
   const salesMap: Record<string, number> = {};
@@ -228,14 +230,7 @@ async function DashboardMetrics({
     const cust = srv.customer as any;
     const cat = String(srv.category || '').toLowerCase();
 
-    let mainCategory = 'Other Visas';
-    if (cat.includes('uae') || cat.includes('inside') || cat.includes('a2a') || cat.includes('bus') || cat.includes('visit visa')) {
-      mainCategory = 'UAE Visa';
-    } else if (cat.includes('ticket') || cat.includes('flight') || cat.includes('airline')) {
-      mainCategory = 'Air Tickets';
-    } else if (cat.includes('tour') || cat.includes('safari') || cat.includes('package') || cat.includes('hotel')) {
-      mainCategory = 'Tour Packages';
-    }
+    const mainCategory = dashboardServiceGroup(srv.category);
 
     // Departure Reminders (Next 7 Days)
     const travelDateStr = details.travel_date;
@@ -280,6 +275,7 @@ async function DashboardMetrics({
       else if (category === 'air-ticket') matchesCategory = mainCategory === 'Air Tickets';
       else if (category === 'tour-package') matchesCategory = mainCategory === 'Tour Packages';
       else if (category === 'other-visa') matchesCategory = mainCategory === 'Other Visas';
+      else if (category === 'custom-service') matchesCategory = mainCategory === 'Custom Service';
     }
 
     // Status Filter

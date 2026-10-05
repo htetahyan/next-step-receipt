@@ -2,7 +2,7 @@ import TourPackageList from './tour-package-list';
 import { getCurrentUserProfile } from '@/app/actions/users';
 import { checkPermission } from '@/lib/auth-permissions';
 import { redirect } from 'next/navigation';
-import { fetchModuleServiceList } from '@/lib/service-list-query';
+import { fetchTourPackageServices } from '@/lib/service-list-query';
 
 export default async function TourPackagesPage() {
   const profile = await getCurrentUserProfile();
@@ -12,7 +12,7 @@ export default async function TourPackagesPage() {
 
   let services: any[] = [];
   try {
-    services = await fetchModuleServiceList({ inCategories: ['Tour Package'] });
+    services = await fetchTourPackageServices();
   } catch (e) {
     console.error('Failed to fetch tour package services:', e);
   }

@@ -15,7 +15,7 @@ import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 import { useRecordScope } from '@/lib/useRecordScope';
 import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
 import { getBookingDateISO } from '@/lib/serviceDates';
-import { UAE_VISA_CATEGORIES, AIR_TICKET_CATEGORIES, OTHER_VISA_CATEGORIES } from '@/lib/service-constants';
+import { dashboardServiceGroup } from '@/lib/service-constants';
 
 interface Props {
   initialServices: any[];
@@ -31,9 +31,7 @@ export default function CustomServiceList({ initialServices, customers, profile 
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
-  const listFilter = {
-    notInCategories: [...UAE_VISA_CATEGORIES, ...AIR_TICKET_CATEGORIES, ...OTHER_VISA_CATEGORIES, 'Tour Package'],
-  };
+  const listFilter = {};
   useRemoteServiceSearch(search, setServices, listFilter);
   const scope = useRecordScope(setServices, listFilter);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -68,6 +66,7 @@ export default function CustomServiceList({ initialServices, customers, profile 
 
   const filtered = useMemo(() => {
     return services.filter(s => {
+      if (dashboardServiceGroup(s.category) !== 'Custom Service') return false;
       const customer = s.customers;
       const details = s.details as any;
 

@@ -14,6 +14,7 @@ import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 import { useRecordScope } from '@/lib/useRecordScope';
 import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
+import { dashboardServiceGroup } from '@/lib/service-constants';
 
 export default function AirTicketList({
   initialServices,
@@ -30,7 +31,7 @@ export default function AirTicketList({
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
-  const listFilter = { inCategories: ['Air Ticket', 'Dummy Ticket', 'Ticket + Hotel Package'] };
+  const listFilter = {};
   useRemoteServiceSearch(search, setServices, listFilter);
   const scope = useRecordScope(setServices, listFilter);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -65,6 +66,7 @@ export default function AirTicketList({
 
   const filtered = useMemo(() => {
     return services.filter(s => {
+      if (dashboardServiceGroup(s.category) !== 'Air Tickets') return false;
       if (categoryFilter !== 'all' && s.category !== categoryFilter) return false;
       if (statusFilter !== 'all' && s.status !== statusFilter) return false;
       if (!search) return true;

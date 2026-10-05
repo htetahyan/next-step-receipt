@@ -32,6 +32,7 @@ export default function DashboardFilters() {
     { label: 'Air Tickets', value: 'air-ticket' },
     { label: 'Tour Packages', value: 'tour-package' },
     { label: 'Other Visas', value: 'other-visa' },
+    { label: 'Custom Service', value: 'custom-service' },
   ]
 
   const statuses = [

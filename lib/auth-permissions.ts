@@ -1,6 +1,8 @@
 // lib/auth-permissions.ts
 // Pure client & server types and helper utilities for RBAC
 
+import { dashboardServiceGroup } from '@/lib/service-constants';
+
 export type ModuleKey =
   | 'uae_visa'
   | 'air_tickets'
@@ -94,42 +96,18 @@ export interface UserProfile {
  * Map service category strings to standard ModuleKey
  */
 export function mapCategoryToModule(category?: string | null): ModuleKey {
-  if (!category) return 'uae_visa';
-  const cat = category.toLowerCase().trim();
-
-  if (cat.includes('tour') || cat.includes('safari') || cat.includes('package') || cat.includes('hotel')) return 'tour_packages';
-  if (cat.includes('ticket') || cat.includes('flight') || cat.includes('way') || cat.includes('trip') || cat.includes('airline')) return 'air_tickets';
-  if (
-    cat.includes('schengen') ||
-    cat.includes('japan') ||
-    cat.includes('china') ||
-    cat.includes('korea') ||
-    cat.includes('uk') ||
-    cat.includes('armenia') ||
-    cat.includes('other country')
-  ) {
-    return 'other_visa';
+  switch (dashboardServiceGroup(category)) {
+    case 'Air Tickets':
+      return 'air_tickets';
+    case 'Tour Packages':
+      return 'tour_packages';
+    case 'Other Visas':
+      return 'other_visa';
+    case 'UAE Visa':
+      return 'uae_visa';
+    default:
+      return 'custom_service';
   }
-
-  // UAE visa keywords
-  if (
-    cat.includes('uae') ||
-    cat.includes('visit visa') ||
-    cat.includes('transit') ||
-    cat.includes('multi entry') ||
-    cat.includes('visa change') ||
-    cat.includes('inside') ||
-    cat.includes('a2a') ||
-    cat.includes('bus') ||
-    cat.includes('extension') ||
-    cat.includes('oman')
-  ) {
-    return 'uae_visa';
-  }
-
-  // Custom service: categories that don't match any predefined module
-  // e.g. Dummy Flight, Passport Renew, Document Attestation, Medical Insurance, etc.
-  return 'custom_service';
 }
 
 /**

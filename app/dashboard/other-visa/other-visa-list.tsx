@@ -14,6 +14,7 @@ import { UserProfile, checkPermission } from '@/lib/auth-permissions';
 import { useRemoteServiceSearch } from '@/lib/useRemoteServiceSearch';
 import { useRecordScope } from '@/lib/useRecordScope';
 import RecordScopeToggle from '@/components/ui/RecordScopeToggle';
+import { dashboardServiceGroup } from '@/lib/service-constants';
 
 const COUNTRY_EMOJI: Record<string, string> = {
   'Japan Visa': '🇯🇵',
@@ -41,14 +42,13 @@ export default function OtherVisaList({
 
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState('');
-  const listFilter = {
-    inCategories: [
-      'Schengen / EU Visa', 'Japan Visa', 'China Visa', 'Korea Visa',
-      'Armenia Visa', 'UK Visa', 'Other Country Visa', 'Consultation Only',
-    ],
-  };
+  const listFilter = {};
   useRemoteServiceSearch(search, setServices, listFilter);
   const scope = useRecordScope(setServices, listFilter);
+  const visaServices = useMemo(
+    () => services.filter((row) => dashboardServiceGroup(row.category) === 'Other Visas'),
+    [services]
+  );
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -80,7 +80,7 @@ export default function OtherVisaList({
   const itemsPerPage = 15;
 
   const filtered = useMemo(() => {
-    return services.filter(s => {
+    return visaServices.filter(s => {
       const c = s.customers;
       const d = s.details as any;
       if (categoryFilter !== 'all' && s.category !== categoryFilter) return false;
@@ -99,7 +99,7 @@ export default function OtherVisaList({
         ...(d?.passengers || []).map((p: any) => p.passport_no),
       ].some(v => v && String(v).toLowerCase().includes(q));
     });
-  }, [services, search, categoryFilter]);
+  }, [visaServices, search, categoryFilter]);
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
@@ -130,9 +130,9 @@ export default function OtherVisaList({
   // Group by category for summary
   const categoryCounts = useMemo(() => {
     const map: Record<string, number> = {};
-    services.forEach(s => { map[s.category] = (map[s.category] || 0) + 1; });
+    visaServices.forEach(s => { map[s.category] = (map[s.category] || 0) + 1; });
     return map;
-  }, [services]);
+  }, [visaServices]);
 
   const summary = useMemo(() => {
     let totalAmount = 0, totalReceiving = 0, totalSupplierCost = 0, totalProfit = 0;
@@ -225,7 +225,7 @@ export default function OtherVisaList({
             Other Visa & Consultation
           </h1>
           <div className="text-xs opacity-60 font-mono mt-0.5 flex items-center gap-2">
-            {services.length} records
+            {visaServices.length} records
             <RecordScopeToggle allTime={scope.allTime} loading={scope.loading} onChange={scope.change} />
           </div>
         </div>
@@ -254,11 +254,11 @@ export default function OtherVisaList({
                   <span className="font-mono text-[10px] opacity-60">{filtered.length}</span>
                 </button>
                 <button
-                  onClick={() => exportData(services, 'Other_Visa_All_Records', 'xlsx')}
+                  onClick={() => exportData(visaServices, 'Other_Visa_All_Records', 'xlsx')}
                   className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-[var(--sidebar-bg)] flex items-center justify-between font-medium"
                 >
                   <span>Export All Records (.xlsx)</span>
-                  <span className="font-mono text-[10px] opacity-60">{services.length}</span>
+                  <span className="font-mono text-[10px] opacity-60">{visaServices.length}</span>
                 </button>
                 <div className="border-t border-[var(--card-border)] my-1" />
                 <button
