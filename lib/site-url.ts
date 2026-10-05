@@ -1,13 +1,13 @@
+const PRODUCTION_SITE = 'https://operation.nextsteptravelandtourism.com';
+
 /**
- * Returns the base website URL for auth callbacks, email links, and receipts.
- * Prioritizes NEXT_PUBLIC_SITE_URL from .env.local, then Vercel deployment URLs, falling back to production.
+ * Public site URL for portal links and emails.
+ * Never use a Vercel preview host such as *.vercel.app.
  */
 export function getSiteUrl(): string {
-  let url =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '') ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'https://operation.nextsteptravelandtourism.com';
+  const configured = process.env.NEXT_PUBLIC_SITE_URL || '';
+  const useConfigured = configured && !configured.includes('.vercel.app');
+  let url = useConfigured ? configured : PRODUCTION_SITE;
 
   // Ensure protocol
   if (!url.startsWith('http://') && !url.startsWith('https://')) {

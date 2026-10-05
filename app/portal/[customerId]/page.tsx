@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { FileText, Download, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { verifyPortalToken } from '@/lib/portal-token'
+import { createServiceRoleClient } from '@/lib/supabase-admin'
 
 export default async function PortalPage({
   params,
@@ -15,7 +16,8 @@ export default async function PortalPage({
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser();
-  const allowed = !!user || verifyPortalToken(customerId, token);
+  const hasPublicLink = verifyPortalToken(customerId, token);
+  const allowed = !!user || hasPublicLink;
 
   if (!allowed) {
     return (
@@ -38,15 +40,17 @@ export default async function PortalPage({
   let customer: any = null;
   let invoices: any[] = [];
 
+  const reader = hasPublicLink ? createServiceRoleClient() || supabase : supabase;
+
   try {
-    const { data: custData } = await supabase
+    const { data: custData } = await reader
       .from('customers')
       .select('id, name, email, phone, passport_no, created_at')
       .eq('id', customerId)
       .maybeSingle()
     if (custData) customer = custData;
 
-    const { data: invData } = await supabase
+    const { data: invData } = await reader
       .from('invoices')
       .select('id, invoice_number, customer_id, date, total_amount, payment_method, created_at')
       .eq('customer_id', customerId)
@@ -120,7 +124,7 @@ export default async function PortalPage({
                   <td className="px-6 py-3.5 opacity-70 font-mono text-[11px]">{invoice.date || '—'}</td>
                   <td className="px-6 py-3.5 text-right">
                     <Link
-                      href={`/dashboard/invoices/${invoice.id}`}
+                      href={`/portal/${customerId}/invoice/${invoice.id}${token ? `?t=${encodeURIComponent(token)}` : ''}`}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-[#D97757] hover:opacity-80 transition-opacity"
                     >
                       <Download className="w-3.5 h-3.5" /> View / PDF
