@@ -2,7 +2,7 @@ import React from 'react'
 
 export default function DashboardLoading() {
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-pulse">
+    <div className="w-full space-y-8 pb-16 animate-pulse">
       {/* Header Skeleton */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-[var(--card-border)] pb-6">
         <div className="space-y-2">

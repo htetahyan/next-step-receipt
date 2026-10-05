@@ -1,13 +1,10 @@
 import { format } from 'date-fns';
 
 /**
- * Booking date (profit / KPI / sales):
- *   details.booking_date → visa issued / application date → created_at
- * Travel date is NEVER used for money.
- *
- * Historical rows often have created_at copied from travel_date.
- * If created_at is the same calendar day as travel_date, ignore created_at
- * when an issue/booking date exists.
+ * Profit date:
+ *   visa issue date when it is set
+ *   otherwise created_at (when the row was entered)
+ * Travel date and a later data-entry day are never used for money.
  */
 export function parseServiceDateToTimestamp(dateVal: any): number {
   if (!dateVal) return 0;
@@ -44,40 +41,34 @@ export type ServiceDateFields = {
 export function getServiceDateFields(service: any): ServiceDateFields {
   const details = service?.details || {};
   return {
-    issued: toISODate(details.visa_issued_date || details.issue_date || details.application_date),
-    booked: toISODate(details.booking_date),
+    issued: toISODate(
+      details.visa_issued_date || details.issue_date || details.application_date || service?.issued_date
+    ),
+    booked: toISODate(details.booking_date || service?.booking_date),
     created: toISODate(service?.created_at),
   };
 }
 
-export function getActivityDates(service: any): string[] {
-  const { issued, booked, created } = getServiceDateFields(service);
-  return [...new Set([issued, booked, created].filter(Boolean) as string[])];
+/** Profit day: issue date, or created_at only when issue date is blank. */
+export function getProfitDateISO(service: any): string | null {
+  const { issued, created } = getServiceDateFields(service);
+  return issued || created;
 }
 
 export function serviceMatchesDateRange(service: any, startISO: string, endISO: string): boolean {
-  return getActivityDates(service).some((d) => d >= startISO && d <= endISO);
+  const profitDate = getProfitDateISO(service);
+  return !!profitDate && profitDate >= startISO && profitDate <= endISO;
 }
 
 /** Date to plot on the sales chart when the service falls in the selected range. */
 export function getRangeMatchDate(service: any, startISO: string, endISO: string): string | null {
-  const { issued, booked, created } = getServiceDateFields(service);
-  const inRange = (d: string | null) => !!d && d >= startISO && d <= endISO;
-  if (inRange(issued)) return issued;
-  if (inRange(booked)) return booked;
-  if (inRange(created)) return created;
+  const profitDate = getProfitDateISO(service);
+  if (profitDate && profitDate >= startISO && profitDate <= endISO) return profitDate;
   return null;
 }
 
-export function getActivitySortISO(service: any): string {
-  const dates = getActivityDates(service);
-  if (!dates.length) return '';
-  return dates.sort().at(-1) || '';
-}
-
 export function getBookingDateISO(service: any): string | null {
-  const { issued, booked, created } = getServiceDateFields(service);
-  return issued || booked || created;
+  return getProfitDateISO(service);
 }
 
 export function serviceDateColumns(details: any) {

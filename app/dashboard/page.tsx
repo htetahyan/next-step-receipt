@@ -48,13 +48,13 @@ export default async function Dashboard({
 }) {
   const now = new Date();
   return (
-    <div className="max-w-6xl mx-auto space-y-3 pb-8">
+    <div className="w-full space-y-3 pb-8">
       <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-md px-3 py-2 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[11px] text-[var(--muted)]">Operations / Dashboard</div>
           <h1 className="text-lg font-semibold leading-tight">Dashboard</h1>
           <p className="text-[11px] text-[var(--muted)]">
-            {format(now, 'dd MMM yyyy')} · newest records first · profit uses issue, booked, or created date
+            {format(now, 'dd MMM yyyy')} · profit uses issue date, or created date only when issue date is blank
           </p>
         </div>
         <DashboardFilters />

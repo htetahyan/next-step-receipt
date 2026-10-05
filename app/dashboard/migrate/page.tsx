@@ -895,7 +895,7 @@ function MigrateWorkspace() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-24 animate-in fade-in duration-300">
+    <div className="w-full space-y-6 pb-24 animate-in fade-in duration-300">
       {/* Page Title & SQL Export Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[var(--card-border)] pb-4">
         <div>

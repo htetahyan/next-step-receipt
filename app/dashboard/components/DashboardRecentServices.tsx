@@ -206,7 +206,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
                 {periodLabel === 'Today' ? "Today's services" : `Services · ${periodLabel}`}
               </h3>
               <p className="text-[11px] text-[var(--muted)]">
-                {totalItems} record{totalItems === 1 ? '' : 's'} · newest created first
+                {totalItems} record{totalItems === 1 ? '' : 's'} · counted on issue date, or created date if issue date is blank
               </p>
             </div>
           </div>
@@ -314,7 +314,6 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
               const travelDate = parseFormattedDate(getTravelDateISO(srv) || details.travel_date || details.departure_date);
               const dates = getServiceDateFields(srv);
               const issuedDate = parseFormattedDate(dates.issued);
-              const bookedDate = parseFormattedDate(dates.booked);
               const createdDate = parseFormattedDate(dates.created);
               const serviceLabel = getServiceSpecificLabel(srv);
               const serviceUrl = getServiceLink(srv);
@@ -365,23 +364,19 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
 
                   <td className="px-3.5 py-1.5 whitespace-nowrap text-xs font-mono">
                     <div className="space-y-0.5">
-                      {issuedDate && (
+                      {issuedDate ? (
                         <div className="flex items-center gap-1 font-medium">
                           <Calendar className="w-3 h-3 text-[#D97757]" />
                           <span>Issued {issuedDate}</span>
                         </div>
-                      )}
-                      {bookedDate && bookedDate !== issuedDate && (
-                        <div className="text-[10px] opacity-70">Booked {bookedDate}</div>
-                      )}
-                      {createdDate && createdDate !== issuedDate && createdDate !== bookedDate && (
-                        <div className="text-[10px] opacity-50">Created {createdDate}</div>
-                      )}
-                      {!issuedDate && !bookedDate && (
+                      ) : (
                         <div className="flex items-center gap-1 font-medium">
                           <Calendar className="w-3 h-3 text-[#D97757]" />
-                          <span>{createdDate || '—'}</span>
+                          <span>Created {createdDate || '—'}</span>
                         </div>
+                      )}
+                      {issuedDate && createdDate && createdDate !== issuedDate && (
+                        <div className="text-[10px] opacity-50">Entered {createdDate}</div>
                       )}
                       {travelDate && (
                         <div className="text-[10px] opacity-40 mt-0.5">Travel {travelDate}</div>

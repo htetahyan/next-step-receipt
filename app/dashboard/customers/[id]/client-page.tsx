@@ -181,7 +181,7 @@ export default function CustomerHubClient({
   }, [customer?.name]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 pb-12 animate-in fade-in duration-300">
+    <div className="w-full space-y-4 pb-12 animate-in fade-in duration-300">
       {/* 1. TOP COMMAND BAR & BREADCRUMBS */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[var(--card-border)] pb-3">
         <div className="flex items-center gap-3">
