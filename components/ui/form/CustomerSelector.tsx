@@ -6,6 +6,24 @@ import { Shield, Search, UserPlus, X, Check, Loader2, Phone, FileText, Mail, Use
 import { inputCls, labelCls, errorCls, FormField } from './FormField';
 import { searchCustomers, getCustomerById } from '@/app/actions/customers';
 
+function rankCustomer(customer: any, query: string): number {
+  const name = String(customer?.name || '').toLowerCase().trim();
+  const passport = String(customer?.passport_no || customer?.passportNo || '').toLowerCase().replace(/\s+/g, '');
+  const phone = String(customer?.phone || '').replace(/\D/g, '');
+  const q = query.toLowerCase().trim();
+  const qPassport = q.replace(/\s+/g, '');
+  const qPhone = q.replace(/\D/g, '');
+
+  if (name && name === q) return 0;
+  if (passport && passport === qPassport) return 1;
+  if (qPhone && phone && phone === qPhone) return 1;
+  if (name.startsWith(q)) return 2;
+  if (name.split(/\s+/).some((part) => part.startsWith(q))) return 3;
+  if (passport.startsWith(qPassport)) return 4;
+  if (name.includes(q)) return 5;
+  return 6;
+}
+
 interface CustomerSelectorProps {
   customers: any[];
   readOnly?: boolean;
@@ -23,6 +41,7 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const isNewCustomer = watch('isNewCustomer');
   const selectedCustomerId = watch('customerId');
@@ -140,8 +159,25 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
       }
     });
 
-    return Array.from(map.values()).slice(0, 25);
+    return Array.from(map.values())
+      .sort((a, b) => {
+        const rankDiff = rankCustomer(a, q) - rankCustomer(b, q);
+        if (rankDiff !== 0) return rankDiff;
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      })
+      .slice(0, 8);
   }, [customerSearch, serverResults, customers]);
+
+  useEffect(() => {
+    if (customerSearch.trim() && combinedCustomers.length > 0) {
+      setSelectedIndex(0);
+    }
+  }, [customerSearch, combinedCustomers]);
+
+  useEffect(() => {
+    const node = optionRefs.current[selectedIndex];
+    node?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex]);
 
   const selectCustomer = (c: any) => {
     setValue('customerId', c.id, { shouldValidate: true });
@@ -294,7 +330,7 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
                   onChange={(e) => {
                     setCustomerSearch(e.target.value);
                     setShowDropdown(true);
-                    setSelectedIndex(-1);
+                    setSelectedIndex(0);
                   }}
                   onFocus={() => setShowDropdown(true)}
                   onKeyDown={handleKeyDown}
@@ -323,11 +359,15 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
 
               {/* Autocomplete Dropdown */}
               {showDropdown && (
-                <div className="absolute top-full left-0 right-0 z-30 mt-1 border border-[var(--card-border)] rounded-xl bg-[var(--card-bg)] shadow-xl max-h-72 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                <div ref={listRef} className="absolute top-full left-0 right-0 z-30 mt-1 border border-[var(--card-border)] rounded-xl bg-[var(--card-bg)] shadow-xl max-h-64 overflow-y-auto">
                   <div className="p-1.5">
                     {/* Header showing match count */}
                     <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider opacity-50 flex items-center justify-between border-b border-[var(--card-border)] mb-1">
-                      <span>{customerSearch.trim() ? `Search Results (${combinedCustomers.length})` : 'Recent Customers'}</span>
+                      <span>
+                        {customerSearch.trim()
+                          ? `Best match first · Enter to select`
+                          : 'Recent Customers'}
+                      </span>
                       {isSearching && <span className="text-[#D97757] normal-case font-normal">Searching database...</span>}
                     </div>
 
@@ -337,6 +377,7 @@ export function CustomerSelector({ customers, readOnly, defaultCustomerName }: C
                       return (
                         <button
                           key={c.id}
+                          ref={(node) => { optionRefs.current[index] = node; }}
                           type="button"
                           onClick={() => selectCustomer(c)}
                           onMouseEnter={() => setSelectedIndex(index)}
