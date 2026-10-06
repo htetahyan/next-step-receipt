@@ -71,6 +71,8 @@ export function ServiceFormShell<T extends Record<string, any>>({
   const [refId, setRefId] = useState(initialData?.reference_id || initialRefId || '');
   const [showDocs, setShowDocs] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [step, setStep] = useState(1);
+  const isNewRecord = !initialData;
 
   const initialPassengers: Passenger[] =
     (initialData?.details as any)?.passengers ||
@@ -249,11 +251,29 @@ export function ServiceFormShell<T extends Record<string, any>>({
     }
   };
 
+  const goToDetails = () => {
+    const values = methods.getValues() as any;
+    const hasCustomer = values.isNewCustomer
+      ? String(values.newCustomer?.name || '').trim().length > 0
+      : Boolean(values.customerId);
+    if (!hasCustomer) {
+      toast.error('Choose a customer, or enter a new name.');
+      return;
+    }
+    if (!String(values.category || '').trim()) {
+      toast.error('Choose the service first.');
+      return;
+    }
+    setStep(2);
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        if (!saving) methods.handleSubmit(onSubmit)();
+        if (saving) return;
+        if (isNewRecord && step === 1) goToDetails();
+        else methods.handleSubmit(onSubmit)();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -319,11 +339,33 @@ export function ServiceFormShell<T extends Record<string, any>>({
         )}
       </div>
 
+      {isNewRecord && (
+        <div className="flex items-center gap-2 mb-6 text-sm">
+          <button type="button" onClick={() => setStep(1)} className={`px-3 py-1.5 rounded-lg border ${step === 1 ? 'bg-[#D97757] text-white border-[#D97757]' : 'border-[var(--card-border)]'}`}>
+            1. Customer and service
+          </button>
+          <button type="button" onClick={goToDetails} className={`px-3 py-1.5 rounded-lg border ${step === 2 ? 'bg-[#D97757] text-white border-[#D97757]' : 'border-[var(--card-border)]'}`}>
+            2. Price and details
+          </button>
+        </div>
+      )}
+
       <FormProvider {...methods}>
-        <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (isNewRecord && step === 1) {
+              goToDetails();
+              return;
+            }
+            methods.handleSubmit(onSubmit)(event);
+          }}
+          className="space-y-6"
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Left Column: Service Details -> Customer -> Travelers -> Staff -> Documents */}
             <div className="md:col-span-2 space-y-6">
+              <div className={isNewRecord && step !== 1 ? 'hidden' : 'space-y-6'}>
               <div className="card-anthropic p-5">
                 <h3 className="text-sm font-serif pb-3 mb-3 border-b border-[var(--card-border)]">
                   Who is this for?
@@ -339,6 +381,18 @@ export function ServiceFormShell<T extends Record<string, any>>({
               </div>
 
               {renderCategoryFields(methods)}
+              {isNewRecord && (
+                <button
+                  type="button"
+                  onClick={goToDetails}
+                  className="w-full py-3 px-4 bg-[#D97757] hover:bg-[#c26243] text-white rounded-lg font-medium"
+                >
+                  Continue
+                </button>
+              )}
+              </div>
+
+              <div className={isNewRecord && step !== 2 ? 'hidden' : 'space-y-6'}>
 
               {/* 3. Travelers / Passengers Roster (Multi-Pax Support) */}
               <PassengerRoster
@@ -406,13 +460,23 @@ export function ServiceFormShell<T extends Record<string, any>>({
                   )}
                 </div>
               </div>
+              </div>
             </div>
 
             {/* Right Column: Financials + Submit */}
-            <div className="space-y-6 lg:sticky lg:top-4 self-start">
+            <div className={`space-y-6 lg:sticky lg:top-4 self-start ${isNewRecord && step !== 2 ? 'hidden' : ''}`}>
               <FinancialsSection />
 
               <div className="card-anthropic p-6 flex flex-col gap-3">
+                {isNewRecord && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="w-full py-2 px-4 border border-[var(--card-border)] rounded-lg text-sm"
+                  >
+                    Back
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={saving}
