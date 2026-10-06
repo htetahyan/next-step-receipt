@@ -9,6 +9,7 @@ export type InvoiceItem = {
 };
 
 export type InvoiceData = {
+  id?: string;
   invoiceNumber: string;
   date: string;
   customerName: string;

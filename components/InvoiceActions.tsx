@@ -5,6 +5,7 @@ import { Printer, Download, Loader2, MessageCircle, Copy, Check, FileText } from
 import { toast } from 'sonner'
 import InvoiceTemplate, { InvoiceData } from '@/components/InvoiceTemplate'
 import { downloadInvoicePdf } from '@/lib/invoicePdf'
+import { getPublicInvoiceUrl } from '@/app/actions/invoices'
 
 export default function InvoiceActions({ data }: { data: InvoiceData }) {
   const invoiceRef = useRef<HTMLDivElement>(null)
@@ -30,18 +31,29 @@ export default function InvoiceActions({ data }: { data: InvoiceData }) {
      window.print()
   }
 
-  const handleCopyLink = () => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(window.location.href);
-      setHasCopied(true);
-      toast.success('Invoice link copied to clipboard!');
-      setTimeout(() => setHasCopied(false), 2000);
+  const publicInvoiceUrl = async () => {
+    if (!data.id) return '';
+    const res = await getPublicInvoiceUrl(data.id);
+    if (res.error || !res.url) {
+      toast.error(res.error || 'Could not create a public invoice link.');
+      return '';
     }
+    return res.url;
   };
 
-  const handleWhatsAppShare = () => {
+  const handleCopyLink = async () => {
+    const url = await publicInvoiceUrl();
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setHasCopied(true);
+    toast.success('Public invoice link copied.');
+    setTimeout(() => setHasCopied(false), 2000);
+  };
+
+  const handleWhatsAppShare = async () => {
     const formattedAmount = (Number(data.totalAmount) || 0).toLocaleString();
-    const invoiceUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const invoiceUrl = await publicInvoiceUrl();
+    if (!invoiceUrl) return;
     const message = `Hello ${data.customerName || 'Customer'},\n\nHere are the details for your Invoice #${data.invoiceNumber || ''}:\n• Total Amount: AED ${formattedAmount}\n• Date: ${data.date || 'N/A'}\n\nView invoice: ${invoiceUrl}\n\nThank you for choosing NextStep Travel & Tourism!`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');

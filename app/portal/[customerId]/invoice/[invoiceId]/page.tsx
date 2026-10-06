@@ -39,6 +39,7 @@ export default async function PublicInvoicePage({
 
   const customer = invoice.customer as any;
   const invoiceData: InvoiceData = {
+    id: invoice.id,
     invoiceNumber: invoice.invoice_number,
     date: invoice.date,
     customerName: customer?.name || '',

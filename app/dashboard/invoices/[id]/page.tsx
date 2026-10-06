@@ -22,6 +22,7 @@ export default async function InvoiceViewPage({ params }: { params: Promise<{ id
   }
 
   const invoiceData: InvoiceData = {
+    id: invoice.id,
     invoiceNumber: invoice.invoice_number,
     date: invoice.date,
     customerName: invoice.customer?.name || '',
