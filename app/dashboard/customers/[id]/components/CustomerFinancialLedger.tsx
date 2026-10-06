@@ -48,7 +48,7 @@ export function CustomerFinancialLedger({ services = [], invoices = [] }: Custom
   };
 
   const getServiceLink = (srv: any) => {
-    const mod = mapCategoryToModule(srv.category);
+    const mod = mapCategoryToModule(srv.category, srv.reference_id);
     if (mod === 'uae_visa') return `/dashboard/uae-visa/${srv.id}`;
     if (mod === 'air_tickets') return `/dashboard/air-tickets/${srv.id}`;
     if (mod === 'tour_packages') return `/dashboard/tour-packages/${srv.id}`;

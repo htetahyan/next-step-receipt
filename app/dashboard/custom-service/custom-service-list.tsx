@@ -66,7 +66,7 @@ export default function CustomServiceList({ initialServices, customers, profile 
 
   const filtered = useMemo(() => {
     return services.filter(s => {
-      if (dashboardServiceGroup(s.category) !== 'Custom Service') return false;
+      if (dashboardServiceGroup(s.category, s.reference_id) !== 'Custom Service') return false;
       const customer = s.customers;
       const details = s.details as any;
 

@@ -151,7 +151,7 @@ export default function CustomerHubClient({
 
       // Category match
       if (categoryFilter !== 'all') {
-        const mod = mapCategoryToModule(srv.category);
+        const mod = mapCategoryToModule(srv.category, srv.reference_id);
         if (mod !== categoryFilter) return false;
       }
 

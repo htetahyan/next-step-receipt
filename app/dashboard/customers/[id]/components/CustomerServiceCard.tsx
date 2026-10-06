@@ -29,7 +29,7 @@ export function CustomerServiceCard({ service, onUpdated }: CustomerServiceCardP
   const profit = receiving - supplierCost - refund;
   const balance = parseFinancialNumber(fin.balance, 0);
 
-  const moduleKey = mapCategoryToModule(service.category);
+  const moduleKey = mapCategoryToModule(service.category, service.reference_id);
   const isAirTicket = moduleKey === 'air_tickets';
   const isTourPackage = moduleKey === 'tour_packages';
   const isOtherVisa = moduleKey === 'other_visa';

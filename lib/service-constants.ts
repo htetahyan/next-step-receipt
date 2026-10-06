@@ -62,8 +62,38 @@ export const OTHER_VISA_CATEGORIES = [
 
 export type DashboardGroup = 'UAE Visa' | 'Air Tickets' | 'Tour Packages' | 'Other Visas' | 'Custom Service';
 
+export function moduleEditPath(service: { id: string; category?: string | null; reference_id?: string | null }): string {
+  switch (dashboardServiceGroup(service.category, service.reference_id)) {
+    case 'Air Tickets':
+      return `/dashboard/air-tickets/${service.id}`;
+    case 'Tour Packages':
+      return `/dashboard/tour-packages/${service.id}`;
+    case 'Other Visas':
+      return `/dashboard/other-visa/${service.id}`;
+    case 'Custom Service':
+      return `/dashboard/custom-service/${service.id}`;
+    default:
+      return `/dashboard/uae-visa/${service.id}`;
+  }
+}
+
+/** Reference prefixes are the source of truth: AT/TK air, CS custom, AE UAE, OV/OT other visa, TP tour. */
+export function groupFromReference(referenceId?: string | null): DashboardGroup | null {
+  const prefix = (String(referenceId || '').toUpperCase().match(/^[A-Z]+/)?.[0] || '');
+  if (!prefix) return null;
+  if (prefix === 'AT' || prefix === 'TK' || prefix.startsWith('AT')) return 'Air Tickets';
+  if (prefix === 'CS' || prefix.startsWith('CS')) return 'Custom Service';
+  if (prefix === 'AE' || prefix.startsWith('AE')) return 'UAE Visa';
+  if (prefix === 'OV' || prefix === 'OT' || prefix.startsWith('OV')) return 'Other Visas';
+  if (prefix === 'TP' || prefix.startsWith('TP')) return 'Tour Packages';
+  return null;
+}
+
 /** Positive groups only. Unknown work is Custom Service, never Other Visas. */
-export function dashboardServiceGroup(category?: string | null): DashboardGroup {
+export function dashboardServiceGroup(category?: string | null, referenceId?: string | null): DashboardGroup {
+  const byRef = groupFromReference(referenceId);
+  if (byRef) return byRef;
+
   const cat = (category || '').trim();
   const lower = cat.toLowerCase();
   if (!cat) return 'Custom Service';

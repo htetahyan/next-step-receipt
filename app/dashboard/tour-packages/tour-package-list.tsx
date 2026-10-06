@@ -66,7 +66,7 @@ export default function TourPackageList({ initialServices, customers, profile }:
 
   const filtered = useMemo(() => {
     return services.filter(s => {
-      if (dashboardServiceGroup(s.category) !== 'Tour Packages') return false;
+      if (dashboardServiceGroup(s.category, s.reference_id) !== 'Tour Packages') return false;
       const customer = s.customers;
       const details = s.details as any;
 

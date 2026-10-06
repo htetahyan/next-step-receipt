@@ -95,8 +95,8 @@ export interface UserProfile {
 /**
  * Map service category strings to standard ModuleKey
  */
-export function mapCategoryToModule(category?: string | null): ModuleKey {
-  switch (dashboardServiceGroup(category)) {
+export function mapCategoryToModule(category?: string | null, referenceId?: string | null): ModuleKey {
+  switch (dashboardServiceGroup(category, referenceId)) {
     case 'Air Tickets':
       return 'air_tickets';
     case 'Tour Packages':

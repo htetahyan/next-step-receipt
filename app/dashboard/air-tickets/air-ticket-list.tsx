@@ -66,7 +66,7 @@ export default function AirTicketList({
 
   const filtered = useMemo(() => {
     return services.filter(s => {
-      if (dashboardServiceGroup(s.category) !== 'Air Tickets') return false;
+      if (dashboardServiceGroup(s.category, s.reference_id) !== 'Air Tickets') return false;
       if (categoryFilter !== 'all' && s.category !== categoryFilter) return false;
       if (statusFilter !== 'all' && s.status !== statusFilter) return false;
       if (!search) return true;

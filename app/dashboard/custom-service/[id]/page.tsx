@@ -3,6 +3,7 @@ import CustomServiceForm from '../new/custom-service-form';
 import { notFound, redirect } from 'next/navigation';
 import { getCurrentUserProfile } from '@/app/actions/users';
 import { checkPermission } from '@/lib/auth-permissions';
+import { moduleEditPath } from '@/lib/service-constants';
 
 export default async function EditCustomServicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +22,11 @@ export default async function EditCustomServicePage({ params }: { params: Promis
 
   if (!service) {
     notFound();
+  }
+
+  const correctPath = moduleEditPath(service);
+  if (!correctPath.startsWith('/dashboard/custom-service/')) {
+    redirect(correctPath);
   }
 
   let customers: any[] = [];

@@ -58,7 +58,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
   }, [search, categoryFilter, statusFilter, services]);
 
   const getServiceLink = (srv: RecentServiceItem) => {
-    const mod = mapCategoryToModule(srv.category);
+    const mod = mapCategoryToModule(srv.category, srv.reference_id);
     switch (mod) {
       case 'air_tickets':
         return `/dashboard/air-tickets/${srv.id}`;
@@ -93,7 +93,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
 
   const getServiceSpecificLabel = (srv: RecentServiceItem) => {
     const details = srv.details || {};
-    const mod = mapCategoryToModule(srv.category);
+    const mod = mapCategoryToModule(srv.category, srv.reference_id);
 
     if (mod === 'air_tickets') {
       const parts = [];
@@ -152,7 +152,7 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
     return services.filter((srv) => {
       const details = srv.details || {};
       const cust = srv.customer || {};
-      const mod = mapCategoryToModule(srv.category);
+      const mod = mapCategoryToModule(srv.category, srv.reference_id);
 
       // Search Query Match
       if (search.trim()) {

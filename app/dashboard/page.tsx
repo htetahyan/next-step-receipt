@@ -230,7 +230,7 @@ async function DashboardMetrics({
     const cust = srv.customer as any;
     const cat = String(srv.category || '').toLowerCase();
 
-    const mainCategory = dashboardServiceGroup(srv.category);
+    const mainCategory = dashboardServiceGroup(srv.category, srv.reference_id);
 
     // Departure Reminders (Next 7 Days)
     const travelDateStr = details.travel_date;

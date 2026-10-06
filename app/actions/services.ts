@@ -218,7 +218,7 @@ export async function addCustomerService(data: any) {
   try {
     let { customerId, referenceId, category, status, details, financials, newCustomer } = data || {};
 
-    const moduleKey = mapCategoryToModule(category);
+    const moduleKey = mapCategoryToModule(category, referenceId);
     const userProfile = await requirePermission(moduleKey, 'create');
     const supabase = await createClient();
 
@@ -603,7 +603,7 @@ export async function bulkMigrateCustomerServices(records: any[]) {
 
 export async function updateCustomerService(serviceId: string, data: any) {
   try {
-    const moduleKey = mapCategoryToModule(data.category);
+    const moduleKey = mapCategoryToModule(data.category, data.referenceId || data.reference_id);
     await requirePermission(moduleKey, 'edit');
 
     const { createClient } = await import('@/utils/supabase/server');
@@ -688,11 +688,11 @@ export async function deleteCustomerService(serviceId: string) {
     // Fetch existing category to check permission for that specific module
     const { data: existing } = await supabase
       .from('customer_services')
-      .select('category')
+      .select('category, reference_id')
       .eq('id', serviceId)
       .maybeSingle();
 
-    const moduleKey = mapCategoryToModule(existing?.category);
+    const moduleKey = mapCategoryToModule(existing?.category, existing?.reference_id);
     await requirePermission(moduleKey, 'delete');
 
     const { error } = await supabase
@@ -740,13 +740,13 @@ export async function updateServiceRefId(serviceId: string, referenceId: string)
 
     const { data: existing, error: fetchErr } = await supabase
       .from('customer_services')
-      .select('id, category')
+      .select('id, category, reference_id')
       .eq('id', serviceId)
       .maybeSingle();
 
     if (fetchErr || !existing) return { success: false, error: 'Service record not found' };
 
-    const moduleKey = mapCategoryToModule(existing.category);
+    const moduleKey = mapCategoryToModule(existing.category, existing.reference_id);
     await requirePermission(moduleKey, 'edit');
 
     const cleanRef = referenceId ? referenceId.trim().toUpperCase() : null;
@@ -789,13 +789,13 @@ export async function quickUpdateService(
     // Get current record to merge details and financials
     const { data: existing, error: fetchErr } = await supabase
       .from('customer_services')
-      .select('id, customer_id, category, status, details, financials')
+      .select('id, customer_id, category, reference_id, status, details, financials')
       .eq('id', serviceId)
       .single();
 
     if (fetchErr || !existing) return { success: false, error: 'Service record not found' };
 
-    const moduleKey = mapCategoryToModule(payload.category || existing.category);
+    const moduleKey = mapCategoryToModule(payload.category || existing.category, existing.reference_id);
     await requirePermission(moduleKey, 'edit');
 
     const updateData: any = {};

@@ -46,7 +46,7 @@ export default function OtherVisaList({
   useRemoteServiceSearch(search, setServices, listFilter);
   const scope = useRecordScope(setServices, listFilter);
   const visaServices = useMemo(
-    () => services.filter((row) => dashboardServiceGroup(row.category) === 'Other Visas'),
+    () => services.filter((row) => dashboardServiceGroup(row.category, row.reference_id) === 'Other Visas'),
     [services]
   );
   const [categoryFilter, setCategoryFilter] = useState('all');

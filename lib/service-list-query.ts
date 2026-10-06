@@ -78,13 +78,13 @@ export async function fetchModuleServiceList(filter: ListFilter = {}) {
   );
 }
 
-async function fetchMatchingCategories(patterns: string[]): Promise<any[]> {
+async function fetchMatchingCategories(patterns: string[], extraOr: string[] = []): Promise<any[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('customer_services')
     .select(SERVICE_LIST_SELECT)
     .is('deleted_at', null)
-    .or(patterns.map((pattern) => `category.ilike.%${pattern}%`).join(','))
+    .or([...patterns.map((pattern) => `category.ilike.%${pattern}%`), ...extraOr].join(','))
     .order('created_at', { ascending: false })
     .limit(1000);
   if (error) throw error;
@@ -92,18 +92,21 @@ async function fetchMatchingCategories(patterns: string[]): Promise<any[]> {
 }
 
 export async function fetchAirTicketServices() {
-  const rows = await fetchMatchingCategories(['ticket', 'flight', 'airline']);
-  return rows.filter((row: any) => dashboardServiceGroup(row.category) === 'Air Tickets');
+  const rows = await fetchMatchingCategories(
+    ['ticket', 'flight', 'airline'],
+    ['reference_id.ilike.AT*', 'reference_id.ilike.TK*']
+  );
+  return rows.filter((row: any) => dashboardServiceGroup(row.category, row.reference_id) === 'Air Tickets');
 }
 
 export async function fetchTourPackageServices() {
   const rows = await fetchMatchingCategories(['tour', 'safari', 'package', 'hotel']);
-  return rows.filter((row: any) => dashboardServiceGroup(row.category) === 'Tour Packages');
+  return rows.filter((row: any) => dashboardServiceGroup(row.category, row.reference_id) === 'Tour Packages');
 }
 
 export async function fetchCustomServices() {
   const rows = await fetchModuleServiceList({ allTime: true });
-  return rows.filter((row: any) => dashboardServiceGroup(row.category) === 'Custom Service');
+  return rows.filter((row: any) => dashboardServiceGroup(row.category, row.reference_id) === 'Custom Service');
 }
 
 /** Other-country visas only. Names like "Japan" or "Schengen Visa" are included. Tickets, tours, and UAE visas are removed. */
@@ -134,5 +137,5 @@ export async function fetchOtherCountryVisas() {
     .limit(1000);
 
   if (error) throw error;
-  return (data || []).filter((row: any) => dashboardServiceGroup(row.category) === 'Other Visas');
+  return (data || []).filter((row: any) => dashboardServiceGroup(row.category, row.reference_id) === 'Other Visas');
 }
