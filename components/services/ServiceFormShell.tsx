@@ -19,6 +19,7 @@ import { CustomerSelector } from '@/components/ui/form/CustomerSelector';
 import { FinancialsSection } from '@/components/ui/form/FinancialsSection';
 import { StaffAdditionalInfoFields } from './fields/StaffAdditionalInfoFields';
 import { PassengerRoster, Passenger } from './fields/PassengerRoster';
+import { GroupApplicants } from './fields/GroupApplicants';
 import { UserProfile } from '@/lib/auth-permissions';
 import { RateCard } from '@/app/actions/rate-cards';
 
@@ -79,6 +80,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
     (duplicateData?.details as any)?.passengers ||
     [];
   const [passengers, setPassengers] = useState<Passenger[]>(initialPassengers);
+  const [companions, setCompanions] = useState<Passenger[]>([]);
 
   useEffect(() => {
     if (!initialData && !initialRefId) {
@@ -264,6 +266,25 @@ export function ServiceFormShell<T extends Record<string, any>>({
       toast.error('Choose the service first.');
       return;
     }
+    if (companions.length > 0) {
+      const selected = customers.find((c) => c.id === values.customerId);
+      const primaryName = String(
+        values._selectedCustomerName ||
+        values.newCustomer?.name ||
+        selected?.name ||
+        ''
+      ).trim();
+      const primaryPassport = String(values.newCustomer?.passport_no || selected?.passport_no || '').trim();
+      const primary: Passenger = {
+        id: 'primary',
+        name: primaryName || 'Main customer',
+        passport_no: primaryPassport,
+      };
+      const extras = companions.filter((person) => person.name.trim().toLowerCase() !== primary.name.toLowerCase());
+      const merged = [primary, ...extras];
+      setPassengers(merged);
+      (methods.setValue as any)('details.pax_count', merged.length);
+    }
     setStep(2);
   };
 
@@ -381,6 +402,7 @@ export function ServiceFormShell<T extends Record<string, any>>({
               </div>
 
               {renderCategoryFields(methods)}
+              {isNewRecord && <GroupApplicants companions={companions} onChange={setCompanions} />}
               {isNewRecord && (
                 <button
                   type="button"
