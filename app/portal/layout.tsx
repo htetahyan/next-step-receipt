@@ -8,7 +8,7 @@ export default function PortalLayout({
       <header className="bg-[var(--card-bg)] px-6 sm:px-8 py-4 shadow-xs border-b border-[var(--card-border)]">
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="" className="w-8 h-8 rounded-lg object-cover border border-[var(--card-border)]" />
+            <img src="/logo.png" alt="NextStep" className="h-12 w-auto max-w-[160px] object-contain" />
             <h1 className="text-base font-serif font-bold text-[var(--foreground)] tracking-tight">
               NextStep Travel & Tourism <span className="opacity-40 font-sans font-normal text-xs ml-1">• Customer Portal</span>
             </h1>

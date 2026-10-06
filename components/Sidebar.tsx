@@ -83,8 +83,7 @@ export default function Sidebar({ profile }: SidebarProps) {
     <div className="flex h-full w-full flex-col bg-[var(--sidebar-bg)]">
       <div className="flex h-16 items-center border-b border-[var(--card-border)] px-6 justify-between bg-[var(--sidebar-bg)]">
         <div className="flex items-center gap-2 min-w-0">
-          <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-cover border border-[var(--card-border)]" />
-          <h1 className="font-serif font-black text-lg tracking-tight text-[#D97757] truncate">NextStep.</h1>
+          <img src="/logo.png" alt="NextStep" className="h-12 w-auto max-w-[150px] object-contain" />
         </div>
         {profile && (
           <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${

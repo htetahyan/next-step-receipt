@@ -53,9 +53,9 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, Props>(({ data }, ref) => {
     >
       <div className="flex flex-col items-center mb-8">
         <img 
-          src="/logo.jpg" 
-          alt="Company Logo" 
-          className="h-20 w-auto object-contain mb-4" 
+          src="/logo.png" 
+          alt="NextStep" 
+          className="h-24 w-auto object-contain mb-4" 
         />
         <h1 className="text-2xl font-bold text-[#006666] tracking-tight">{companyName}</h1>
         <h2 className="text-2xl font-bold mt-2 tracking-widest border-b-2 border-black px-8">INVOICE</h2>
