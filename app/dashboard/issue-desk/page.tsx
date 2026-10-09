@@ -75,8 +75,8 @@ export default function IssueDeskPage() {
   };
 
   return (
-    <div className="grid gap-6 pb-16 xl:grid-cols-[380px_1fr]">
-      <div className="space-y-4">
+    <div className="grid gap-4 pb-16 xl:grid-cols-[420px_1fr]">
+      <div className="space-y-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4 max-h-[calc(100vh-24px)] overflow-y-auto">
         <div>
           <h1 className="text-xl font-semibold">Issue desk</h1>
           <p className="text-xs text-[var(--muted)]">Nothing is saved. Download a ticket or hotel voucher for the client.</p>
@@ -179,11 +179,11 @@ export default function IssueDeskPage() {
             )}
           </div>
         )}
-        <button type="button" disabled={busy} onClick={download} className="w-full rounded-md bg-[#0e2a22] py-2.5 text-sm font-medium text-white disabled:opacity-60">
+        <button type="button" disabled={busy} onClick={download} className="sticky bottom-0 w-full rounded-md bg-[#0e2a22] py-2.5 text-sm font-medium text-white disabled:opacity-60">
           {busy ? 'Preparing PDF…' : 'Download PDF'}
         </button>
       </div>
-      <div className="overflow-auto rounded-md border border-[var(--card-border)] bg-[#e7e2d8] p-6">
+      <div className="overflow-auto rounded-xl border border-[var(--card-border)] bg-[#e7e2d8] p-4 min-h-[70vh]">
         <div ref={sheet} className="mx-auto w-fit">
           {kind === 'flight' ? <FlightTicketView draft={flight} /> : <HotelVoucherView draft={hotel} />}
         </div>

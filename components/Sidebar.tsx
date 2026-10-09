@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X, Wrench, Building2 } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Settings, LogOut, Shield, Plane, Globe, Ticket, Database, Briefcase, Plus, Menu, X, Wrench, Building2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { UserProfile, checkPermission, ModuleKey } from "@/lib/auth-permissions";
 import { useOnlineStatus } from "./ui/OfflineBanner";
@@ -18,6 +18,21 @@ export default function Sidebar({ profile }: SidebarProps) {
   const router = useRouter();
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('sidebar-collapsed') === '1') setCollapsed(true);
+    } catch {}
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((value) => {
+      const next = !value;
+      try { localStorage.setItem('sidebar-collapsed', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,13 +95,16 @@ export default function Sidebar({ profile }: SidebarProps) {
 
   const hasAnyCreate = canCreateUAE || canCreateAir || canCreateOther || canCreateTour || canCreateCustom || canCreateCustomer || canCreateInvoice;
 
-  const sidebarContent = (
+  const sidebarContent = (compact: boolean) => (
     <div className="flex h-full w-full flex-col bg-[var(--sidebar-bg)]">
-      <div className="flex h-16 items-center border-b border-[var(--card-border)] px-6 justify-between bg-[var(--sidebar-bg)]">
+      <div className={`flex h-16 items-center border-b border-[var(--card-border)] justify-between bg-[var(--sidebar-bg)] ${compact ? 'px-2' : 'px-4'}`}>
         <div className="flex items-center gap-2 min-w-0">
-          <img src="/logo.png" alt="NextStep" className="h-12 w-auto max-w-[150px] object-contain" />
+          <img src="/logo.png" alt="NextStep" className={compact ? "h-8 w-8 object-contain" : "h-12 w-auto max-w-[150px] object-contain"} />
         </div>
-        {profile && (
+        <button type="button" onClick={toggleCollapsed} className="hidden lg:inline-flex p-1.5 rounded-md hover:bg-[var(--card-border)]" title={compact ? "Expand sidebar" : "Collapse sidebar"}>
+          {compact ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
+        {!compact && profile && (
           <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
             profile.role === 'admin' ? 'bg-[#D97757]/15 text-[#D97757]' : 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
           }`}>
@@ -109,7 +127,7 @@ export default function Sidebar({ profile }: SidebarProps) {
             className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#D97757] text-[#F5F4EF] px-3 py-2 text-sm font-medium transition-opacity hover:opacity-90 shadow-sm cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            Quick Add
+            {!compact && "Quick Add"}
           </button>
           
           {isQuickAddOpen && (
@@ -192,21 +210,22 @@ export default function Sidebar({ profile }: SidebarProps) {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+              title={item.name}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${compact ? 'justify-center' : ''} ${
                 isActive
                   ? 'bg-[#D97757]/10 text-[#D97757]'
                   : 'text-[var(--foreground)] hover:bg-[var(--card-border)]'
               }`}
             >
-              <Icon className={`h-4 w-4 ${isActive ? 'opacity-100' : 'opacity-60'}`} />
-              {item.name}
+              <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'opacity-100' : 'opacity-60'}`} />
+              {!compact && item.name}
             </Link>
           );
         })}
       </nav>
 
       <div className="p-3 border-t border-[var(--card-border)] space-y-2">
-        {profile && (
+        {!compact && profile && (
           <div className="px-3 py-2 rounded-lg bg-[var(--background)] border border-[var(--card-border)] text-xs flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="font-semibold truncate">{profile.fullName || profile.email.split('@')[0]}</span>
@@ -225,7 +244,7 @@ export default function Sidebar({ profile }: SidebarProps) {
           className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[var(--foreground)] transition-all hover:bg-[var(--card-border)] cursor-pointer"
         >
           <LogOut className="h-4 w-4 opacity-60" />
-          Sign Out
+          {!compact && "Sign Out"}
         </button>
       </div>
     </div>
@@ -260,14 +279,13 @@ export default function Sidebar({ profile }: SidebarProps) {
             onClick={() => setIsMobileMenuOpen(false)}
           />
           <div className="relative flex w-72 max-w-[80vw] flex-1 flex-col bg-[var(--sidebar-bg)] shadow-2xl z-50">
-            {sidebarContent}
+            {sidebarContent(false)}
           </div>
         </div>
       )}
 
-      {/* Desktop & Laptop Persistent Sidebar (Always visible on lg screens >=1024px) */}
-      <div className="desktop-sidebar h-screen w-64 flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm shrink-0">
-        {sidebarContent}
+      <div className={`desktop-sidebar h-screen flex-col border-r border-[var(--card-border)] bg-[var(--sidebar-bg)] shadow-sm shrink-0 overflow-hidden ${collapsed ? 'w-[72px]' : 'w-64'}`}>
+        {sidebarContent(collapsed)}
       </div>
     </>
   );
