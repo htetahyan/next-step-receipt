@@ -52,6 +52,7 @@ export default function Sidebar({ profile }: SidebarProps) {
     { name: "Directory & Services", href: "/dashboard/customers", icon: Users, moduleKey: "customers" },
     { name: "UAE Visa Tracker", href: "/dashboard/uae-visa", icon: Shield, moduleKey: "uae_visa" },
     { name: "Air Tickets", href: "/dashboard/air-tickets", icon: Plane, moduleKey: "air_tickets" },
+    { name: "Issue Desk", href: "/dashboard/issue-desk", icon: Ticket, moduleKey: "air_tickets" },
     { name: "Other Visa", href: "/dashboard/other-visa", icon: Globe, moduleKey: "other_visa" },
     { name: "Tour Packages", href: "/dashboard/tour-packages", icon: Briefcase, moduleKey: "tour_packages" },
     { name: "Custom Services", href: "/dashboard/custom-service", icon: Wrench, moduleKey: "custom_service" },
