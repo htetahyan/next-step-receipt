@@ -11,10 +11,16 @@ export type FlightDraft = {
   ticketNo: string;
   from: string;
   to: string;
+  routing: 'direct' | 'transit';
+  via: string;
   date: string;
   depart: string;
   arrive: string;
   flightNo: string;
+  date2: string;
+  depart2: string;
+  arrive2: string;
+  flightNo2: string;
   cabin: string;
   baggage: string;
   price: string;
@@ -58,14 +64,22 @@ export function FlightTicketView({ draft }: { draft: FlightDraft }) {
       <div className="px-8 py-6">
         <div className="text-[11px] uppercase tracking-[0.22em] text-[#8a7352]">Passenger</div>
         <div className="mt-1 text-3xl font-semibold tracking-tight">{draft.passenger || 'Passenger name'}</div>
-        <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-end gap-4 border-y border-[#d9cbb6] py-5">
+        <div className={`mt-6 grid items-end gap-3 border-y border-[#d9cbb6] py-5 ${draft.routing === 'transit' ? 'grid-cols-3' : 'grid-cols-[1fr_auto_1fr]'}`}>
           <div>
-            <div className="text-5xl font-semibold">{draft.from || 'RGN'}</div>
+            <div className="text-4xl font-semibold">{draft.from || 'RGN'}</div>
             <div className="text-sm text-[#5c6b63]">{airportCity(draft.from)}</div>
           </div>
-          <div className="pb-3 text-center text-xs uppercase tracking-[0.2em] text-[#8a7352]">to</div>
-          <div className="text-right">
-            <div className="text-5xl font-semibold">{draft.to || 'BKK'}</div>
+          {draft.routing === 'transit' ? (
+            <div className="text-center">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-[#8a7352]">Via</div>
+              <div className="text-4xl font-semibold">{draft.via || 'BKK'}</div>
+              <div className="text-sm text-[#5c6b63]">{airportCity(draft.via)}</div>
+            </div>
+          ) : (
+            <div className="pb-3 text-center text-xs uppercase tracking-[0.2em] text-[#8a7352]">Direct</div>
+          )}
+          <div className={draft.routing === 'transit' ? '' : 'text-right'}>
+            <div className="text-4xl font-semibold">{draft.to || 'BKK'}</div>
             <div className="text-sm text-[#5c6b63]">{airportCity(draft.to)}</div>
           </div>
         </div>
@@ -73,7 +87,15 @@ export function FlightTicketView({ draft }: { draft: FlightDraft }) {
           <Field label="Date" value={draft.date} />
           <Field label="Depart" value={draft.depart} />
           <Field label="Arrive" value={draft.arrive} />
-          <Field label="Flight" value={draft.flightNo} />
+          <Field label={draft.routing === 'transit' ? 'Flight 1' : 'Flight'} value={draft.flightNo} />
+          {draft.routing === 'transit' && (
+            <>
+              <Field label="Connection date" value={draft.date2 || draft.date} />
+              <Field label="Depart 2" value={draft.depart2} />
+              <Field label="Arrive 2" value={draft.arrive2} />
+              <Field label="Flight 2" value={draft.flightNo2} />
+            </>
+          )}
           <Field label="Cabin" value={draft.cabin} />
           <Field label="Baggage" value={draft.baggage} />
           <Field label="PNR" value={draft.pnr} />

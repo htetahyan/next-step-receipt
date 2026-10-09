@@ -21,10 +21,16 @@ export default function IssueDeskPage() {
     ticketNo: '',
     from: 'RGN',
     to: 'BKK',
+    routing: 'direct',
+    via: 'BKK',
     date: '',
     depart: '',
     arrive: '',
     flightNo: '',
+    date2: '',
+    depart2: '',
+    arrive2: '',
+    flightNo2: '',
     cabin: 'Economy',
     baggage: '20 kg',
     price: '',
@@ -93,9 +99,20 @@ export default function IssueDeskPage() {
             <label className="block text-xs">Passenger<input className={input} value={flight.passenger} onChange={(e) => setFlight({ ...flight, passenger: e.target.value })} /></label>
             <div className="flex flex-wrap gap-1">
               {SECTORS.map(([from, to]) => (
-                <button key={`${from}${to}`} type="button" onClick={() => setFlight({ ...flight, from, to })} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">{from}–{to}</button>
+                <button key={`${from}${to}`} type="button" onClick={() => setFlight({ ...flight, from, to, routing: needsTransit(from, to) ? 'transit' : flight.routing, via: needsTransit(from, to) ? 'BKK' : flight.via })} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">{from}–{to}</button>
               ))}
             </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setFlight({ ...flight, routing: 'direct' })} className={`rounded-md px-3 py-1.5 text-xs ${flight.routing === 'direct' ? 'bg-[#0e2a22] text-white' : 'border border-[var(--card-border)]'}`}>Direct</button>
+              <button type="button" onClick={() => setFlight({ ...flight, routing: 'transit', via: flight.via || 'BKK' })} className={`rounded-md px-3 py-1.5 text-xs ${flight.routing === 'transit' ? 'bg-[#0e2a22] text-white' : 'border border-[var(--card-border)]'}`}>Transit</button>
+            </div>
+            {flight.routing === 'transit' && (
+              <label className="block text-xs">Connection airport
+                <select className={input} value={flight.via} onChange={(e) => setFlight({ ...flight, via: e.target.value })}>
+                  {AIRPORTS.map((a) => <option key={a.code} value={a.code}>{a.code} · {a.city}</option>)}
+                </select>
+              </label>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <label className="text-xs">From
                 <select className={input} value={flight.from} onChange={(e) => setFlight({ ...flight, from: e.target.value })}>
@@ -108,13 +125,21 @@ export default function IssueDeskPage() {
                 </select>
               </label>
               <label className="text-xs">Date<input className={input} value={flight.date} onChange={(e) => setFlight({ ...flight, date: e.target.value })} placeholder="14 Sep 2026" /></label>
-              <label className="text-xs">Flight<input className={input} value={flight.flightNo} onChange={(e) => setFlight({ ...flight, flightNo: e.target.value })} placeholder="8M 501" /></label>
+              <label className="text-xs">{flight.routing === 'transit' ? 'Flight 1' : 'Flight'}<input className={input} value={flight.flightNo} onChange={(e) => setFlight({ ...flight, flightNo: e.target.value })} placeholder="8M 501" /></label>
               <label className="text-xs">Depart<input className={input} value={flight.depart} onChange={(e) => setFlight({ ...flight, depart: e.target.value })} placeholder="09:30" /></label>
               <label className="text-xs">Arrive<input className={input} value={flight.arrive} onChange={(e) => setFlight({ ...flight, arrive: e.target.value })} placeholder="11:20" /></label>
               <label className="text-xs">PNR<input className={input} value={flight.pnr} onChange={(e) => setFlight({ ...flight, pnr: e.target.value.toUpperCase() })} /></label>
               <label className="text-xs">Ticket no.<input className={input} value={flight.ticketNo} onChange={(e) => setFlight({ ...flight, ticketNo: e.target.value })} /></label>
               <label className="text-xs">Cabin<input className={input} value={flight.cabin} onChange={(e) => setFlight({ ...flight, cabin: e.target.value })} /></label>
               <label className="text-xs">Baggage<input className={input} value={flight.baggage} onChange={(e) => setFlight({ ...flight, baggage: e.target.value })} /></label>
+              {flight.routing === 'transit' && (
+                <>
+                  <label className="text-xs">Flight 2<input className={input} value={flight.flightNo2} onChange={(e) => setFlight({ ...flight, flightNo2: e.target.value })} placeholder="EK 376" /></label>
+                  <label className="text-xs">Date 2<input className={input} value={flight.date2} onChange={(e) => setFlight({ ...flight, date2: e.target.value })} placeholder="Same day if blank" /></label>
+                  <label className="text-xs">Depart 2<input className={input} value={flight.depart2} onChange={(e) => setFlight({ ...flight, depart2: e.target.value })} /></label>
+                  <label className="text-xs">Arrive 2<input className={input} value={flight.arrive2} onChange={(e) => setFlight({ ...flight, arrive2: e.target.value })} /></label>
+                </>
+              )}
             </div>
             <Toggle label="Show NextStep logo" on={flight.showLogo} set={(showLogo) => setFlight({ ...flight, showLogo })} />
             <Toggle label="Show price" on={flight.showPrice} set={(showPrice) => setFlight({ ...flight, showPrice })} />
@@ -165,6 +190,11 @@ export default function IssueDeskPage() {
       </div>
     </div>
   );
+}
+
+function needsTransit(from: string, to: string) {
+  const pair = [from, to].sort().join('-');
+  return pair === 'DXB-RGN' || pair === 'DXB-MDL' || pair === 'AUH-RGN' || pair === 'DOH-RGN';
 }
 
 function Toggle({ label, on, set }: { label: string; on: boolean; set: (v: boolean) => void }) {
