@@ -58,7 +58,7 @@ export default function NewInvoicePage() {
     loadSettings();
   }, []);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: 'items'
   });
@@ -66,9 +66,48 @@ export default function NewInvoicePage() {
   const searchParams = useSearchParams();
   const serviceIdParam = searchParams.get('serviceId');
   const customerIdParam = searchParams.get('customerId');
+  const invoiceIdParam = searchParams.get('invoiceId');
 
   // Suggest invoice number & prefill service details if serviceId is provided
   useEffect(() => {
+    if (invoiceIdParam) {
+      const loadInvoice = async () => {
+        const { data: invoice } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, customer_id, date, subtotal, vat_amount, total_amount, payment_method, customer:customers(id, name, email, phone), items:invoice_items(id, description, quantity, rate, amount)')
+          .eq('id', invoiceIdParam)
+          .maybeSingle();
+        if (!invoice) {
+          toast.error('Invoice not found');
+          return;
+        }
+        const customer = invoice.customer as any;
+        if (customer) handleCustomerSelect(customer);
+        else if (invoice.customer_id) setSelectedCustomerId(invoice.customer_id);
+        const dbDate = String(invoice.date || '');
+        const displayDate = /^\d{4}-\d{2}-\d{2}$/.test(dbDate)
+          ? dbDate.split('-').reverse().join('-')
+          : dbDate;
+        const vatAmount = Number(invoice.vat_amount) || 0;
+        const subtotal = Number(invoice.subtotal) || 0;
+        setValue('invoiceNumber', invoice.invoice_number || '');
+        setValue('date', displayDate);
+        setValue('paymentMethod', String(invoice.payment_method || 'cash').replace(/\b\w/g, (c) => c.toUpperCase()));
+        setValue('isVatExempt', vatAmount <= 0);
+        setValue('vatRate', subtotal > 0 && vatAmount > 0 ? Math.round((vatAmount / subtotal) * 100) : 5);
+        const items = (invoice.items || []).map((item: any) => ({
+          id: item.id,
+          description: item.description || '',
+          quantity: Number(item.quantity) || 1,
+          rate: Number(item.rate) || 0,
+          amount: Number(item.amount) || 0,
+        }));
+        replace(items.length ? items : [{ id: '1', description: '', quantity: 1, rate: 0, amount: 0 }]);
+      };
+      loadInvoice();
+      return;
+    }
+
     const fetchLastInvoice = async () => {
       const { data } = await supabase
         .from('invoices')
@@ -142,7 +181,7 @@ export default function NewInvoicePage() {
       }
     };
     prefillFromService();
-  }, [serviceIdParam, customerIdParam, supabase, setValue]);
+  }, [serviceIdParam, customerIdParam, invoiceIdParam, supabase, setValue]);
 
   const watchItems = watch('items') || [];
   const watchVatRate = watch('vatRate') || 0;
@@ -243,26 +282,36 @@ export default function NewInvoicePage() {
           } catch {}
         }
 
-        // Create Invoice
-        const { data: invoice, error: invoiceError } = await supabase
-          .from('invoices')
-          .insert([{
-             customer_id: customerId,
-             invoice_number: formData.invoiceNumber,
-             date: invoiceDbDate,
-             subtotal: subtotal,
-             vat_amount: vatAmount,
-             total_amount: totalAmount,
-             payment_method: (formData.paymentMethod || 'cash').toLowerCase()
-          }])
-          .select()
-          .single();
+        const invoicePayload = {
+          customer_id: customerId,
+          invoice_number: formData.invoiceNumber,
+          date: invoiceDbDate,
+          subtotal: subtotal,
+          vat_amount: vatAmount,
+          total_amount: totalAmount,
+          payment_method: (formData.paymentMethod || 'cash').toLowerCase(),
+        };
 
-       if (invoiceError) throw invoiceError;
+        let invoiceId = invoiceIdParam;
+        if (invoiceId) {
+          const { error: invoiceError } = await supabase
+            .from('invoices')
+            .update(invoicePayload)
+            .eq('id', invoiceId);
+          if (invoiceError) throw invoiceError;
+          await supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
+        } else {
+          const { data: invoice, error: invoiceError } = await supabase
+            .from('invoices')
+            .insert([invoicePayload])
+            .select()
+            .single();
+          if (invoiceError) throw invoiceError;
+          invoiceId = invoice.id;
+        }
 
-       // Create Invoice Items
        const invoiceItems = formData.items.map(item => ({
-          invoice_id: invoice.id,
+          invoice_id: invoiceId,
           description: item.description,
           quantity: item.quantity,
           rate: item.rate,
@@ -275,7 +324,7 @@ export default function NewInvoicePage() {
 
        if (itemsError) throw itemsError;
 
-       toast.success('Invoice saved successfully!');
+       toast.success(invoiceIdParam ? 'Invoice updated' : 'Invoice saved successfully!');
        router.push('/dashboard/invoices');
     } catch (e: any) {
        console.error(e);
@@ -290,7 +339,7 @@ export default function NewInvoicePage() {
       {/* Form Sidebar */}
       <div className="w-[450px] flex-shrink-0 flex flex-col bg-white border border-[#e2e8f0] rounded-xl shadow-sm dark:bg-[#0f172a] dark:border-[#1e293b] overflow-y-auto">
         <div className="p-6 border-b border-[#e2e8f0] dark:border-[#1e293b]">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Create Invoice</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{invoiceIdParam ? 'Edit Invoice' : 'Create Invoice'}</h2>
         </div>
         
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-6 flex-1">
@@ -438,7 +487,7 @@ export default function NewInvoicePage() {
             className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {isSaving ? <Loader2 className="animate-spin w-4 h-4" /> : null}
-            {isSaving ? 'Saving...' : 'Save Invoice'}
+            {isSaving ? 'Saving...' : invoiceIdParam ? 'Update Invoice' : 'Save Invoice'}
           </button>
           <div className="grid grid-cols-2 gap-3">
             <button 

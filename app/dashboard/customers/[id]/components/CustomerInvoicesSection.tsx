@@ -148,9 +148,15 @@ export function CustomerInvoicesSection({
                     <td className="px-3.5 py-2 text-right whitespace-nowrap">
                       <Link
                         href={`/dashboard/invoices/${inv.id}`}
+                        className="text-xs text-[#D97757] hover:underline font-mono inline-flex items-center gap-0.5 opacity-80 group-hover:opacity-100 mr-2"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        href={`/dashboard/invoices/new?invoiceId=${inv.id}`}
                         className="text-xs text-[#D97757] hover:underline font-mono inline-flex items-center gap-0.5 opacity-80 group-hover:opacity-100"
                       >
-                        View <ArrowUpRight className="w-3 h-3" />
+                        Edit <ArrowUpRight className="w-3 h-3" />
                       </Link>
                     </td>
                   </tr>

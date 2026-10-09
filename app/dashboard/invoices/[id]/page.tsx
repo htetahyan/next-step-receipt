@@ -57,6 +57,12 @@ export default async function InvoiceViewPage({ params }: { params: Promise<{ id
           <ChevronLeft className="h-4 w-4" />
           Directory / Invoices
         </Link>
+        <Link
+          href={`/dashboard/invoices/new?invoiceId=${invoice.id}`}
+          className="text-sm font-semibold text-[#D97757] hover:underline print:hidden"
+        >
+          Edit invoice
+        </Link>
       </div>
 
       <InvoiceActions data={invoiceData} />

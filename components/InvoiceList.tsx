@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { FileText, Search, Trash2, Loader2, Eye, X } from 'lucide-react'
+import { FileText, Search, Trash2, Loader2, Eye, X, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { deleteInvoice } from '@/app/actions/invoices'
 import { toast } from 'sonner'
@@ -194,6 +194,13 @@ export default function InvoiceList({
                         title="View & Download"
                       >
                         <Eye className="h-3.5 w-3.5" />
+                      </Link>
+                      <Link
+                        href={`/dashboard/invoices/new?invoiceId=${invoice.id}`}
+                        className="p-1 rounded-md text-slate-400 hover:text-[#D97757] hover:bg-[var(--sidebar-bg)] transition-all cursor-pointer"
+                        title="Edit invoice"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
                       </Link>
                       {canDelete && (
                         <button 
