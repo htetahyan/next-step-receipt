@@ -102,3 +102,12 @@ export function needsTransit(from: string, to: string) {
   const pair = [from, to].sort().join('-');
   return pair === 'DXB-RGN' || pair === 'DXB-MDL' || pair === 'AUH-RGN' || pair === 'DOH-RGN';
 }
+
+export const TRANSIT_ROUTES = [
+  { from: 'RGN', via: 'BKK', to: 'DXB', airline1: 'mai' as AirlineId, airline2: 'emirates' as AirlineId },
+  { from: 'DXB', via: 'BKK', to: 'RGN', airline1: 'emirates' as AirlineId, airline2: 'mai' as AirlineId },
+  { from: 'RGN', via: 'BKK', to: 'DXB', airline1: 'mai' as AirlineId, airline2: 'thai' as AirlineId },
+  { from: 'DXB', via: 'BKK', to: 'RGN', airline1: 'thai' as AirlineId, airline2: 'mai' as AirlineId },
+  { from: 'RGN', via: 'DOH', to: 'DXB', airline1: 'qatar' as AirlineId, airline2: 'qatar' as AirlineId },
+  { from: 'MDL', via: 'BKK', to: 'DXB', airline1: 'mai' as AirlineId, airline2: 'emirates' as AirlineId },
+];

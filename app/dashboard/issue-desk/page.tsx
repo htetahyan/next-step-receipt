@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { downloadInvoicePdf } from '@/lib/invoicePdf';
-import { AIRLINES, AIRPORTS, SECTORS, airlineById, needsTransit, usualFlights } from '@/lib/issueDesk';
+import { AIRLINES, AIRPORTS, SECTORS, TRANSIT_ROUTES, airlineById, needsTransit, usualFlights } from '@/lib/issueDesk';
 import { FlightDraft, FlightTicketView, HotelDraft, HotelVoucherView } from './ticket-views';
 
 const input = 'h-9 w-full rounded-md border border-[var(--card-border)] bg-[var(--background)] px-3 text-sm';
@@ -76,6 +76,32 @@ export default function IssueDeskPage() {
     );
   };
 
+  const applyTransit = (route: (typeof TRANSIT_ROUTES)[number]) => {
+    const a1 = airlineById(route.airline1);
+    const a2 = airlineById(route.airline2);
+    const leg1 = usualFlights(route.airline1, route.from, route.via)[0];
+    const leg2 = usualFlights(route.airline2, route.via, route.to)[0];
+    setFlight((f) => ({
+      ...f,
+      routing: 'transit',
+      from: route.from,
+      via: route.via,
+      to: route.to,
+      airlineId: route.airline1,
+      airlineName: a1?.name || f.airlineName,
+      logo: a1?.logo || f.logo,
+      airlineId2: route.airline2,
+      airlineName2: a2?.name || f.airlineName2,
+      logo2: a2?.logo || f.logo2,
+      flightNo: leg1?.flightNo || '',
+      depart: leg1?.depart || '',
+      arrive: leg1?.arrive || '',
+      flightNo2: leg2?.flightNo || '',
+      depart2: leg2?.depart || '',
+      arrive2: leg2?.arrive || '',
+    }));
+  };
+
   const download = async () => {
     if (!sheet.current) return;
     setBusy(true);
@@ -114,10 +140,32 @@ export default function IssueDeskPage() {
               </div>
             )}
             <label className="block text-xs">Passenger<input className={input} value={flight.passenger} onChange={(e) => setFlight({ ...flight, passenger: e.target.value })} /></label>
-            <div className="flex flex-wrap gap-1">
-              {SECTORS.map(([from, to]) => (
-                <button key={`${from}${to}`} type="button" onClick={() => setFlight({ ...flight, from, to, routing: needsTransit(from, to) ? 'transit' : flight.routing, via: needsTransit(from, to) ? 'BKK' : flight.via })} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">{from}–{to}</button>
-              ))}
+            <div>
+              <div className="mb-1 text-[11px] uppercase tracking-wide opacity-60">Direct</div>
+              <div className="flex flex-wrap gap-1">
+                {SECTORS.filter(([from, to]) => !needsTransit(from, to)).map(([from, to]) => (
+                  <button key={`${from}${to}`} type="button" onClick={() => setFlight({ ...flight, from, to, routing: 'direct' })} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">{from}–{to}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 text-[11px] uppercase tracking-wide opacity-60">Transit</div>
+              <div className="flex flex-wrap gap-1">
+                {TRANSIT_ROUTES.map((route) => {
+                  const a1 = airlineById(route.airline1);
+                  const a2 = airlineById(route.airline2);
+                  return (
+                    <button
+                      key={`${route.from}${route.via}${route.to}${route.airline1}${route.airline2}`}
+                      type="button"
+                      onClick={() => applyTransit(route)}
+                      className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]"
+                    >
+                      {route.from}–{route.via}–{route.to} {a1?.code}+{a2?.code}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setFlight({ ...flight, routing: 'direct' })} className={`rounded-md px-3 py-1.5 text-xs ${flight.routing === 'direct' ? 'bg-[#0e2a22] text-white' : 'border border-[var(--card-border)]'}`}>Direct</button>
@@ -145,7 +193,6 @@ export default function IssueDeskPage() {
               <label className="text-xs">{flight.routing === 'transit' ? 'Flight 1' : 'Flight'}<input className={input} value={flight.flightNo} onChange={(e) => setFlight({ ...flight, flightNo: e.target.value })} placeholder="8M 331" /></label>
               <label className="text-xs">Depart<input className={input} value={flight.depart} onChange={(e) => setFlight({ ...flight, depart: e.target.value })} placeholder="09:30" /></label>
               <label className="text-xs">Arrive<input className={input} value={flight.arrive} onChange={(e) => setFlight({ ...flight, arrive: e.target.value })} placeholder="09:05" /></label>
-              <UsualChips airlineId={flight.airlineId} from={flight.from} to={flight.routing === 'transit' ? flight.via : flight.to} onPick={(fno, dep, arr) => applyUsual(1, fno, dep, arr)} />
               <label className="text-xs">PNR<input className={input} value={flight.pnr} onChange={(e) => setFlight({ ...flight, pnr: e.target.value.toUpperCase() })} /></label>
               <label className="text-xs">Ticket no.<input className={input} value={flight.ticketNo} onChange={(e) => setFlight({ ...flight, ticketNo: e.target.value })} /></label>
               <label className="text-xs">Cabin<input className={input} value={flight.cabin} onChange={(e) => setFlight({ ...flight, cabin: e.target.value })} /></label>
@@ -156,10 +203,25 @@ export default function IssueDeskPage() {
                   <label className="text-xs">Date 2<input className={input} value={flight.date2} onChange={(e) => setFlight({ ...flight, date2: e.target.value })} placeholder="Same day if blank" /></label>
                   <label className="text-xs">Depart 2<input className={input} value={flight.depart2} onChange={(e) => setFlight({ ...flight, depart2: e.target.value })} /></label>
                   <label className="text-xs">Arrive 2<input className={input} value={flight.arrive2} onChange={(e) => setFlight({ ...flight, arrive2: e.target.value })} /></label>
-                  <UsualChips airlineId={flight.airlineId2} from={flight.via} to={flight.to} onPick={(fno, dep, arr) => applyUsual(2, fno, dep, arr)} />
                 </>
               )}
             </div>
+            <UsualChips
+              label={flight.routing === 'transit' ? `Leg 1 ${flight.from}–${flight.via}` : `${flight.from}–${flight.to}`}
+              airlineId={flight.airlineId}
+              from={flight.from}
+              to={flight.routing === 'transit' ? flight.via : flight.to}
+              onPick={(fno, dep, arr) => applyUsual(1, fno, dep, arr)}
+            />
+            {flight.routing === 'transit' && (
+              <UsualChips
+                label={`Leg 2 ${flight.via}–${flight.to}`}
+                airlineId={flight.airlineId2}
+                from={flight.via}
+                to={flight.to}
+                onPick={(fno, dep, arr) => applyUsual(2, fno, dep, arr)}
+              />
+            )}
             <Toggle label="Show NextStep logo" on={flight.showLogo} set={(showLogo) => setFlight({ ...flight, showLogo })} />
             <Toggle label="Show price" on={flight.showPrice} set={(showPrice) => setFlight({ ...flight, showPrice })} />
             {flight.showPrice && (
@@ -224,16 +286,34 @@ function AirlineRow({ selected, onPick }: { selected: string; onPick: (id: strin
   );
 }
 
-function UsualChips({ airlineId, from, to, onPick }: { airlineId: string; from: string; to: string; onPick: (flightNo: string, depart: string, arrive: string) => void }) {
+function UsualChips({
+  label,
+  airlineId,
+  from,
+  to,
+  onPick,
+}: {
+  label: string;
+  airlineId: string;
+  from: string;
+  to: string;
+  onPick: (flightNo: string, depart: string, arrive: string) => void;
+}) {
   const options = usualFlights(airlineId, from, to);
-  if (!options.length) return null;
   return (
-    <div className="col-span-2 flex flex-wrap gap-1">
-      {options.map((option) => (
-        <button key={option.flightNo} type="button" onClick={() => onPick(option.flightNo, option.depart, option.arrive)} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">
-          {option.flightNo} {option.depart}
-        </button>
-      ))}
+    <div>
+      <div className="mb-1 text-[11px] uppercase tracking-wide opacity-60">{label}</div>
+      {options.length ? (
+        <div className="flex flex-wrap gap-1">
+          {options.map((option) => (
+            <button key={option.flightNo} type="button" onClick={() => onPick(option.flightNo, option.depart, option.arrive)} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">
+              {option.flightNo} {option.depart}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] opacity-50">No usual flights for this airline on {from}–{to}.</p>
+      )}
     </div>
   );
 }
