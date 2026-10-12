@@ -1,6 +1,6 @@
 'use client';
 
-import { airportCity } from '@/lib/issueDesk';
+import { addOneDay, airportCity } from '@/lib/issueDesk';
 
 export type FlightDraft = {
   airlineId: string;
@@ -24,6 +24,8 @@ export type FlightDraft = {
   depart2: string;
   arrive2: string;
   flightNo2: string;
+  nextDay: boolean;
+  nextDay2: boolean;
   cabin: string;
   baggage: string;
   price: string;
@@ -99,6 +101,7 @@ export function FlightTicketView({ draft }: { draft: FlightDraft }) {
           depart={draft.depart}
           arrive={draft.arrive}
           flightNo={draft.flightNo}
+          nextDay={draft.nextDay}
         />
         {draft.routing === 'transit' && (
           <Leg
@@ -107,10 +110,11 @@ export function FlightTicketView({ draft }: { draft: FlightDraft }) {
             airline={draft.airlineName2 || draft.airlineName}
             from={draft.via}
             to={draft.to}
-            date={draft.date2 || draft.date}
+            date={draft.date2 || (draft.nextDay ? addOneDay(draft.date) : draft.date)}
             depart={draft.depart2}
             arrive={draft.arrive2}
             flightNo={draft.flightNo2}
+            nextDay={draft.nextDay2}
           />
         )}
 
@@ -145,10 +149,11 @@ function AirportBlock({ code, align, label }: { code: string; align: 'left' | 'c
 }
 
 function Leg({
-  title, logo, airline, from, to, date, depart, arrive, flightNo,
+  title, logo, airline, from, to, date, depart, arrive, flightNo, nextDay,
 }: {
-  title: string; logo: string; airline: string; from: string; to: string; date: string; depart: string; arrive: string; flightNo: string;
+  title: string; logo: string; airline: string; from: string; to: string; date: string; depart: string; arrive: string; flightNo: string; nextDay?: boolean;
 }) {
+  const arriveDate = nextDay ? addOneDay(date) : date;
   return (
     <div className="mt-4 flex items-center gap-4 rounded-lg border border-[#eadfcf] px-4 py-3">
       {logo ? <img src={logo} alt="" className="h-10 w-10 rounded bg-[#f6f1e8] object-contain p-0.5" /> : null}
@@ -159,7 +164,10 @@ function Leg({
       </div>
       <div className="flex-1 text-sm">
         <div className="font-semibold">{from} → {to}</div>
-        <div className="text-[#5c6b63]">{date || 'Date'} · {depart || '—'} – {arrive || '—'}</div>
+        <div className="text-[#5c6b63]">
+          {date || 'Date'} {depart || '—'} → {arriveDate && arriveDate !== date ? `${arriveDate} ` : ''}{arrive || '—'}
+          {nextDay ? <span className="ml-2 rounded-full bg-[#0b1f33] px-1.5 py-0.5 text-[10px] font-semibold text-white">+1 day</span> : null}
+        </div>
       </div>
     </div>
   );

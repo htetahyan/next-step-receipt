@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { downloadInvoicePdf } from '@/lib/invoicePdf';
-import { AIRLINES, AIRPORTS, SECTORS, TRANSIT_ROUTES, airlineById, needsTransit, usualFlights } from '@/lib/issueDesk';
+import { AIRLINES, AIRPORTS, SECTORS, TRANSIT_ROUTES, airlineById, arrivesNextDay, needsTransit, usualFlights } from '@/lib/issueDesk';
 import { FlightDraft, FlightTicketView, HotelDraft, HotelVoucherView } from './ticket-views';
 
 const input = 'h-9 w-full rounded-md border border-[var(--card-border)] bg-[var(--background)] px-3 text-sm';
@@ -34,6 +34,8 @@ export default function IssueDeskPage() {
     depart2: '',
     arrive2: '',
     flightNo2: '',
+    nextDay: false,
+    nextDay2: false,
     cabin: 'Economy',
     baggage: '20 kg',
     price: '',
@@ -68,11 +70,12 @@ export default function IssueDeskPage() {
     );
   };
 
-  const applyUsual = (leg: 1 | 2, flightNo: string, depart: string, arrive: string) => {
+  const applyUsual = (leg: 1 | 2, flightNo: string, depart: string, arrive: string, nextDay?: boolean) => {
+    const overnight = arrivesNextDay(depart, arrive, nextDay);
     setFlight((f) =>
       leg === 2
-        ? { ...f, flightNo2: flightNo, depart2: depart, arrive2: arrive }
-        : { ...f, flightNo, depart, arrive }
+        ? { ...f, flightNo2: flightNo, depart2: depart, arrive2: arrive, nextDay2: overnight }
+        : { ...f, flightNo, depart, arrive, nextDay: overnight }
     );
   };
 
@@ -96,9 +99,11 @@ export default function IssueDeskPage() {
       flightNo: leg1?.flightNo || '',
       depart: leg1?.depart || '',
       arrive: leg1?.arrive || '',
+      nextDay: arrivesNextDay(leg1?.depart || '', leg1?.arrive || '', leg1?.nextDay),
       flightNo2: leg2?.flightNo || '',
       depart2: leg2?.depart || '',
       arrive2: leg2?.arrive || '',
+      nextDay2: arrivesNextDay(leg2?.depart || '', leg2?.arrive || '', leg2?.nextDay),
     }));
   };
 
@@ -192,7 +197,12 @@ export default function IssueDeskPage() {
               <label className="text-xs">Date<input className={input} value={flight.date} onChange={(e) => setFlight({ ...flight, date: e.target.value })} placeholder="14 Sep 2026" /></label>
               <label className="text-xs">{flight.routing === 'transit' ? 'Flight 1' : 'Flight'}<input className={input} value={flight.flightNo} onChange={(e) => setFlight({ ...flight, flightNo: e.target.value })} placeholder="8M 331" /></label>
               <label className="text-xs">Depart<input className={input} value={flight.depart} onChange={(e) => setFlight({ ...flight, depart: e.target.value })} placeholder="09:30" /></label>
-              <label className="text-xs">Arrive<input className={input} value={flight.arrive} onChange={(e) => setFlight({ ...flight, arrive: e.target.value })} placeholder="09:05" /></label>
+              <label className="text-xs">Arrive
+                <div className="flex gap-1">
+                  <input className={input} value={flight.arrive} onChange={(e) => setFlight({ ...flight, arrive: e.target.value, nextDay: arrivesNextDay(flight.depart, e.target.value) })} placeholder="09:05" />
+                  <button type="button" onClick={() => setFlight({ ...flight, nextDay: !flight.nextDay })} className={`h-9 shrink-0 rounded-md px-2 text-[11px] font-semibold ${flight.nextDay ? 'bg-[#0b1f33] text-white' : 'border border-[var(--card-border)]'}`}>+1</button>
+                </div>
+              </label>
               <label className="text-xs">PNR<input className={input} value={flight.pnr} onChange={(e) => setFlight({ ...flight, pnr: e.target.value.toUpperCase() })} /></label>
               <label className="text-xs">Ticket no.<input className={input} value={flight.ticketNo} onChange={(e) => setFlight({ ...flight, ticketNo: e.target.value })} /></label>
               <label className="text-xs">Cabin<input className={input} value={flight.cabin} onChange={(e) => setFlight({ ...flight, cabin: e.target.value })} /></label>
@@ -202,7 +212,12 @@ export default function IssueDeskPage() {
                   <label className="text-xs">Flight 2<input className={input} value={flight.flightNo2} onChange={(e) => setFlight({ ...flight, flightNo2: e.target.value })} placeholder="EK 376" /></label>
                   <label className="text-xs">Date 2<input className={input} value={flight.date2} onChange={(e) => setFlight({ ...flight, date2: e.target.value })} placeholder="Same day if blank" /></label>
                   <label className="text-xs">Depart 2<input className={input} value={flight.depart2} onChange={(e) => setFlight({ ...flight, depart2: e.target.value })} /></label>
-                  <label className="text-xs">Arrive 2<input className={input} value={flight.arrive2} onChange={(e) => setFlight({ ...flight, arrive2: e.target.value })} /></label>
+                  <label className="text-xs">Arrive 2
+                    <div className="flex gap-1">
+                      <input className={input} value={flight.arrive2} onChange={(e) => setFlight({ ...flight, arrive2: e.target.value, nextDay2: arrivesNextDay(flight.depart2, e.target.value) })} />
+                      <button type="button" onClick={() => setFlight({ ...flight, nextDay2: !flight.nextDay2 })} className={`h-9 shrink-0 rounded-md px-2 text-[11px] font-semibold ${flight.nextDay2 ? 'bg-[#0b1f33] text-white' : 'border border-[var(--card-border)]'}`}>+1</button>
+                    </div>
+                  </label>
                 </>
               )}
             </div>
@@ -297,7 +312,7 @@ function UsualChips({
   airlineId: string;
   from: string;
   to: string;
-  onPick: (flightNo: string, depart: string, arrive: string) => void;
+  onPick: (flightNo: string, depart: string, arrive: string, nextDay?: boolean) => void;
 }) {
   const options = usualFlights(airlineId, from, to);
   return (
@@ -306,8 +321,8 @@ function UsualChips({
       {options.length ? (
         <div className="flex flex-wrap gap-1">
           {options.map((option) => (
-            <button key={option.flightNo} type="button" onClick={() => onPick(option.flightNo, option.depart, option.arrive)} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">
-              {option.flightNo} {option.depart}
+            <button key={option.flightNo} type="button" onClick={() => onPick(option.flightNo, option.depart, option.arrive, option.nextDay)} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">
+              {option.flightNo} {option.depart}{arrivesNextDay(option.depart, option.arrive, option.nextDay) ? ' +1' : ''}
             </button>
           ))}
         </div>

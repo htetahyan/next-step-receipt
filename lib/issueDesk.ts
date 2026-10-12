@@ -49,6 +49,7 @@ export type UsualFlight = {
   flightNo: string;
   depart: string;
   arrive: string;
+  nextDay?: boolean;
 };
 
 export const USUAL_FLIGHTS: UsualFlight[] = [
@@ -64,17 +65,17 @@ export const USUAL_FLIGHTS: UsualFlight[] = [
   { airlineId: 'mai', from: 'SIN', to: 'RGN', flightNo: '8M 232', depart: '14:40', arrive: '16:15' },
   { airlineId: 'mai', from: 'RGN', to: 'KUL', flightNo: '8M 501', depart: '09:00', arrive: '13:00' },
   { airlineId: 'mai', from: 'KUL', to: 'RGN', flightNo: '8M 502', depart: '14:20', arrive: '15:50' },
-  { airlineId: 'mai', from: 'RGN', to: 'ICN', flightNo: '8M 901', depart: '23:20', arrive: '07:40' },
+  { airlineId: 'mai', from: 'RGN', to: 'ICN', flightNo: '8M 901', depart: '23:20', arrive: '07:40', nextDay: true },
   { airlineId: 'mai', from: 'ICN', to: 'RGN', flightNo: '8M 902', depart: '09:20', arrive: '13:00' },
   { airlineId: 'thai', from: 'RGN', to: 'BKK', flightNo: 'TG 304', depart: '08:00', arrive: '09:50' },
   { airlineId: 'thai', from: 'BKK', to: 'RGN', flightNo: 'TG 303', depart: '10:50', arrive: '11:40' },
   { airlineId: 'thai', from: 'RGN', to: 'BKK', flightNo: 'TG 306', depart: '18:10', arrive: '20:00' },
   { airlineId: 'thai', from: 'BKK', to: 'RGN', flightNo: 'TG 305', depart: '16:00', arrive: '16:50' },
   { airlineId: 'thai', from: 'BKK', to: 'DXB', flightNo: 'TG 475', depart: '01:25', arrive: '05:10' },
-  { airlineId: 'thai', from: 'DXB', to: 'BKK', flightNo: 'TG 476', depart: '21:20', arrive: '06:55' },
+  { airlineId: 'thai', from: 'DXB', to: 'BKK', flightNo: 'TG 476', depart: '21:20', arrive: '06:55', nextDay: true },
   { airlineId: 'emirates', from: 'BKK', to: 'DXB', flightNo: 'EK 385', depart: '01:35', arrive: '05:20' },
   { airlineId: 'emirates', from: 'DXB', to: 'BKK', flightNo: 'EK 384', depart: '03:15', arrive: '12:45' },
-  { airlineId: 'emirates', from: 'BKK', to: 'DXB', flightNo: 'EK 373', depart: '20:20', arrive: '00:05' },
+  { airlineId: 'emirates', from: 'BKK', to: 'DXB', flightNo: 'EK 373', depart: '20:20', arrive: '00:05', nextDay: true },
   { airlineId: 'emirates', from: 'DXB', to: 'BKK', flightNo: 'EK 376', depart: '09:35', arrive: '19:05' },
   { airlineId: 'qatar', from: 'RGN', to: 'DOH', flightNo: 'QR 639', depart: '18:55', arrive: '22:35' },
   { airlineId: 'qatar', from: 'DOH', to: 'RGN', flightNo: 'QR 638', depart: '02:20', arrive: '11:35' },
@@ -96,6 +97,44 @@ export function airlineById(id: string) {
 
 export function usualFlights(airlineId: string, from: string, to: string) {
   return USUAL_FLIGHTS.filter((f) => f.airlineId === airlineId && f.from === from && f.to === to);
+}
+
+export function minutesOf(time: string) {
+  const match = time.trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+export function arrivesNextDay(depart: string, arrive: string, flagged?: boolean) {
+  if (flagged) return true;
+  const d = minutesOf(depart);
+  const a = minutesOf(arrive);
+  if (d === null || a === null) return false;
+  return a < d;
+}
+
+export function addOneDay(raw: string) {
+  const value = raw.trim();
+  if (!value) return '';
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) {
+    const date = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]) + 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+  const dmy = value.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) {
+    const date = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]) + 1);
+    return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+  }
+  const named = value.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+  if (named) {
+    const date = new Date(`${named[2]} ${named[1]}, ${named[3]}`);
+    if (!Number.isNaN(date.getTime())) {
+      date.setDate(date.getDate() + 1);
+      return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+  }
+  return `${value} +1`;
 }
 
 export function needsTransit(from: string, to: string) {
