@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { downloadInvoicePdf } from '@/lib/invoicePdf';
-import { AIRLINES, AIRPORTS, SECTORS, TRANSIT_ROUTES, airlineById, arrivesNextDay, needsTransit, usualFlights } from '@/lib/issueDesk';
+import { AIRLINES, AIRPORTS, SECTORS, TRANSIT_ROUTES, airlineById, arrivesNextDay, generateTicketNo, needsTransit, usualFlights } from '@/lib/issueDesk';
 import { FlightDraft, FlightTicketView, HotelDraft, HotelVoucherView } from './ticket-views';
 
 const input = 'h-9 w-full rounded-md border border-[var(--card-border)] bg-[var(--background)] px-3 text-sm';
@@ -21,7 +21,7 @@ export default function IssueDeskPage() {
     logo2: '/airlines/emirates.png',
     passenger: '',
     pnr: '',
-    ticketNo: '',
+    ticketNo: generateTicketNo('mai'),
     from: 'RGN',
     to: 'BKK',
     routing: 'direct',
@@ -66,7 +66,7 @@ export default function IssueDeskPage() {
     setFlight((f) =>
       leg === 2
         ? { ...f, airlineId2: id, airlineName2: airline.name, logo2: airline.logo }
-        : { ...f, airlineId: id, airlineName: airline.name, logo: airline.logo }
+        : { ...f, airlineId: id, airlineName: airline.name, logo: airline.logo, ticketNo: generateTicketNo(id) }
     );
   };
 
@@ -104,6 +104,7 @@ export default function IssueDeskPage() {
       depart2: leg2?.depart || '',
       arrive2: leg2?.arrive || '',
       nextDay2: arrivesNextDay(leg2?.depart || '', leg2?.arrive || '', leg2?.nextDay),
+      ticketNo: generateTicketNo(route.airline1),
     }));
   };
 
@@ -111,6 +112,10 @@ export default function IssueDeskPage() {
     if (!sheet.current) return;
     setBusy(true);
     try {
+      if (kind === 'flight' && !flight.ticketNo) {
+        setFlight((f) => ({ ...f, ticketNo: generateTicketNo(f.airlineId) }));
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
       const name = kind === 'flight' ? flight.passenger || 'ticket' : hotel.guest || 'voucher';
       await downloadInvoicePdf(sheet.current, `${kind}-${name}.pdf`);
     } catch (err: any) {
@@ -203,8 +208,9 @@ export default function IssueDeskPage() {
                   <button type="button" onClick={() => setFlight({ ...flight, nextDay: !flight.nextDay })} className={`h-9 shrink-0 rounded-md px-2 text-[11px] font-semibold ${flight.nextDay ? 'bg-[#0b1f33] text-white' : 'border border-[var(--card-border)]'}`}>+1</button>
                 </div>
               </label>
-              <label className="text-xs">PNR<input className={input} value={flight.pnr} onChange={(e) => setFlight({ ...flight, pnr: e.target.value.toUpperCase() })} /></label>
-              <label className="text-xs">Ticket no.<input className={input} value={flight.ticketNo} onChange={(e) => setFlight({ ...flight, ticketNo: e.target.value })} /></label>
+              <label className="text-xs col-span-2">PNR / booking code
+                <input className={input} value={flight.pnr} onChange={(e) => setFlight({ ...flight, pnr: e.target.value.toUpperCase() })} placeholder="Needed for check-in" />
+              </label>
               <label className="text-xs">Cabin<input className={input} value={flight.cabin} onChange={(e) => setFlight({ ...flight, cabin: e.target.value })} /></label>
               <label className="text-xs">Baggage<input className={input} value={flight.baggage} onChange={(e) => setFlight({ ...flight, baggage: e.target.value })} /></label>
               {flight.routing === 'transit' && (

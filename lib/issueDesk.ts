@@ -95,6 +95,22 @@ export function airlineById(id: string) {
   return AIRLINES.find((a) => a.id === id);
 }
 
+const TICKET_PREFIX: Record<string, string> = {
+  mai: '239',
+  thai: '217',
+  emirates: '176',
+  qatar: '157',
+  malaysia: '232',
+  singapore: '618',
+};
+
+export function generateTicketNo(airlineId: string) {
+  const prefix = TICKET_PREFIX[airlineId] || '000';
+  let rest = '';
+  for (let i = 0; i < 10; i++) rest += String(Math.floor(Math.random() * 10));
+  return `${prefix} ${rest.slice(0, 4)} ${rest.slice(4, 7)} ${rest.slice(7)}`;
+}
+
 export function usualFlights(airlineId: string, from: string, to: string) {
   return USUAL_FLIGHTS.filter((f) => f.airlineId === airlineId && f.from === from && f.to === to);
 }

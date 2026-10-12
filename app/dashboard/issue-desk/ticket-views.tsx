@@ -121,8 +121,8 @@ export function FlightTicketView({ draft }: { draft: FlightDraft }) {
         <div className="mt-4 grid grid-cols-4 gap-3 text-sm">
           <Field label="Cabin" value={draft.cabin} />
           <Field label="Baggage" value={draft.baggage} />
-          <Field label="Ticket" value={draft.ticketNo} />
           <Field label="Status" value="Confirmed" />
+          <Field label="E-ticket" value={draft.ticketNo || '—'} />
         </div>
         {draft.showPrice && (
           <div className="mt-5 flex items-end justify-between border-t border-[#eadfcf] pt-4">
