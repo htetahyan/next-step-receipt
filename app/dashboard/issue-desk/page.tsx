@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { downloadInvoicePdf } from '@/lib/invoicePdf';
-import { AIRLINES, AIRPORTS, SECTORS } from '@/lib/issueDesk';
+import { AIRLINES, AIRPORTS, SECTORS, airlineById, needsTransit, usualFlights } from '@/lib/issueDesk';
 import { FlightDraft, FlightTicketView, HotelDraft, HotelVoucherView } from './ticket-views';
 
 const input = 'h-9 w-full rounded-md border border-[var(--card-border)] bg-[var(--background)] px-3 text-sm';
@@ -16,6 +16,9 @@ export default function IssueDeskPage() {
     airlineId: 'mai',
     airlineName: AIRLINES[0].name,
     logo: AIRLINES[0].logo,
+    airlineId2: 'emirates',
+    airlineName2: 'Emirates',
+    logo2: '/airlines/emirates.png',
     passenger: '',
     pnr: '',
     ticketNo: '',
@@ -35,8 +38,8 @@ export default function IssueDeskPage() {
     baggage: '20 kg',
     price: '',
     currency: 'USD',
-    showPrice: true,
-    showLogo: true,
+    showPrice: false,
+    showLogo: false,
   });
   const [hotel, setHotel] = useState<HotelDraft>({
     guest: '',
@@ -51,14 +54,26 @@ export default function IssueDeskPage() {
     price: '',
     currency: 'USD',
     showPrice: false,
-    showLogo: true,
+    showLogo: false,
     note: '',
   });
 
-  const pickAirline = (id: string) => {
-    const airline = AIRLINES.find((a) => a.id === id);
+  const pickAirline = (id: string, leg: 1 | 2 = 1) => {
+    const airline = airlineById(id);
     if (!airline) return;
-    setFlight((f) => ({ ...f, airlineId: id, airlineName: airline.name, logo: airline.logo }));
+    setFlight((f) =>
+      leg === 2
+        ? { ...f, airlineId2: id, airlineName2: airline.name, logo2: airline.logo }
+        : { ...f, airlineId: id, airlineName: airline.name, logo: airline.logo }
+    );
+  };
+
+  const applyUsual = (leg: 1 | 2, flightNo: string, depart: string, arrive: string) => {
+    setFlight((f) =>
+      leg === 2
+        ? { ...f, flightNo2: flightNo, depart2: depart, arrive2: arrive }
+        : { ...f, flightNo, depart, arrive }
+    );
   };
 
   const download = async () => {
@@ -88,14 +103,16 @@ export default function IssueDeskPage() {
 
         {kind === 'flight' ? (
           <div className="space-y-3">
-            <div className="flex gap-2">
-              {AIRLINES.map((airline) => (
-                <button key={airline.id} type="button" onClick={() => pickAirline(airline.id)} className={`flex items-center gap-2 rounded-md border px-2 py-1 text-xs ${flight.airlineId === airline.id ? 'border-[#0e2a22] bg-[#0e2a22] text-white' : 'border-[var(--card-border)]'}`}>
-                  <img src={airline.logo} alt="" className="h-6 w-6 rounded bg-white object-contain" />
-                  {airline.code}
-                </button>
-              ))}
+            <div>
+              <div className="mb-1 text-[11px] uppercase tracking-wide opacity-60">{flight.routing === 'transit' ? 'Airline 1' : 'Airline'}</div>
+              <AirlineRow selected={flight.airlineId} onPick={(id) => pickAirline(id, 1)} />
             </div>
+            {flight.routing === 'transit' && (
+              <div>
+                <div className="mb-1 text-[11px] uppercase tracking-wide opacity-60">Airline 2</div>
+                <AirlineRow selected={flight.airlineId2} onPick={(id) => pickAirline(id, 2)} />
+              </div>
+            )}
             <label className="block text-xs">Passenger<input className={input} value={flight.passenger} onChange={(e) => setFlight({ ...flight, passenger: e.target.value })} /></label>
             <div className="flex flex-wrap gap-1">
               {SECTORS.map(([from, to]) => (
@@ -125,9 +142,10 @@ export default function IssueDeskPage() {
                 </select>
               </label>
               <label className="text-xs">Date<input className={input} value={flight.date} onChange={(e) => setFlight({ ...flight, date: e.target.value })} placeholder="14 Sep 2026" /></label>
-              <label className="text-xs">{flight.routing === 'transit' ? 'Flight 1' : 'Flight'}<input className={input} value={flight.flightNo} onChange={(e) => setFlight({ ...flight, flightNo: e.target.value })} placeholder="8M 501" /></label>
+              <label className="text-xs">{flight.routing === 'transit' ? 'Flight 1' : 'Flight'}<input className={input} value={flight.flightNo} onChange={(e) => setFlight({ ...flight, flightNo: e.target.value })} placeholder="8M 331" /></label>
               <label className="text-xs">Depart<input className={input} value={flight.depart} onChange={(e) => setFlight({ ...flight, depart: e.target.value })} placeholder="09:30" /></label>
-              <label className="text-xs">Arrive<input className={input} value={flight.arrive} onChange={(e) => setFlight({ ...flight, arrive: e.target.value })} placeholder="11:20" /></label>
+              <label className="text-xs">Arrive<input className={input} value={flight.arrive} onChange={(e) => setFlight({ ...flight, arrive: e.target.value })} placeholder="09:05" /></label>
+              <UsualChips airlineId={flight.airlineId} from={flight.from} to={flight.routing === 'transit' ? flight.via : flight.to} onPick={(fno, dep, arr) => applyUsual(1, fno, dep, arr)} />
               <label className="text-xs">PNR<input className={input} value={flight.pnr} onChange={(e) => setFlight({ ...flight, pnr: e.target.value.toUpperCase() })} /></label>
               <label className="text-xs">Ticket no.<input className={input} value={flight.ticketNo} onChange={(e) => setFlight({ ...flight, ticketNo: e.target.value })} /></label>
               <label className="text-xs">Cabin<input className={input} value={flight.cabin} onChange={(e) => setFlight({ ...flight, cabin: e.target.value })} /></label>
@@ -138,6 +156,7 @@ export default function IssueDeskPage() {
                   <label className="text-xs">Date 2<input className={input} value={flight.date2} onChange={(e) => setFlight({ ...flight, date2: e.target.value })} placeholder="Same day if blank" /></label>
                   <label className="text-xs">Depart 2<input className={input} value={flight.depart2} onChange={(e) => setFlight({ ...flight, depart2: e.target.value })} /></label>
                   <label className="text-xs">Arrive 2<input className={input} value={flight.arrive2} onChange={(e) => setFlight({ ...flight, arrive2: e.target.value })} /></label>
+                  <UsualChips airlineId={flight.airlineId2} from={flight.via} to={flight.to} onPick={(fno, dep, arr) => applyUsual(2, fno, dep, arr)} />
                 </>
               )}
             </div>
@@ -192,9 +211,31 @@ export default function IssueDeskPage() {
   );
 }
 
-function needsTransit(from: string, to: string) {
-  const pair = [from, to].sort().join('-');
-  return pair === 'DXB-RGN' || pair === 'DXB-MDL' || pair === 'AUH-RGN' || pair === 'DOH-RGN';
+function AirlineRow({ selected, onPick }: { selected: string; onPick: (id: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {AIRLINES.map((airline) => (
+        <button key={airline.id} type="button" onClick={() => onPick(airline.id)} className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${selected === airline.id ? 'border-[#0b1f33] bg-[#0b1f33] text-white' : 'border-[var(--card-border)]'}`}>
+          <img src={airline.logo} alt="" className="h-5 w-5 rounded bg-white object-contain" />
+          {airline.code}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function UsualChips({ airlineId, from, to, onPick }: { airlineId: string; from: string; to: string; onPick: (flightNo: string, depart: string, arrive: string) => void }) {
+  const options = usualFlights(airlineId, from, to);
+  if (!options.length) return null;
+  return (
+    <div className="col-span-2 flex flex-wrap gap-1">
+      {options.map((option) => (
+        <button key={option.flightNo} type="button" onClick={() => onPick(option.flightNo, option.depart, option.arrive)} className="rounded-full border border-[var(--card-border)] px-2 py-1 text-[11px]">
+          {option.flightNo} {option.depart}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function Toggle({ label, on, set }: { label: string; on: boolean; set: (v: boolean) => void }) {

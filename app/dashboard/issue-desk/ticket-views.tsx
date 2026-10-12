@@ -6,6 +6,9 @@ export type FlightDraft = {
   airlineId: string;
   airlineName: string;
   logo: string;
+  airlineId2: string;
+  airlineName2: string;
+  logo2: string;
   passenger: string;
   pnr: string;
   ticketNo: string;
@@ -47,69 +50,116 @@ export type HotelDraft = {
 };
 
 export function FlightTicketView({ draft }: { draft: FlightDraft }) {
+  const twoCarriers = draft.routing === 'transit' && draft.logo2 && draft.logo2 !== draft.logo;
   return (
-    <div className="w-[820px] bg-[#f6f1e8] text-[#14221c] shadow-2xl">
-      <div className="flex items-center justify-between bg-[#0e2a22] px-8 py-5 text-[#f6f1e8]">
+    <div className="w-[860px] overflow-hidden rounded-sm bg-white text-[#111827] shadow-[0_24px_60px_rgba(14,42,34,0.18)]">
+      <div className="flex items-center justify-between bg-[#0b1f33] px-8 py-4 text-white">
         <div className="flex items-center gap-4">
-          {draft.logo ? (
-            <img src={draft.logo} alt="" className="h-14 w-14 rounded-md bg-white object-contain p-1" />
-          ) : null}
+          {draft.logo ? <img src={draft.logo} alt="" className="h-12 w-12 rounded bg-white object-contain p-0.5" /> : null}
+          {twoCarriers ? <img src={draft.logo2} alt="" className="h-12 w-12 rounded bg-white object-contain p-0.5" /> : null}
           <div>
-            <div className="text-[11px] tracking-[0.28em] uppercase text-[#d7c4a3]">Electronic ticket</div>
-            <div className="text-xl font-semibold">{draft.airlineName || 'Airline'}</div>
-          </div>
-        </div>
-        {draft.showLogo ? <img src="/logo.png" alt="NextStep" className="h-16 w-auto object-contain" /> : <div className="text-xs tracking-[0.2em] uppercase text-[#d7c4a3]">Itinerary</div>}
-      </div>
-      <div className="px-8 py-6">
-        <div className="text-[11px] uppercase tracking-[0.22em] text-[#8a7352]">Passenger</div>
-        <div className="mt-1 text-3xl font-semibold tracking-tight">{draft.passenger || 'Passenger name'}</div>
-        <div className={`mt-6 grid items-end gap-3 border-y border-[#d9cbb6] py-5 ${draft.routing === 'transit' ? 'grid-cols-3' : 'grid-cols-[1fr_auto_1fr]'}`}>
-          <div>
-            <div className="text-4xl font-semibold">{draft.from || 'RGN'}</div>
-            <div className="text-sm text-[#5c6b63]">{airportCity(draft.from)}</div>
-          </div>
-          {draft.routing === 'transit' ? (
-            <div className="text-center">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-[#8a7352]">Via</div>
-              <div className="text-4xl font-semibold">{draft.via || 'BKK'}</div>
-              <div className="text-sm text-[#5c6b63]">{airportCity(draft.via)}</div>
+            <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9b48a]">Passenger itinerary</div>
+            <div className="text-lg font-semibold leading-tight">
+              {twoCarriers ? `${draft.airlineName} + ${draft.airlineName2}` : draft.airlineName || 'Airline'}
             </div>
-          ) : (
-            <div className="pb-3 text-center text-xs uppercase tracking-[0.2em] text-[#8a7352]">Direct</div>
-          )}
-          <div className={draft.routing === 'transit' ? '' : 'text-right'}>
-            <div className="text-4xl font-semibold">{draft.to || 'BKK'}</div>
-            <div className="text-sm text-[#5c6b63]">{airportCity(draft.to)}</div>
           </div>
         </div>
-        <div className="mt-5 grid grid-cols-4 gap-4 text-sm">
-          <Field label="Date" value={draft.date} />
-          <Field label="Depart" value={draft.depart} />
-          <Field label="Arrive" value={draft.arrive} />
-          <Field label={draft.routing === 'transit' ? 'Flight 1' : 'Flight'} value={draft.flightNo} />
-          {draft.routing === 'transit' && (
-            <>
-              <Field label="Connection date" value={draft.date2 || draft.date} />
-              <Field label="Depart 2" value={draft.depart2} />
-              <Field label="Arrive 2" value={draft.arrive2} />
-              <Field label="Flight 2" value={draft.flightNo2} />
-            </>
+        {draft.showLogo ? <img src="/logo.png" alt="NextStep" className="h-14 w-auto object-contain" /> : <div className="text-[10px] uppercase tracking-[0.24em] text-[#c9b48a]">Confirmed</div>}
+      </div>
+
+      <div className="px-8 py-5">
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[#8a7352]">Passenger</div>
+            <div className="mt-0.5 text-[28px] font-semibold tracking-tight">{draft.passenger || 'Passenger name'}</div>
+          </div>
+          <div className="text-right text-sm">
+            <div className="text-[10px] uppercase tracking-[0.16em] text-[#8a7352]">PNR</div>
+            <div className="font-mono text-lg font-semibold">{draft.pnr || '—'}</div>
+          </div>
+        </div>
+
+        <div className={`mt-5 grid items-center gap-2 rounded-lg bg-[#f6f1e8] px-5 py-4 ${draft.routing === 'transit' ? 'grid-cols-3' : 'grid-cols-[1fr_auto_1fr]'}`}>
+          <AirportBlock code={draft.from || 'RGN'} align="left" />
+          {draft.routing === 'transit' ? (
+            <AirportBlock code={draft.via || 'BKK'} align="center" label="Via" />
+          ) : (
+            <div className="text-center text-[10px] uppercase tracking-[0.22em] text-[#8a7352]">Nonstop</div>
           )}
+          <AirportBlock code={draft.to || 'BKK'} align={draft.routing === 'transit' ? 'right' : 'right'} />
+        </div>
+
+        <Leg
+          title={draft.routing === 'transit' ? 'Leg 1' : 'Flight'}
+          logo={draft.logo}
+          airline={draft.airlineName}
+          from={draft.from}
+          to={draft.routing === 'transit' ? draft.via : draft.to}
+          date={draft.date}
+          depart={draft.depart}
+          arrive={draft.arrive}
+          flightNo={draft.flightNo}
+        />
+        {draft.routing === 'transit' && (
+          <Leg
+            title="Leg 2"
+            logo={draft.logo2 || draft.logo}
+            airline={draft.airlineName2 || draft.airlineName}
+            from={draft.via}
+            to={draft.to}
+            date={draft.date2 || draft.date}
+            depart={draft.depart2}
+            arrive={draft.arrive2}
+            flightNo={draft.flightNo2}
+          />
+        )}
+
+        <div className="mt-4 grid grid-cols-4 gap-3 text-sm">
           <Field label="Cabin" value={draft.cabin} />
           <Field label="Baggage" value={draft.baggage} />
-          <Field label="PNR" value={draft.pnr} />
           <Field label="Ticket" value={draft.ticketNo} />
+          <Field label="Status" value="Confirmed" />
         </div>
         {draft.showPrice && (
-          <div className="mt-6 flex items-end justify-between border-t border-[#d9cbb6] pt-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-[#8a7352]">Fare</div>
+          <div className="mt-5 flex items-end justify-between border-t border-[#eadfcf] pt-4">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-[#8a7352]">Fare</div>
             <div className="text-2xl font-semibold">{draft.currency} {draft.price || '0'}</div>
           </div>
         )}
-        <p className="mt-6 text-[11px] leading-relaxed text-[#6d6458]">
-          Issued by NextStep Travel & Tourism. This document is a passenger itinerary for the client. Check in with the airline using the PNR.
+        <p className="mt-5 text-[11px] leading-relaxed text-[#6d6458]">
+          Issued as a dummy / client itinerary. Check in with the operating airline using the PNR. Not a boarding pass.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function AirportBlock({ code, align, label }: { code: string; align: 'left' | 'center' | 'right'; label?: string }) {
+  return (
+    <div className={align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : ''}>
+      {label ? <div className="text-[10px] uppercase tracking-[0.18em] text-[#8a7352]">{label}</div> : null}
+      <div className="text-[40px] font-semibold leading-none">{code}</div>
+      <div className="mt-1 text-sm text-[#5c6b63]">{airportCity(code)}</div>
+    </div>
+  );
+}
+
+function Leg({
+  title, logo, airline, from, to, date, depart, arrive, flightNo,
+}: {
+  title: string; logo: string; airline: string; from: string; to: string; date: string; depart: string; arrive: string; flightNo: string;
+}) {
+  return (
+    <div className="mt-4 flex items-center gap-4 rounded-lg border border-[#eadfcf] px-4 py-3">
+      {logo ? <img src={logo} alt="" className="h-10 w-10 rounded bg-[#f6f1e8] object-contain p-0.5" /> : null}
+      <div className="min-w-[140px]">
+        <div className="text-[10px] uppercase tracking-[0.16em] text-[#8a7352]">{title}</div>
+        <div className="text-sm font-semibold">{airline}</div>
+        <div className="font-mono text-sm">{flightNo || '—'}</div>
+      </div>
+      <div className="flex-1 text-sm">
+        <div className="font-semibold">{from} → {to}</div>
+        <div className="text-[#5c6b63]">{date || 'Date'} · {depart || '—'} – {arrive || '—'}</div>
       </div>
     </div>
   );
@@ -117,17 +167,17 @@ export function FlightTicketView({ draft }: { draft: FlightDraft }) {
 
 export function HotelVoucherView({ draft }: { draft: HotelDraft }) {
   return (
-    <div className="w-[820px] bg-[#f7f5f1] text-[#1b1a17] shadow-2xl">
-      <div className="flex items-center justify-between border-b border-[#e4ddd2] px-8 py-5">
+    <div className="w-[820px] overflow-hidden rounded-sm bg-white text-[#1b1a17] shadow-[0_24px_60px_rgba(14,42,34,0.18)]">
+      <div className="flex items-center justify-between bg-[#0b1f33] px-8 py-5 text-white">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.28em] text-[#8d7348]">Hotel voucher</div>
+          <div className="text-[10px] uppercase tracking-[0.28em] text-[#c9b48a]">Hotel voucher</div>
           <div className="mt-1 text-2xl font-semibold">{draft.hotel || 'Hotel name'}</div>
-          <div className="text-sm text-[#6d675f]">{draft.city || 'City'}</div>
+          <div className="text-sm text-white/70">{draft.city || 'City'}</div>
         </div>
-        {draft.showLogo ? <img src="/logo.png" alt="NextStep" className="h-16 w-auto object-contain" /> : null}
+        {draft.showLogo ? <img src="/logo.png" alt="NextStep" className="h-14 w-auto object-contain" /> : <div className="text-[10px] uppercase tracking-[0.24em] text-[#c9b48a]">Confirmed</div>}
       </div>
       <div className="px-8 py-6">
-        <div className="text-[11px] uppercase tracking-[0.22em] text-[#8d7348]">Guest</div>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-[#8d7348]">Guest</div>
         <div className="mt-1 text-3xl font-semibold">{draft.guest || 'Guest name'}</div>
         <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
           <Field label="Confirmation" value={draft.confirmation} />
@@ -138,13 +188,13 @@ export function HotelVoucherView({ draft }: { draft: HotelDraft }) {
           <Field label="Meal" value={draft.meal} />
         </div>
         {draft.showPrice && (
-          <div className="mt-6 flex items-end justify-between border-t border-[#e4ddd2] pt-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-[#8d7348]">Amount</div>
+          <div className="mt-6 flex items-end justify-between border-t border-[#eadfcf] pt-4">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-[#8d7348]">Amount</div>
             <div className="text-2xl font-semibold">{draft.currency} {draft.price || '0'}</div>
           </div>
         )}
         {draft.note ? <p className="mt-4 text-sm text-[#4d4943]">{draft.note}</p> : null}
-        <p className="mt-6 text-[11px] leading-relaxed text-[#6d675f]">Issued by NextStep Travel & Tourism for the guest named above.</p>
+        <p className="mt-6 text-[11px] leading-relaxed text-[#6d675f]">Issued as a client voucher. Present at the hotel with a passport.</p>
       </div>
     </div>
   );
