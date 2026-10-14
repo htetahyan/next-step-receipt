@@ -12,7 +12,7 @@ interface FormFieldProps {
   type?: string;
   placeholder?: string;
   options?: { label: string; value: string }[];
-  component?: 'input' | 'select' | 'textarea';
+  component?: 'input' | 'select' | 'textarea' | 'combobox';
   className?: string;
   readOnly?: boolean;
   list?: string;
@@ -65,11 +65,29 @@ export function FormField({
       {component === 'select' && (
         <select {...register(name)} className={inputCls} disabled={readOnly}>
           {options?.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option key={opt.value || opt.label} value={opt.value}>
               {opt.label}
             </option>
           ))}
         </select>
+      )}
+
+      {component === 'combobox' && (
+        <>
+          <input
+            {...register(name)}
+            list={`${name.replace(/\./g, '-')}-options`}
+            placeholder={placeholder || 'Type or choose'}
+            className={inputCls}
+            readOnly={readOnly}
+            autoComplete="off"
+          />
+          <datalist id={`${name.replace(/\./g, '-')}-options`}>
+            {options?.filter((opt) => opt.value).map((opt) => (
+              <option key={opt.value} value={opt.value} />
+            ))}
+          </datalist>
+        </>
       )}
 
       {component === 'textarea' && (

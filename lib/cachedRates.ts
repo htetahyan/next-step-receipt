@@ -47,7 +47,7 @@ export const getCachedSuppliersAndRates = unstable_cache(
         supabase.from('rate_cards').select('id, visa_type, section, sort_order, supplier_costs, selling_price, sub_agent_price, other_agent_price, remark, required_documents, created_at, updated_at').order('sort_order', { ascending: true })
       ]);
 
-      const suppliers = suppliersRes.data || [];
+      let suppliers = suppliersRes.data || [];
       let rateCards = (rateCardsRes.data as RateCard[]) || [];
 
       // If DB table has no rows yet, use default rate cards
@@ -60,7 +60,20 @@ export const getCachedSuppliersAndRates = unstable_cache(
         })) as RateCard[];
       }
 
-      // Filter only UAE Visa types (section: 'Visa' or non-'Other Services')
+      const names = new Set(suppliers.map((s: any) => String(s.name || '').trim()).filter(Boolean));
+      rateCards.forEach((rc) => {
+        Object.keys(rc.supplier_costs || {}).forEach((name) => {
+          const trimmed = name.trim();
+          if (trimmed) names.add(trimmed);
+        });
+      });
+      if (suppliers.length < names.size) {
+        const existing = new Set(suppliers.map((s: any) => String(s.name || '').trim()));
+        names.forEach((name) => {
+          if (!existing.has(name)) suppliers.push({ id: name, name });
+        });
+      }
+
       const uaeVisaTypes = rateCards
         .filter(r => (r.section || 'Visa').toLowerCase() === 'visa')
         .map(r => r.visa_type);
@@ -84,9 +97,9 @@ export const getCachedSuppliersAndRates = unstable_cache(
       };
     }
   },
-  ['suppliers-and-rates-v1'],
+  ['suppliers-and-rates-v2'],
   {
-    revalidate: 86400, // 24 hours default, instantly purged via revalidateRatesCache
+    revalidate: 300,
     tags: ['suppliers-rates', 'suppliers', 'rate_cards'],
   }
 );

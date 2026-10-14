@@ -23,7 +23,9 @@ export function AirTicketFields({ suppliers = [] }: AirTicketFieldsProps) {
         <FormField
           name="details.airline"
           label="Airline / Supplier *"
-          placeholder="e.g. Emirates, FlyDubai, Myanmar Airways"
+          component="combobox"
+          placeholder="Type or choose airline"
+          options={suppliers.filter((s) => s?.name).map((s) => ({ label: s.name, value: s.name }))}
         />
         <FormField
           name="category"

@@ -40,7 +40,8 @@ export function OtherVisaFields({
         <FormField
           name="details.visa_supplier"
           label="Supplier *"
-          component="select"
+          component="combobox"
+          placeholder="Type or choose supplier"
           options={supplierOptions}
         />
         <FormField

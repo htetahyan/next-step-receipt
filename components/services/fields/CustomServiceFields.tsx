@@ -30,7 +30,8 @@ export function CustomServiceFields({ suppliers }: CustomServiceFieldsProps) {
         <FormField
           name="details.supplier_name"
           label="Supplier"
-          component="select"
+          component="combobox"
+          placeholder="Type or choose supplier"
           options={supplierOptions}
         />
         

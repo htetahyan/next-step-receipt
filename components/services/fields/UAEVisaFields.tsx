@@ -23,7 +23,8 @@ export function UAEVisaFields({
         <FormField
           name="details.visa_supplier"
           label="Supplier *"
-          component="select"
+          component="combobox"
+          placeholder="Type or choose supplier"
           options={availableSuppliers.map((s) => ({ label: s, value: s }))}
         />
         <FormField

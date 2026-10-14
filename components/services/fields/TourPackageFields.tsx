@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { FormField } from '@/components/ui/form/FormField';
-import { SERVICE_STATUSES } from '@/lib/service-constants';
+import { SERVICE_STATUSES, VISA_SUPPLIERS } from '@/lib/service-constants';
 
 interface TourPackageFieldsProps {
   suppliers?: any[];
@@ -15,7 +15,7 @@ export function TourPackageFields({
 }: TourPackageFieldsProps) {
   const supplierOptions = useMemo(() => {
     const list: { label: string; value: string }[] = [
-      { label: 'Select Supplier...', value: '' },
+      ...VISA_SUPPLIERS.map((s) => ({ label: s, value: s })),
     ];
     suppliers.forEach((s) => {
       if (s?.name && !list.some((o) => o.value === s.name)) {
@@ -39,7 +39,8 @@ export function TourPackageFields({
         <FormField
           name="details.supplier_name"
           label="Supplier Name *"
-          component="select"
+          component="combobox"
+          placeholder="Type or choose supplier"
           options={supplierOptions}
         />
         <FormField
