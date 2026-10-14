@@ -3,6 +3,7 @@
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { FormField } from '@/components/ui/form/FormField';
+import { DropdownField } from '@/components/ui/form/DropdownField';
 import { SERVICE_STATUSES } from '@/lib/service-constants';
 
 interface AirTicketFieldsProps {
@@ -14,17 +15,16 @@ export function AirTicketFields({ suppliers = [] }: AirTicketFieldsProps) {
   const tripType = watch('category');
 
   return (
-    <div className="card-anthropic p-6">
+    <div className="card-anthropic p-6 overflow-visible">
       <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">
         Ticket Details
       </h3>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormField
+        <DropdownField
           name="details.airline"
           label="Airline / Supplier *"
-          component="combobox"
-          placeholder="Type or choose airline"
+          placeholder="Select airline"
           options={suppliers.filter((s) => s?.name).map((s) => ({ label: s.name, value: s.name }))}
         />
         <FormField

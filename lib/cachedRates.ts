@@ -97,7 +97,7 @@ export const getCachedSuppliersAndRates = unstable_cache(
       };
     }
   },
-  ['suppliers-and-rates-v2'],
+  ['suppliers-and-rates-v3'],
   {
     revalidate: 300,
     tags: ['suppliers-rates', 'suppliers', 'rate_cards'],

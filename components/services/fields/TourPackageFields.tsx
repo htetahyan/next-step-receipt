@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { FormField } from '@/components/ui/form/FormField';
+import { DropdownField } from '@/components/ui/form/DropdownField';
 import { SERVICE_STATUSES, VISA_SUPPLIERS } from '@/lib/service-constants';
 
 interface TourPackageFieldsProps {
@@ -30,17 +31,16 @@ export function TourPackageFields({
   }, [suppliers, initialData]);
 
   return (
-    <div className="card-anthropic p-6">
+    <div className="card-anthropic p-6 overflow-visible">
       <h3 className="text-xs font-serif uppercase tracking-wider opacity-50 pb-3 mb-4 border-b border-[var(--card-border)]">
         Tour Details
       </h3>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormField
+        <DropdownField
           name="details.supplier_name"
           label="Supplier Name *"
-          component="combobox"
-          placeholder="Type or choose supplier"
+          placeholder="Select supplier"
           options={supplierOptions}
         />
         <FormField
