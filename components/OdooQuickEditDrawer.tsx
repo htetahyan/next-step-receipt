@@ -11,6 +11,8 @@ import DocumentViewerModal from '@/components/DocumentViewerModal';
 import DeleteConfirmModal from '@/components/ui/DeleteConfirmModal';
 import { getDocuments } from '@/app/actions/documents';
 import { downloadDocumentFile, isImageFile } from '@/lib/downloadHelper';
+import { extractDuration } from '@/lib/rateAutofill';
+import { calculateVisaExpiryDate, toISODate } from '@/lib/serviceDates';
 
 interface Props {
   service: any | null;
@@ -86,18 +88,28 @@ export default function OdooQuickEditDrawer({
       const det = (service.details as any) || {};
       const fin = (service.financials as any) || {};
 
+      const resolvedCategory = service.category || 'UAE Visit Visa 30 Days';
+      const resolvedDuration = det.visa_duration || extractDuration(resolvedCategory) || '30 Days';
+      const resolvedTravel = det.travel_date || '';
+      const resolvedIssued = det.visa_issued_date || '';
+      const resolvedExpiry =
+        toISODate(det.visa_expiry_date) ||
+        calculateVisaExpiryDate(resolvedTravel || resolvedIssued, resolvedDuration, resolvedCategory) ||
+        det.visa_expiry_date ||
+        '';
+
       setReferenceId(service.reference_id || '');
       setStatus(service.status || 'Open');
-      setCategory(service.category || 'UAE Visit Visa 30 Days');
+      setCategory(resolvedCategory);
       setCustomerName(cust.name || det.customer_name || '');
       setPhone(cust.phone || det.phone || '');
       setPassportNo(cust.passport_no || det.passport_no || '');
 
       setVisaSupplier(det.visa_supplier || '');
-      setVisaDuration(det.visa_duration || '30 days');
-      setTravelDate(det.travel_date || '');
-      setVisaIssuedDate(det.visa_issued_date || '');
-      setVisaExpiryDate(det.visa_expiry_date || '');
+      setVisaDuration(resolvedDuration);
+      setTravelDate(resolvedTravel);
+      setVisaIssuedDate(resolvedIssued);
+      setVisaExpiryDate(resolvedExpiry);
       setHandledBy(det.handled_by || '');
       setReferredBy(det.referred_by || '');
       setComments(det.comments || det.remark || det.notes || '');
@@ -509,7 +521,18 @@ export default function OdooQuickEditDrawer({
                 <input
                   type="text"
                   value={category}
-                  onChange={e => setCategory(e.target.value)}
+                  onChange={e => {
+                    const nextCat = e.target.value;
+                    setCategory(nextCat);
+                    const extracted = extractDuration(nextCat);
+                    const nextDur = extracted || visaDuration;
+                    if (extracted) setVisaDuration(extracted);
+                    const baseDate = travelDate || visaIssuedDate;
+                    if (baseDate) {
+                      const nextExp = calculateVisaExpiryDate(baseDate, nextDur, nextCat);
+                      if (nextExp) setVisaExpiryDate(nextExp);
+                    }
+                  }}
                   className="w-full input-anthropic px-3 py-2 text-sm"
                 />
               </div>
@@ -534,8 +557,16 @@ export default function OdooQuickEditDrawer({
                 <input
                   type="text"
                   value={visaDuration}
-                  onChange={e => setVisaDuration(e.target.value)}
-                  placeholder="e.g. 30 days, 60 days"
+                  onChange={e => {
+                    const nextDur = e.target.value;
+                    setVisaDuration(nextDur);
+                    const baseDate = travelDate || visaIssuedDate;
+                    if (baseDate) {
+                      const nextExp = calculateVisaExpiryDate(baseDate, nextDur, category);
+                      if (nextExp) setVisaExpiryDate(nextExp);
+                    }
+                  }}
+                  placeholder="e.g. 30 Days, 60 Days, 48 Hours"
                   className="w-full input-anthropic px-3 py-2 text-sm"
                 />
               </div>
@@ -545,7 +576,15 @@ export default function OdooQuickEditDrawer({
                 <input
                   type="date"
                   value={visaIssuedDate}
-                  onChange={e => setVisaIssuedDate(e.target.value)}
+                  onChange={e => {
+                    const nextIssued = e.target.value;
+                    setVisaIssuedDate(nextIssued);
+                    const baseDate = travelDate || nextIssued;
+                    if (baseDate) {
+                      const nextExp = calculateVisaExpiryDate(baseDate, visaDuration, category);
+                      if (nextExp) setVisaExpiryDate(nextExp);
+                    }
+                  }}
                   className="w-full input-anthropic px-3 py-2 text-sm"
                 />
               </div>
@@ -555,7 +594,15 @@ export default function OdooQuickEditDrawer({
                 <input
                   type="date"
                   value={travelDate}
-                  onChange={e => setTravelDate(e.target.value)}
+                  onChange={e => {
+                    const nextTravel = e.target.value;
+                    setTravelDate(nextTravel);
+                    const baseDate = nextTravel || visaIssuedDate;
+                    if (baseDate) {
+                      const nextExp = calculateVisaExpiryDate(baseDate, visaDuration, category);
+                      if (nextExp) setVisaExpiryDate(nextExp);
+                    }
+                  }}
                   className="w-full input-anthropic px-3 py-2 text-sm"
                 />
               </div>

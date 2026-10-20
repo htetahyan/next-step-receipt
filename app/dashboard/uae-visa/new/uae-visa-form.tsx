@@ -9,7 +9,8 @@ import { ServiceFormShell } from '@/components/services/ServiceFormShell';
 import { UAEVisaFields } from '@/components/services/fields/UAEVisaFields';
 import { UAE_VISA_CATEGORIES, VISA_SUPPLIERS } from '@/lib/service-constants';
 import { UserProfile } from '@/lib/auth-permissions';
-import { findSupplierRate } from '@/lib/rateAutofill';
+import { extractDuration, findSupplierRate } from '@/lib/rateAutofill';
+import { calculateVisaExpiryDate } from '@/lib/serviceDates';
 import { RateCard } from '@/app/actions/rate-cards';
 
 interface Props {
@@ -92,16 +93,31 @@ export default function UAEVisaForm({
   const defaultCategory =
     initialData?.category || duplicateData?.category || availableVisaTypes[0] || 'Visit Visa (30 Days)';
 
+  const defaultIssuedDate =
+    initialData?.details?.visa_issued_date || duplicateData?.details?.visa_issued_date || '';
+  const defaultTravelDate =
+    initialData?.details?.travel_date || duplicateData?.details?.travel_date || '';
+  const defaultDuration =
+    initialData?.details?.visa_duration ||
+    duplicateData?.details?.visa_duration ||
+    extractDuration(defaultCategory) ||
+    '30 Days';
+  const defaultExpiryDate =
+    initialData?.details?.visa_expiry_date ||
+    duplicateData?.details?.visa_expiry_date ||
+    calculateVisaExpiryDate(defaultTravelDate || defaultIssuedDate, defaultDuration, defaultCategory) ||
+    '';
+
   const defaultValues: UAEVisaFormValues = {
     customerId: initialData?.customer_id || duplicateData?.customer_id || '',
     isNewCustomer: false,
     status: initialData?.status || 'Open',
     category: defaultCategory,
     details: {
-      visa_issued_date: initialData?.details?.visa_issued_date || duplicateData?.details?.visa_issued_date || '',
-      travel_date: initialData?.details?.travel_date || duplicateData?.details?.travel_date || '',
-      visa_expiry_date: initialData?.details?.visa_expiry_date || duplicateData?.details?.visa_expiry_date || '',
-      visa_duration: initialData?.details?.visa_duration || duplicateData?.details?.visa_duration || '30 Days',
+      visa_issued_date: defaultIssuedDate,
+      travel_date: defaultTravelDate,
+      visa_expiry_date: defaultExpiryDate,
+      visa_duration: defaultDuration,
       visa_supplier: initialData?.details?.visa_supplier || duplicateData?.details?.visa_supplier || availableSuppliers[0] || 'AKSM',
       handled_by: defaultHandledBy,
       referred_by: initialData?.details?.referred_by || duplicateData?.details?.referred_by || '',

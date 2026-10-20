@@ -60,11 +60,40 @@ export function parseCostOrPrice(val: any): number {
 export function extractDuration(visaType?: string | null): string | undefined {
   if (!visaType) return undefined;
   const lower = visaType.toLowerCase();
-  if (lower.includes('96 hour') || lower.includes('96hour')) return '96 Hours';
-  if (lower.includes('48 hour') || lower.includes('48hour')) return '48 Hours';
-  if (lower.includes('30 day') || lower.includes('30day') || lower.includes('30 days')) return '30 Days';
-  if (lower.includes('60 day') || lower.includes('60day') || lower.includes('60 days')) return '60 Days';
-  if (lower.includes('90 day') || lower.includes('90day') || lower.includes('90 days')) return '90 Days';
+  if (lower.includes('96 hour') || lower.includes('96hour') || lower.includes('96 hr') || lower.includes('96hr')) return '96 Hours';
+  if (lower.includes('48 hour') || lower.includes('48hour') || lower.includes('48 hr') || lower.includes('48hr')) return '48 Hours';
+  if (lower.includes('14 day') || lower.includes('14day')) return '14 Days';
+  if (
+    lower.includes('30 day') ||
+    lower.includes('30day') ||
+    lower.includes('30 days') ||
+    lower.includes('1 month') ||
+    lower.includes('one month') ||
+    lower.includes('30 visit')
+  ) {
+    return '30 Days';
+  }
+  if (
+    lower.includes('60 day') ||
+    lower.includes('60day') ||
+    lower.includes('60 days') ||
+    lower.includes('2 month') ||
+    lower.includes('two month') ||
+    lower.includes('60 visit')
+  ) {
+    return '60 Days';
+  }
+  if (
+    lower.includes('90 day') ||
+    lower.includes('90day') ||
+    lower.includes('90 days') ||
+    lower.includes('3 month') ||
+    lower.includes('three month')
+  ) {
+    return '90 Days';
+  }
+  if (lower.includes('transit')) return '48 Hours';
+  if (lower.includes('inside') || lower.includes('extension') || lower.includes('extend')) return '30 Days';
   return undefined;
 }
 

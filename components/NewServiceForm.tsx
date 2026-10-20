@@ -8,6 +8,7 @@ import { Loader2, UploadCloud, File, X, Plane, Building, Stamp } from 'lucide-re
 import { toast } from 'sonner';
 
 import { SERVICE_CATEGORIES } from '@/lib/service-constants';
+import { calculateVisaExpiryDate } from '@/lib/serviceDates';
 
 const CATEGORIES = [...SERVICE_CATEGORIES];
 
@@ -72,19 +73,13 @@ export default function NewServiceForm() {
           check_in: formData.get('check_in') || '',
           check_out: formData.get('check_out') || '',
           visa_expiry_date: (() => {
-            const travelDateStr = formData.get('travel_date') || formData.get('departure_date') || '';
-            const isBusOrAirChange = category === 'Visa Change by Bus' || category === 'Visa Change by Air';
-            if (isBusOrAirChange && travelDateStr) {
-              const tDate = new Date(String(travelDateStr));
-              if (!isNaN(tDate.getTime())) {
-                tDate.setDate(tDate.getDate() + 60);
-                const yyyy = tDate.getFullYear();
-                const mm = String(tDate.getMonth() + 1).padStart(2, '0');
-                const dd = String(tDate.getDate()).padStart(2, '0');
-                return `${yyyy}-${mm}-${dd}`;
-              }
-            }
-            return formData.get('visa_expiry_date') || '';
+            const explicitExpiry = String(formData.get('visa_expiry_date') || '').trim();
+            if (explicitExpiry) return explicitExpiry;
+            const baseDateStr = String(
+              formData.get('travel_date') || formData.get('departure_date') || formData.get('visa_issued_date') || ''
+            ).trim();
+            const durStr = String(formData.get('visa_duration') || '').trim();
+            return baseDateStr ? calculateVisaExpiryDate(baseDateStr, durStr, category) : '';
           })(),
           visa_supplier: formData.get('visa_supplier') || '',
           visa_duration: formData.get('visa_duration') || '',

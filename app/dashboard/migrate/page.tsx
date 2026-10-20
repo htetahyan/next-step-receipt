@@ -373,20 +373,20 @@ function MigrateWorkspace() {
               const travelDate = parseDateToISO(getCSVValue(row, ['Travel Date', 'Travel']));
               let expiryDate = parseDateToISO(getCSVValue(row, ['Visa Expiry Date', 'Expiry Date', 'Visa Expiry']));
 
-              if (!expiryDate && travelDate) {
-                const isBusOrAirChange = category === 'Visa Change by Bus' || category === 'Visa Change by Air';
+              if (!expiryDate && (travelDate || issuedDate)) {
+                const durationStr = String(getCSVValue(row, ['Visa Duration', 'Duration']) || category || '').toLowerCase();
                 let daysToAdd = 60;
 
-                if (!isBusOrAirChange) {
-                  const durationStr = String(getCSVValue(row, ['Visa Duration', 'Duration']) || '').toLowerCase();
-                  if (durationStr.includes('90')) daysToAdd = 90;
-                  else if (durationStr.includes('60')) daysToAdd = 60;
-                  else if (durationStr.includes('30')) daysToAdd = 30;
-                  else if (durationStr.includes('14')) daysToAdd = 14;
-                  else daysToAdd = 30;
-                }
+                if (durationStr.includes('48 hour') || durationStr.includes('48hr') || durationStr.includes('48 hr')) daysToAdd = 2;
+                else if (durationStr.includes('96 hour') || durationStr.includes('96hr') || durationStr.includes('96 hr')) daysToAdd = 4;
+                else if (durationStr.includes('90') || durationStr.includes('3 month')) daysToAdd = 90;
+                else if (durationStr.includes('60') || durationStr.includes('2 month')) daysToAdd = 60;
+                else if (durationStr.includes('30') || durationStr.includes('1 month') || durationStr.includes('one month')) daysToAdd = 30;
+                else if (durationStr.includes('14')) daysToAdd = 14;
+                else if (durationStr.includes('inside') || durationStr.includes('extension')) daysToAdd = 30;
+                else daysToAdd = 60;
 
-                const tDate = new Date(travelDate);
+                const tDate = new Date((travelDate || issuedDate)!);
                 if (!isNaN(tDate.getTime())) {
                   tDate.setDate(tDate.getDate() + daysToAdd);
                   const yyyy = tDate.getFullYear();

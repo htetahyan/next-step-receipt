@@ -1,5 +1,7 @@
 import postgres from 'postgres';
 import * as dotenv from 'dotenv';
+import { calculateVisaExpiryDate, getVisaBaseDateISO, toISODate } from '../lib/serviceDates';
+import { isUaeVisaCategory } from '../lib/service-constants';
 
 // Load env vars if running locally
 dotenv.config({ path: '.env.local' });
@@ -16,7 +18,7 @@ export async function processAutoCloseVisas() {
     console.log('Fetching open services via direct DB connection (bypassing RLS)...');
     
     const services = await sql`
-      SELECT id, category, status, details, created_at
+      SELECT id, reference_id, category, status, details, created_at
       FROM customer_services
       WHERE status NOT IN ('Closed', 'Cancelled')
     `;
@@ -32,49 +34,23 @@ export async function processAutoCloseVisas() {
     const toCloseIds: string[] = [];
 
     for (const service of services) {
-      const category = (service.category || '').toLowerCase();
-      const ref = (service.reference_id || '').toLowerCase();
-      const isTicketOrHotel = 
-        category.includes('ticket') || 
-        category.includes('flight') || 
-        category.includes('way') || 
-        category.includes('trip') || 
-        category.includes('hotel') || 
-        ref.startsWith('at') || 
-        ref.startsWith('tk') || 
-        ref.startsWith('hb');
-      
-      const isVisa = !isTicketOrHotel;
-      if (!isVisa) {
+      if (!isUaeVisaCategory(service.category, service.reference_id)) {
         continue;
       }
 
       const details = service.details || {};
       let isExpired = false;
 
-      // Method 1: explicit visa_expiry_date in the past
-      if (details.visa_expiry_date) {
-        const expDate = new Date(details.visa_expiry_date);
+      const resolvedExpiry =
+        toISODate(details.visa_expiry_date) ||
+        calculateVisaExpiryDate(getVisaBaseDateISO(details), details.visa_duration, service.category);
+
+      if (resolvedExpiry) {
+        const expDate = new Date(resolvedExpiry);
         if (!isNaN(expDate.getTime())) {
           expDate.setHours(0, 0, 0, 0);
           if (expDate < today) {
             isExpired = true;
-          }
-        }
-      }
-
-      // Method 2: No expiry date but has travel_date or visa_issued_date → guess expiry date by adding 2 months (60 days)
-      if (!isExpired && !details.visa_expiry_date) {
-        const baseDateStr = details.travel_date || details.visa_issued_date;
-        if (baseDateStr) {
-          const baseDate = new Date(baseDateStr);
-          if (!isNaN(baseDate.getTime())) {
-            const calculatedExpiry = new Date(baseDate);
-            calculatedExpiry.setDate(calculatedExpiry.getDate() + 60); // 2 months = 60 days
-            calculatedExpiry.setHours(0, 0, 0, 0);
-            if (calculatedExpiry < today) {
-              isExpired = true;
-            }
           }
         }
       }

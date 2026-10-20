@@ -149,7 +149,11 @@ function isOtherCountryVisa(lower: string, cat: string): boolean {
 }
 
 /** Positive match only — unknown custom services must NOT appear on the UAE visa tracker. */
-export function isUaeVisaCategory(category?: string | null): boolean {
+export function isUaeVisaCategory(category?: string | null, referenceId?: string | null): boolean {
+  if (referenceId) {
+    const byRef = groupFromReference(referenceId);
+    if (byRef) return byRef === 'UAE Visa';
+  }
   if (!category) return false;
   const cat = category.trim();
   const lower = cat.toLowerCase();
@@ -169,13 +173,23 @@ export function isUaeVisaCategory(category?: string | null): boolean {
     lower.includes('china') ||
     lower.includes('korea') ||
     lower.includes('armenia') ||
+    lower.includes('britain') ||
     lower.includes('uk visa') ||
+    lower.includes('united kingdom') ||
+    lower.includes('usa') ||
+    lower.includes('canada') ||
+    lower.includes('australia') ||
+    lower.includes('europe') ||
     lower.includes('other country') ||
     lower.includes('consultation') ||
     lower.includes('passport') ||
     lower.includes('insurance') ||
     lower.includes('attestation') ||
-    lower.includes('hotel package')
+    lower.includes('hotel') ||
+    lower.includes('car rental') ||
+    lower.includes('typing') ||
+    lower.includes('translation') ||
+    lower.includes('emirates id')
   ) {
     return false;
   }
@@ -184,15 +198,40 @@ export function isUaeVisaCategory(category?: string | null): boolean {
     lower.includes('uae') ||
     lower.includes('visit visa') ||
     lower.includes('visa change') ||
-    lower.includes('inside visa') ||
+    lower.includes('inside') ||
+    lower.includes('extension') ||
+    lower.includes('extend') ||
     lower.includes('a2a') ||
-    lower.includes('transit visa') ||
+    lower.includes('b2b') ||
+    lower.includes('transit') ||
     lower.includes('multi entry') ||
     lower.includes('multi-entry') ||
     lower.includes('oman') ||
-    lower.includes('visa extension') ||
+    lower.includes('by bus') ||
+    lower === 'bus' ||
+    lower.includes('guranter') ||
+    lower.includes('guarantor') ||
+    lower.includes('shj') ||
+    lower.includes('dxb') ||
+    lower.includes('dubai') ||
+    lower.includes('sharjah') ||
+    lower.includes('30 days') ||
+    lower.includes('30days') ||
+    lower.includes('30 day') ||
+    lower.includes('60 days') ||
+    lower.includes('60days') ||
+    lower.includes('60 day') ||
+    lower.includes('90 days') ||
+    lower.includes('90days') ||
+    lower.includes('48 hours') ||
+    lower.includes('48 hrs') ||
+    lower.includes('96 hours') ||
+    lower.includes('96 hrs') ||
+    lower.includes('one month') ||
+    lower.includes('1 month') ||
     (lower.includes('bus') && lower.includes('visa')) ||
-    (lower.includes('air') && lower.includes('visa change'))
+    (lower.includes('air') && lower.includes('visa')) ||
+    (lower.includes('cancel') && lower.includes('visa'))
   );
 }
 

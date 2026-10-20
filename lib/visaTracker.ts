@@ -1,6 +1,14 @@
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { parseServiceDateToTimestamp } from '@/lib/serviceDates';
+import {
+  calculateVisaExpiryDate,
+  getVisaBaseDateISO,
+  parseServiceDateToTimestamp,
+  parseVisaDurationDays,
+  toISODate,
+} from '@/lib/serviceDates';
+
+export { calculateVisaExpiryDate, parseVisaDurationDays };
 
 export const UAE_VISA_LIST_FILTER = {
   notInCategories: [
@@ -34,6 +42,7 @@ export type ExpiryInfo = {
 
 export type ExpiryAlert = {
   service: any;
+  expiryStr: string;
   daysLeft: number;
   isExpired: boolean;
   isThisMonth: boolean;
@@ -66,17 +75,12 @@ export function getVisaDateInfo(): DateInfo {
 
 export function getExpiryStr(service: any): string {
   const details = service?.details || {};
-  if (details.visa_expiry_date) return details.visa_expiry_date;
-  const baseDateStr = details.travel_date || details.visa_issued_date;
+  const explicit = toISODate(details.visa_expiry_date);
+  if (explicit) return explicit;
+  const baseDateStr = getVisaBaseDateISO(details);
   if (!baseDateStr) return '';
-  const baseTs = parseServiceDateToTimestamp(baseDateStr);
-  if (baseTs <= 0) return String(baseDateStr);
-  const expDate = new Date(baseTs);
-  expDate.setDate(expDate.getDate() + 60);
-  const yyyy = expDate.getFullYear();
-  const mm = String(expDate.getMonth() + 1).padStart(2, '0');
-  const dd = String(expDate.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  const computed = calculateVisaExpiryDate(baseDateStr, details.visa_duration, service?.category);
+  return computed || String(baseDateStr);
 }
 
 export function getExpiryInfo(service: any, dateInfo: DateInfo): ExpiryInfo {
@@ -197,6 +201,7 @@ export function buildExpiryAlerts(visas: any[], dateInfo: DateInfo) {
             : 'watch';
       allAlerts.push({
         service: latest,
+        expiryStr: info.expiryStr,
         daysLeft: info.daysRemaining,
         isExpired: info.isExpired,
         isThisMonth: info.isExpiringThisMonth,

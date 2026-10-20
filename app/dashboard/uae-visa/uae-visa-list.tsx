@@ -60,7 +60,7 @@ export default function UAEVisaList({ initialServices, profile }: { initialServi
   const searchRef = useRef<HTMLInputElement>(null);
   const itemsPerPage = 15;
 
-  const visaOnly = useMemo(() => services.filter((s) => isUaeVisaCategory(s.category)), [services]);
+  const visaOnly = useMemo(() => services.filter((s) => isUaeVisaCategory(s.category, s.reference_id)), [services]);
   const dateInfo = useMemo(() => getVisaDateInfo(), []);
   const expiryOf = (s: any) => getExpiryInfo(s, dateInfo);
 

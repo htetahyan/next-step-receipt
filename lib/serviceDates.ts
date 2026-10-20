@@ -96,3 +96,121 @@ export function stampBookingDate(
   }
   return next;
 }
+
+function extractDaysFromVisaText(text?: string | null): number | null {
+  if (!text) return null;
+  const lower = String(text).trim().toLowerCase();
+  if (!lower || lower === '-' || lower === 'n/a') return null;
+
+  // Check hour-based transit visas first (48 hours = 2 days, 96 hours = 4 days)
+  if (lower.includes('48 hour') || lower.includes('48hour') || lower.includes('48 hr') || lower.includes('48hr')) {
+    return 2;
+  }
+  if (lower.includes('96 hour') || lower.includes('96hour') || lower.includes('96 hr') || lower.includes('96hr')) {
+    return 4;
+  }
+  const hrMatch = lower.match(/(\d+)\s*(?:hour|hours|hr|hrs)\b/);
+  if (hrMatch) {
+    const hrs = parseInt(hrMatch[1], 10);
+    if (!isNaN(hrs) && hrs > 0) return Math.max(1, Math.ceil(hrs / 24));
+  }
+
+  // Check day/month durations
+  if (lower.includes('14 day') || lower.includes('14day')) return 14;
+  if (
+    lower.includes('30 day') ||
+    lower.includes('30day') ||
+    lower.includes('1 month') ||
+    lower.includes('one month')
+  ) {
+    return 30;
+  }
+  if (
+    lower.includes('60 day') ||
+    lower.includes('60day') ||
+    lower.includes('2 month') ||
+    lower.includes('two month')
+  ) {
+    return 60;
+  }
+  if (
+    lower.includes('90 day') ||
+    lower.includes('90day') ||
+    lower.includes('3 month') ||
+    lower.includes('three month')
+  ) {
+    return 90;
+  }
+
+  const dayMatch = lower.match(/\b(\d+)\s*(?:day|days|d)\b/);
+  if (dayMatch) {
+    const days = parseInt(dayMatch[1], 10);
+    if (!isNaN(days) && days > 0) return days;
+  }
+
+  const standaloneMatch = lower.match(/\b(14|30|60|90)\b/);
+  if (standaloneMatch) {
+    return parseInt(standaloneMatch[1], 10);
+  }
+
+  return null;
+}
+
+/**
+ * Determine visa duration in days from details.visa_duration and/or service.category.
+ * Properly handles 48 Hours (2d), 96 Hours (4d), 14 Days, 30 Days (Visit / Inside / Bus / Air),
+ * 60 Days, 90 Days, etc., instead of hardcoding 60 days.
+ */
+export function parseVisaDurationDays(durationStr?: string | null, categoryStr?: string | null): number {
+  const fromDuration = extractDaysFromVisaText(durationStr);
+  if (fromDuration !== null) return fromDuration;
+
+  const fromCategory = extractDaysFromVisaText(categoryStr);
+  if (fromCategory !== null) return fromCategory;
+
+  const catLower = String(categoryStr || '').toLowerCase();
+  const durLower = String(durationStr || '').toLowerCase();
+
+  if (catLower.includes('transit') || durLower.includes('transit')) {
+    return 2;
+  }
+  if (
+    catLower.includes('inside') ||
+    catLower.includes('extension') ||
+    catLower.includes('extend') ||
+    durLower.includes('inside') ||
+    durLower.includes('extension') ||
+    durLower.includes('extend')
+  ) {
+    return 30;
+  }
+
+  return 60;
+}
+
+/**
+ * Return the first valid ISO date from travel_date or visa_issued_date.
+ * Ignores non-date strings like "Cancelled" or "-".
+ */
+export function getVisaBaseDateISO(details: any): string | null {
+  if (!details) return null;
+  return toISODate(details.travel_date) || toISODate(details.visa_issued_date);
+}
+
+/**
+ * Calculate YYYY-MM-DD visa expiry date from a start date (travel_date or visa_issued_date)
+ * plus the resolved duration in days.
+ */
+export function calculateVisaExpiryDate(
+  baseDateVal: any,
+  durationStr?: string | null,
+  categoryStr?: string | null
+): string {
+  const baseTs = parseServiceDateToTimestamp(baseDateVal);
+  if (baseTs <= 0) return '';
+  const daysToAdd = parseVisaDurationDays(durationStr, categoryStr);
+  const expDate = new Date(baseTs);
+  expDate.setDate(expDate.getDate() + daysToAdd);
+  return format(expDate, 'yyyy-MM-dd');
+}
+

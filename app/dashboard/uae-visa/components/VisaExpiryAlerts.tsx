@@ -95,11 +95,12 @@ export default function VisaExpiryAlerts({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {displayed.map(({ service: s, daysLeft, isExpired, isThisMonth, isNextMonth, totalRecords }) => {
+            {displayed.map(({ service: s, expiryStr, daysLeft, isExpired, isThisMonth, isNextMonth, totalRecords }) => {
               const cust = s.customers;
               const details = s.details || {};
               const phoneNum = cust?.phone || details?.phone;
-              const wa = getWhatsAppUrl(phoneNum, cust?.name || details?.customer_name, s.reference_id, details?.visa_expiry_date);
+              const resolvedExpiry = expiryStr || details?.visa_expiry_date;
+              const wa = getWhatsAppUrl(phoneNum, cust?.name || details?.customer_name, s.reference_id, resolvedExpiry);
               return (
                 <div
                   key={s.id}
@@ -129,7 +130,7 @@ export default function VisaExpiryAlerts({
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] border-t border-black/5 pt-2">
-                    <div className="font-mono">Expiry: <span className="font-bold">{details?.visa_expiry_date || '—'}</span></div>
+                    <div className="font-mono">Expiry: <span className="font-bold">{resolvedExpiry || '—'}</span></div>
                     <Link
                       href={`/dashboard/uae-visa/new?customerId=${cust?.id || s.customer_id || ''}`}
                       className="px-2.5 py-1 rounded-md bg-[#D97757] text-white font-semibold flex items-center gap-1"

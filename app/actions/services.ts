@@ -15,7 +15,32 @@ import { uaeVisaSchema, airTicketSchema, otherVisaSchema, tourPackageSchema } fr
 import { createClient } from '@/utils/supabase/server';
 import { requirePermission, requireAdmin, getCurrentUserProfile } from '@/app/actions/users';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
-import { stampBookingDate, getBookingDateISO, serviceDateColumns } from '@/lib/serviceDates';
+import { isUaeVisaCategory } from '@/lib/service-constants';
+import { extractDuration } from '@/lib/rateAutofill';
+import {
+  calculateVisaExpiryDate,
+  getBookingDateISO,
+  getVisaBaseDateISO,
+  serviceDateColumns,
+  stampBookingDate,
+  toISODate,
+} from '@/lib/serviceDates';
+
+function stampUaeVisaExpiry(details: any, category?: string | null, referenceId?: string | null): any {
+  const next = { ...(details || {}) };
+  if (!isUaeVisaCategory(category, referenceId)) return next;
+  if (!next.visa_duration && category) {
+    const extracted = extractDuration(category);
+    if (extracted) next.visa_duration = extracted;
+  }
+  const hasValidExpiry = Boolean(toISODate(next.visa_expiry_date));
+  const baseDate = getVisaBaseDateISO(next);
+  if (!hasValidExpiry && baseDate) {
+    const computed = calculateVisaExpiryDate(baseDate, next.visa_duration, category);
+    if (computed) next.visa_expiry_date = computed;
+  }
+  return next;
+}
 
 // ── Schema ──────────────────────────────────────────────────
 // We will now use the shared schemas directly to ensure frontend/backend parity.
@@ -278,7 +303,11 @@ export async function addCustomerService(data: any) {
       console.warn('Schema validation warning (proceeding with normalized payload):', zodErr?.message);
     }
 
-    const stampedDetails = stampBookingDate(finalDetails, { fallbackToday: true });
+    const stampedDetails = stampUaeVisaExpiry(
+      stampBookingDate(finalDetails, { fallbackToday: true }),
+      category,
+      referenceId
+    );
     const bookingISO = parseDateToISO(getBookingDateISO({ details: stampedDetails, created_at: null }) || stampedDetails.booking_date);
     const serviceInsertPayload: any = {
       customer_id: customerId,
@@ -496,7 +525,11 @@ export async function bulkMigrateCustomerServices(records: any[]) {
         referenceId = await generateReferenceId(prefix);
       }
 
-      const stampedDetails = stampBookingDate(service.details || {}, { fallbackToday: true });
+      const stampedDetails = stampUaeVisaExpiry(
+        stampBookingDate(service.details || {}, { fallbackToday: true }),
+        service.category,
+        referenceId
+      );
       const bookingISO = parseDateToISO(stampedDetails.booking_date);
 
       const servicePayload: any = {
@@ -609,12 +642,17 @@ export async function updateCustomerService(serviceId: string, data: any) {
     const { createClient } = await import('@/utils/supabase/server');
     const supabase = await createClient();
 
+    const stampedDetails = stampUaeVisaExpiry(
+      stampBookingDate(data.details || {}),
+      data.category,
+      data.referenceId || data.reference_id
+    );
     const updatePayload: any = {
       category: data.category,
       status: data.status,
-      details: stampBookingDate(data.details || {}),
+      details: stampedDetails,
       financials: data.financials,
-      ...serviceDateColumns(stampBookingDate(data.details || {})),
+      ...serviceDateColumns(stampedDetails),
     };
 
     if (data.referenceId !== undefined) {
@@ -808,10 +846,14 @@ export async function quickUpdateService(
     }
 
     if (payload.details) {
-      updateData.details = stampBookingDate({
-        ...(existing.details as any || {}),
-        ...payload.details,
-      });
+      updateData.details = stampUaeVisaExpiry(
+        stampBookingDate({
+          ...(existing.details as any || {}),
+          ...payload.details,
+        }),
+        payload.category || existing.category,
+        updateData.reference_id || existing.reference_id
+      );
     }
 
     if (payload.financials) {
@@ -900,7 +942,10 @@ export async function closeExpiredServices(daysOver: number = 30) {
 
     for (const service of services) {
       const details = (service.details as any) || {};
-      const expiryStr = details.visa_expiry_date || details.travel_date || details.departure_date;
+      const expiryStr =
+        toISODate(details.visa_expiry_date) ||
+        calculateVisaExpiryDate(details.travel_date || details.visa_issued_date, details.visa_duration, service.category) ||
+        details.departure_date;
       if (!expiryStr) continue;
 
       const expDate = new Date(expiryStr);

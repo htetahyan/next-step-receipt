@@ -34,10 +34,13 @@ import { OutstandingReceivablesWidget } from './components/OutstandingReceivable
 import { parseFinancialNumber } from '@/lib/financialUtils';
 import { dashboardServiceGroup } from '@/lib/service-constants';
 import {
+  calculateVisaExpiryDate,
   getBookingDateISO,
   getRangeMatchDate,
+  getVisaBaseDateISO,
   parseServiceDateToTimestamp,
   serviceMatchesDateRange,
+  toISODate,
 } from '@/lib/serviceDates';
 
 export const dynamic = 'force-dynamic';
@@ -255,7 +258,10 @@ async function DashboardMetrics({
     }
 
     // Impending Expiry Grouping
-    if (details.visa_expiry_date || (details.travel_date && mainCategory === 'UAE Visa')) {
+    if (
+      details.visa_expiry_date ||
+      ((details.travel_date || details.visa_issued_date) && mainCategory === 'UAE Visa')
+    ) {
       const rawPassport = cust?.passport_no || details?.passport_no || '';
       const rawName = cust?.name || details?.customer_name || '';
       const key = rawPassport ? `pass:${rawPassport.toUpperCase()}` : `name:${rawName.toLowerCase()}`;
@@ -328,15 +334,9 @@ async function DashboardMetrics({
 
     const latest = active.sort((a, b) => parseDateToTimestamp(b.created_at) - parseDateToTimestamp(a.created_at))[0];
     const details = (latest.details as any) || {};
-    let expiryStr = details.visa_expiry_date;
-    if (!expiryStr && details.travel_date) {
-      const travelTs = parseDateToTimestamp(details.travel_date);
-      if (travelTs > 0) {
-        const expDate = new Date(travelTs);
-        expDate.setDate(expDate.getDate() + 60);
-        expiryStr = format(expDate, 'yyyy-MM-dd');
-      }
-    }
+    const expiryStr =
+      toISODate(details.visa_expiry_date) ||
+      calculateVisaExpiryDate(getVisaBaseDateISO(details), details.visa_duration, latest.category);
 
     if (expiryStr) {
       const expTs = parseDateToTimestamp(expiryStr);
