@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { Shield, Plane, Map, Globe, UserPlus, Receipt, Plus, Wrench } from 'lucide-react';
+import MonthlySalesReportButton from '@/components/MonthlySalesReportButton';
 
 export function DashboardQuickActions() {
   const actions = [
@@ -51,23 +52,29 @@ export function DashboardQuickActions() {
   ];
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full scrollbar-none">
-      <span className="text-[10px] font-mono uppercase tracking-wider opacity-50 mr-1 flex items-center gap-1 shrink-0">
-        <Plus className="w-3 h-3" /> Quick Add:
-      </span>
-      {actions.map((act) => {
-        const Icon = act.icon;
-        return (
-          <Link
-            key={act.label}
-            href={act.href}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-xs font-medium transition-all shrink-0 ${act.color}`}
-          >
-            <Icon className="w-3.5 h-3.5" />
-            <span>{act.label}</span>
-          </Link>
-        );
-      })}
+    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 pb-1 max-w-full">
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+        <span className="text-[10px] font-mono uppercase tracking-wider opacity-50 mr-1 flex items-center gap-1 shrink-0">
+          <Plus className="w-3 h-3" /> Quick Add:
+        </span>
+        {actions.map((act) => {
+          const Icon = act.icon;
+          return (
+            <Link
+              key={act.label}
+              href={act.href}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--card-border)] bg-[var(--background)] text-xs font-medium transition-all shrink-0 ${act.color}`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{act.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <Suspense fallback={null}>
+        <MonthlySalesReportButton />
+      </Suspense>
     </div>
   );
 }

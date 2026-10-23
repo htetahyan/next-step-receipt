@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { 
   Shield, 
@@ -23,6 +23,7 @@ import { parseFinancialNumber } from '@/lib/financialUtils';
 import { getServiceDateFields, getTravelDateISO } from '@/lib/serviceDates';
 import { mapCategoryToModule } from '@/lib/auth-permissions';
 import Pagination from '@/components/Pagination';
+import MonthlySalesReportButton from '@/components/MonthlySalesReportButton';
 
 interface RecentServiceItem {
   id: string;
@@ -211,7 +212,11 @@ export function DashboardRecentServices({ services, periodLabel = 'Today' }: Das
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Suspense fallback={null}>
+              <MonthlySalesReportButton compact />
+            </Suspense>
+
             <div className="relative">
               <div className="absolute left-2.5 inset-y-0 flex items-center pointer-events-none">
                 <Search className="w-3.5 h-3.5 opacity-40" />
